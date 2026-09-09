@@ -33,7 +33,7 @@ export default function Login() {
 
                 <Button type="submit" className="w-full">Iniciar sesión</Button>
 
-                <p className="text-secundario">¿No tenés una cuenta? <a href="#" className="text-info"> Contactá al administrador</a></p>
+                <p className="text-secundario">¿No tenés una cuenta? <a href="#" className="text-info"> Crea una organización</a></p>
             </form>
 
         </div>
