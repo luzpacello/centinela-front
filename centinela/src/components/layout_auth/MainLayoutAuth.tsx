@@ -4,16 +4,15 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
     return (
         <div className="flex h-screen bg-gray-50 font-sans">
             <aside className="w-120 bg-white border-r border-gray-200 flex flex-col justify-between h-full">
-                <div className="flex gap-2 px-3 py-5 justify-center bg-secondary">
-                    <span className="text-green-600 text-3xl leading-none">logo</span>
+                <div className="h-25 flex gap-2 px-4 pt-6 justify-center">
+                    <span className="text-green-600 text-3xl">logo</span>
                     <h1 className="text-4xl font-bold text-gray-900"> Centinela </h1>
                 </div>
-                
+                <div className='flex h-full p-4'>
+                    <span className="text-green-600 text-3xl ">info</span>
+                </div>
             </aside>
-            {/* Contenedor derecho (Header + Contenido) */}
             <main className="flex-1 flex flex-col overflow-hidden">
-
-                {/* Área donde van a inyectarse las pantallas con React Router (Outlet) */}
                 <div className="flex-1 p-8 overflow-auto">
                     {children ? (
                         children

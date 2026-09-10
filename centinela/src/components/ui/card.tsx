@@ -1,4 +1,6 @@
 import * as React from "react"
+import { AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
+
 import { cn } from "cn"
 
 function Card({
@@ -90,6 +92,40 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     />
   )
 }
+
+interface ContainerCardProps {
+  /** El contenido libre que va a envolver la card */
+  children: React.ReactNode;
+  /** Clases adicionales de Tailwind para personalizar desde afuera (opcional) */
+  className?: string;
+}
+
+export const ContainerCard: React.FC<ContainerCardProps> = ({ children, className = '' }) => {
+  return (
+    <div className={`p-6 rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+
+
+interface InfoCardProps {
+  children: React.ReactNode;
+}
+
+export const InfoCard: React.FC<InfoCardProps> = ({
+  children,
+}) => {
+  return (
+    <div className= 'p-3 rounded-lg border flex items-center gap-3 shadow-sm bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-200'>
+      <div className="shrink-0 flex items-center"><Info className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
+        <div className="flex-1">
+          <div className="text-sm opacity-90">{children}</div>
+        </div>
+    </div>
+  );
+};
 
 export {
   Card,

@@ -78,7 +78,10 @@ export const TwoFactorForm: React.FC<TwoFactorFormProps> = ({ onSuccess }) => {
 
         {error && <p className="text-sm text-destructive font-medium mt-2">{error}</p>}
       </div>
-
+      <div className="flex items-center gap-2 text-left text-sm">
+        <p>(Checkbox) Recordar este dispositivo por 30 días</p>
+      </div>
+      
       <Button type="submit" className="w-full" disabled={isLoading || code.length < 6}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Verificar código
