@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 import { cn } from "cn"
 
