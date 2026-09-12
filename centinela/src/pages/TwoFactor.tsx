@@ -32,7 +32,6 @@ import { Stepper } from '@/components/ui/stepper';
 import { Button } from '@/components/ui/button';
 import { Lock } from 'lucide-react';
 import { ContainerCard, InfoCard } from '@/components/ui/card';
-import { SeparateOTPInput } from '@/components/ui/inputOTPSeparate'; 
 import { CodeDisplay } from '@/components/features/2fa/components/CodeDisplay';
 import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorForm';
 /*<Lock color="#10b981" /> */
@@ -143,4 +142,4 @@ export const TwoFactorPage: React.FC = () => {
   </ContainerCard>
     
   );
-}; 
+};

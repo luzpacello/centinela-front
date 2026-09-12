@@ -1,14 +1,9 @@
-//import MainLayout from './components/layout/MainLayout';
-import { TwoFactorPage } from './pages/TwoFactor';
-import MainLayoutAuth from './components/layout_auth/MainLayoutAuth';
+import { RouterProvider } from 'react-router/dom';
+import { applicationRouter } from './routes/router';
+
 function App() {
   return (
-    <>
-      <MainLayoutAuth>
-        <TwoFactorPage />
-      </MainLayoutAuth>
-    </>
-    
+    <RouterProvider router={applicationRouter} />
   );
 }
 

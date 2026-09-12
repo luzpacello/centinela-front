@@ -1,3 +1,5 @@
+import { NavLink } from 'react-router';
+
 export default function Sidebar() {
     return (
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between h-full">
@@ -14,26 +16,26 @@ export default function Sidebar() {
                 {/* Menú de Navegación */}
                 <nav className="px-3 py-2 space-y-1">
                     {/* Item normal */}
-                    <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                    <NavLink to="/dashboard" className={getNavigationLinkClassName}>
                         <span className="text-gray-400 text-lg"></span> Dashboard
-                    </a>
+                    </NavLink>
 
                     {/* Item ACTIVO (Como se ve "Instancias" en la captura) */}
-                    <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-green-50 text-green-700">
+                    <NavLink to="/instances" className={getNavigationLinkClassName}>
                         <span className="text-green-600 text-lg"></span> Instancias
-                    </a>
+                    </NavLink>
 
                     {/* Más items normales */}
-                    <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                        <span className="text-gray-400 text-lg"></span> Crear instancia
-                    </a>
+                    <NavLink to="/users/new" className={getNavigationLinkClassName}>
+                        <span className="text-gray-400 text-lg"></span> Crear usuario
+                    </NavLink>
 
                     <div className="pt-4 pb-2">
                         <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sistema</p>
                     </div>
-                    <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
-                        <span className="text-gray-400 text-lg"></span> Configuración
-                    </a>
+                    <NavLink to="/components" className={getNavigationLinkClassName}>Componentes</NavLink>
+                    <NavLink to="/two-factor" className={getNavigationLinkClassName}>Vista de 2FA</NavLink>
+                    <NavLink to="/login" className={getNavigationLinkClassName}>Iniciar sesión</NavLink>
                 </nav>
             </div>
 
@@ -70,4 +72,8 @@ export default function Sidebar() {
             </div>
         </aside>
     );
+}
+
+function getNavigationLinkClassName({ isActive }: { isActive: boolean }) {
+    return `flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`;
 }
