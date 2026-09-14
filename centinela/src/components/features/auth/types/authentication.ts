@@ -1,13 +1,44 @@
 export interface LoginCredentials {
   email: string;
   password: string;
-  rememberMe: boolean;
+  recordarSesion: boolean;
 }
 
-export type LoginResponse = { tempSessionId: string } & (
-  | { require2faSetup: true; require2faInput: false; totpSetup: { secret: string; qrCodeUrl: string } }
-  | { require2faSetup: false; require2faInput: true }
-);
+// Usuario devuelto por el backend en cada respuesta de sesión.
+export interface UserSession {
+  id: string;
+  organizacionId: string;
+  nombreCompleto: string;
+  email: string;
+  rol: string;
+  instanciasPermitidas: number[];
+  tiene2FA: boolean;
+}
+
+// Contrato real de /auth/login, /auth/2fa/verify y /auth/refresh.
+// challengeToken/accessToken/refreshToken son opcionales: el backend los omite
+// según el estado del login (2FA pendiente vs. sesión emitida).
+export interface LoginResponse {
+  success: boolean;
+  user: UserSession;
+  requiresTwoFactor: boolean;
+  requiresTwoFactorSetup: boolean;
+  challengeToken?: string;
+  challengeExpiresAt?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  accessExpiresAt?: string;
+  refreshExpiresAt?: string;
+  recordarSesion: boolean;
+}
+
+// Contrato real de /auth/2fa/setup.
+export interface TwoFactorSetupResponse {
+  secret: string;
+  otpAuthUrl: string;
+  challengeToken: string;
+  expiresAt: string;
+}
 
 export interface OrganizationRegistrationRequest {
   organizationName: string;

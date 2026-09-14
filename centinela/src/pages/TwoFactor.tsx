@@ -99,7 +99,7 @@ export const TwoFactorPage: React.FC = () => {
             <h2 className="text-lg font-bold mb-2">2. Validar codigo</h2>
             <p className="text-muted-foreground text-sm">Ingresá el código de 6 digitos de tu aplicación de autentificación.</p>
             <div className="flex flex-col gap-4 w-full mt-4">
-              <TwoFactorForm/>
+              <TwoFactorForm onSubmit={async () => {}} isSubmitting={false} />
             </div>
           </div>
         )}

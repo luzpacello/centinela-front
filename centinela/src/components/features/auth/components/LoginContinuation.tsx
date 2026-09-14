@@ -1,19 +1,82 @@
-import { Link, useLoaderData } from 'react-router';
+import { useState } from 'react';
+import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
+import { QRCodeSVG } from 'qrcode.react';
 import type { LoginResponse } from '../types/authentication';
 import { clearPendingLoginSession } from '../services/pendingLoginSession';
+import { persistSession } from '../services/authService';
+import { mapAuthenticationError } from '../utils/mapAuthenticationError';
+import { use2FA } from '@/components/features/2fa/hooks/use2FA';
+import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorForm';
+import { CodeDisplay } from '@/components/features/2fa/components/CodeDisplay';
+import { InfoCard } from '@/components/ui/card';
 
 export function LoginContinuation() {
   const pendingSession = useLoaderData<LoginResponse>();
-  // El contrato disponible termina aquí. Nunca se llama al servicio 2FA simulado ni se concede acceso definitivo.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requiresSetup = location.pathname === '/two-factor/setup';
+  const { setupData, isPreparingSetup, setupError, verify } = use2FA(pendingSession.challengeToken ?? '', requiresSetup);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(code: string) {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await verify(code);
+      persistSession(response);
+      clearPendingLoginSession();
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      setSubmitError(mapAuthenticationError(error, 'twoFactor').message ?? 'No se pudo verificar el código.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (setupError) {
+    return (
+      <section className="w-full max-w-xl space-y-5 rounded-xl border bg-white p-8 text-center shadow-sm">
+        <h1>No se pudo iniciar la configuración</h1>
+        <p role="alert" className="text-destructive">{setupError}</p>
+        <Link to="/login" replace onClick={clearPendingLoginSession} className="text-info underline">Volver al inicio de sesión</Link>
+      </section>
+    );
+  }
+
   return (
     <section className="w-full max-w-xl space-y-5 rounded-xl border bg-white p-8 text-center shadow-sm">
-      <h1>Credenciales verificadas</h1>
-      <p role="status">
-        {pendingSession.require2faSetup
-          ? 'Tu cuenta requiere configurar la autenticación de dos factores.'
-          : 'Tu cuenta requiere ingresar el código de la aplicación autenticadora.'}
+      <h1>{requiresSetup ? 'Configurá tu segundo factor' : 'Verificá tu identidad'}</h1>
+      <p className="text-secundario">
+        {requiresSetup
+          ? 'Escaneá el código QR con tu aplicación autenticadora y luego ingresá el código de 6 dígitos.'
+          : 'Ingresá el código de 6 dígitos de tu aplicación autenticadora.'}
       </p>
-      <p className="text-secundario">El paso de verificación todavía no está disponible. El inicio de sesión está pendiente de completarse.</p>
+
+      {requiresSetup && (
+        <div className="flex flex-col items-center gap-4">
+          {isPreparingSetup && <p role="status">Generando código de vinculación…</p>}
+          {setupData && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-lg border bg-white p-4" aria-label="Código QR de configuración">
+                <QRCodeSVG value={setupData.otpAuthUrl} size={176} />
+              </div>
+              <div className="w-full max-w-sm space-y-1 text-left">
+                <p className="text-sm text-muted-foreground">¿No podés escanear? Ingresá este código manualmente:</p>
+                <CodeDisplay code={setupData.secret} />
+              </div>
+              <InfoCard>
+                <p>Este código es único para tu cuenta. No lo compartas con nadie.</p>
+              </InfoCard>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(!requiresSetup || setupData) && (
+        <TwoFactorForm onSubmit={handleSubmit} isSubmitting={isSubmitting} error={submitError} />
+      )}
+
       <Link to="/login" replace onClick={clearPendingLoginSession} className="text-info underline">Volver al inicio de sesión</Link>
     </section>
   );
