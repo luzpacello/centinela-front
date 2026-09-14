@@ -26,7 +26,7 @@ export function validateLoginFields(fields: LoginCredentials): FieldErrors<Login
 export function validateOrganizationRegistrationFields(
   fields: OrganizationRegistrationFields,
 ): FieldErrors<OrganizationRegistrationFields> {
-  const errors: FieldErrors<OrganizationRegistrationFields> = validateLoginFields({ ...fields, rememberMe: false });
+  const errors: FieldErrors<OrganizationRegistrationFields> = validateLoginFields({ ...fields, recordarSesion: false });
   
   if (!fields.organizationName.trim()) errors.organizationName = 'Ingresá el nombre de la organización.';
   if (!fields.fullName.trim()) errors.fullName = 'Ingresá tu nombre completo.';

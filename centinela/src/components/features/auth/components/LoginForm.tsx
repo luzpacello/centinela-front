@@ -1,4 +1,3 @@
-import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -26,8 +25,8 @@ export default function LoginForm({ initialEmail = '' }: { initialEmail?: string
         />
 
         <Field orientation="horizontal">
-          <Checkbox id="remember-me" name="rememberMe" checked={values.rememberMe}
-            onCheckedChange={(checked) => updateField('rememberMe', checked)} disabled={isSubmitting} />
+          <Checkbox id="remember-me" name="recordarSesion" checked={values.recordarSesion}
+            onCheckedChange={(checked) => updateField('recordarSesion', checked)} disabled={isSubmitting} />
           <FieldLabel htmlFor="remember-me">Recordarme</FieldLabel>
         </Field>
         
@@ -37,7 +36,7 @@ export default function LoginForm({ initialEmail = '' }: { initialEmail?: string
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
       </Button>
-      <p className="text-secundario">¿No tenés una cuenta? <Link to="/signup" className="text-info">Creá una organización</Link></p>
+      <p className="text-secundario">Registro deshabilitado en esta versión — usá la cuenta provista.</p>
     </form>
   );
 }

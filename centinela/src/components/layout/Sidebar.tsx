@@ -26,14 +26,9 @@ export default function Sidebar() {
                     </NavLink>
 
                     {/* Más items normales */}
-                    <NavLink to="/users/new" className={getNavigationLinkClassName}>
-                        <span className="text-gray-400 text-lg"></span> Crear usuario
-                    </NavLink>
-
                     <div className="pt-4 pb-2">
                         <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sistema</p>
                     </div>
-                    <NavLink to="/components" className={getNavigationLinkClassName}>Componentes</NavLink>
                     <NavLink to="/two-factor" className={getNavigationLinkClassName}>Vista de 2FA</NavLink>
                     <NavLink to="/login" className={getNavigationLinkClassName}>Iniciar sesión</NavLink>
                 </nav>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { twoFactorService } from '../services/2fa.service';
 import { Button } from '@/components/ui/button';
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp';
 import {
@@ -10,51 +9,19 @@ import {
 import { Loader2 } from 'lucide-react';
 
 interface TwoFactorFormProps {
-  onSuccess?: () => void;
+  /** Verifica el código TOTP contra el backend. Debe resolver si la verificación fue aceptada. */
+  onSubmit: (code: string) => Promise<void>;
+  isSubmitting: boolean;
+  error?: string | null;
 }
 
-export const TwoFactorForm: React.FC<TwoFactorFormProps> = ({ onSuccess }) => {
-  // Estado local manejado directamente en el componente
+export const TwoFactorForm: React.FC<TwoFactorFormProps> = ({ onSubmit, isSubmitting, error }) => {
   const [code, setCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (code.length < 6) {
-      setError('El código debe tener 6 dígitos');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await twoFactorService.verifyCode({ code });
-      if (response.success) {
-        if (onSuccess) onSuccess();
-      } else {
-        setError(response.message || 'Error al verificar el código');
-      }
-    } catch (err) {
-      setError('Ocurrió un error inesperado. Intenta de nuevo.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setIsResending(true);
-    setError(null);
-    try {
-      await twoFactorService.resendCode();
-    } catch (err) {
-      setError('Error al reenviar el código.');
-    } finally {
-      setIsResending(false);
-    }
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (code.length < 6 || isSubmitting) return;
+    await onSubmit(code);
   };
 
   return (
@@ -76,29 +43,13 @@ export const TwoFactorForm: React.FC<TwoFactorFormProps> = ({ onSuccess }) => {
           </InputOTPGroup>
         </InputOTP>
 
-        {error && <p className="text-sm text-destructive font-medium mt-2">{error}</p>}
+        {error && <p role="alert" className="text-sm text-destructive font-medium mt-2">{error}</p>}
       </div>
-      <div className="flex items-center gap-2 text-left text-sm">
-        <p>(Checkbox) Recordar este dispositivo por 30 días</p>
-      </div>
-      
-      <Button type="submit" className="w-full" disabled={isLoading || code.length < 6}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+
+      <Button type="submit" className="w-full" disabled={isSubmitting || code.length < 6}>
+        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Verificar código
       </Button>
-
-      <div className="text-center text-sm">
-        <span className="text-muted-foreground">¿No recibiste el código? </span>
-        <Button
-          type="button"
-          variant="link"
-          className="p-0 h-auto font-normal"
-          onClick={handleResend}
-          disabled={isResending}
-        >
-          {isResending ? 'Reenviando...' : 'Reenviar'}
-        </Button>
-      </div>
     </form>
   );
 };
