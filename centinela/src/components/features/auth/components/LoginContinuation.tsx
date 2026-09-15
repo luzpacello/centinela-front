@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
-import { QRCodeSVG } from 'qrcode.react';
 import type { LoginResponse } from '../types/authentication';
 import { clearPendingLoginSession } from '../services/pendingLoginSession';
-import { persistSession } from '../services/authService';
+import { persistSessionFromTokens } from '../services/authService';
 import { mapAuthenticationError } from '../utils/mapAuthenticationError';
 import { use2FA } from '@/components/features/2fa/hooks/use2FA';
 import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorForm';
@@ -15,7 +14,7 @@ export function LoginContinuation() {
   const location = useLocation();
   const navigate = useNavigate();
   const requiresSetup = location.pathname === '/two-factor/setup';
-  const { setupData, isPreparingSetup, setupError, verify } = use2FA(pendingSession.challengeToken ?? '', requiresSetup);
+  const { qrData, isPreparingSetup, setupError, verify } = use2FA(pendingSession.jwtTemporal, requiresSetup);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,8 +22,9 @@ export function LoginContinuation() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const response = await verify(code);
-      persistSession(response);
+      const tokens = await verify(code);
+      // Guarda los tokens y trae el perfil: es la fuente de los datos del usuario.
+      await persistSessionFromTokens(tokens);
       clearPendingLoginSession();
       navigate('/dashboard', { replace: true });
     } catch (error) {
@@ -56,14 +56,15 @@ export function LoginContinuation() {
       {requiresSetup && (
         <div className="flex flex-col items-center gap-4">
           {isPreparingSetup && <p role="status">Generando código de vinculación…</p>}
-          {setupData && (
+          {qrData && (
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-lg border bg-white p-4" aria-label="Código QR de configuración">
-                <QRCodeSVG value={setupData.otpAuthUrl} size={176} />
+              <div className="rounded-lg border bg-white p-4">
+                {/* El backend entrega la imagen del QR ya codificada como data URI PNG. */}
+                <img src={qrData.qrBase64} alt="Código QR de configuración" width={176} height={176} />
               </div>
               <div className="w-full max-w-sm space-y-1 text-left">
                 <p className="text-sm text-muted-foreground">¿No podés escanear? Ingresá este código manualmente:</p>
-                <CodeDisplay code={setupData.secret} />
+                <CodeDisplay code={qrData.secretoManual} />
               </div>
               <InfoCard>
                 <p>Este código es único para tu cuenta. No lo compartas con nadie.</p>
@@ -73,7 +74,7 @@ export function LoginContinuation() {
         </div>
       )}
 
-      {(!requiresSetup || setupData) && (
+      {(!requiresSetup || qrData) && (
         <TwoFactorForm onSubmit={handleSubmit} isSubmitting={isSubmitting} error={submitError} />
       )}
 

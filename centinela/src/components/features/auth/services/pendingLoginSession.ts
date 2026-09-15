@@ -16,6 +16,7 @@ export function clearPendingLoginSession(): void {
   pendingLoginSession = null;
 }
 
+// Con el segundo factor ya vinculado se pide el código; si no, se muestra el QR.
 export function getPendingTwoFactorPath(response: LoginResponse): string {
-  return response.requiresTwoFactorSetup ? '/two-factor/setup' : '/two-factor/verify';
+  return response.totpVinculado ? '/two-factor/verify' : '/two-factor/setup';
 }

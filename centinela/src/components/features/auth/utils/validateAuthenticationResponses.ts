@@ -1,7 +1,9 @@
 import type {
   CreatedOrganization,
   LoginResponse,
-  TwoFactorSetupResponse,
+  PerfilResponse,
+  TokenResponse,
+  TwoFactorQrResponse,
   UserSession,
 } from '../types/authentication.ts';
 
@@ -13,44 +15,52 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isOptionalString(value: unknown): boolean {
-  return value === undefined || typeof value === 'string';
+// Contrato real de POST /auth/login.
+export function isLoginResponse(value: unknown): value is LoginResponse {
+  if (!isRecord(value)) return false;
+  return isNonEmptyString(value.jwtTemporal)
+    && typeof value.totpVinculado === 'boolean'
+    && typeof value.cambioContrasenaRequerido === 'boolean';
 }
 
-function isUserSession(value: unknown): value is UserSession {
+// Contrato real de GET /auth/2fa/qr.
+export function isTwoFactorQrResponse(value: unknown): value is TwoFactorQrResponse {
   if (!isRecord(value)) return false;
+  return isNonEmptyString(value.qrBase64) && isNonEmptyString(value.secretoManual);
+}
+
+// Contrato real de POST /auth/2fa/verify y POST /auth/refresh.
+export function isTokenResponse(value: unknown): value is TokenResponse {
+  if (!isRecord(value)) return false;
+  return isNonEmptyString(value.accessToken)
+    && isNonEmptyString(value.refreshToken)
+    && typeof value.expiresIn === 'number';
+}
+
+// Contrato real de GET /account/profile.
+export function isPerfilResponse(value: unknown): value is PerfilResponse {
+  if (!isRecord(value)) return false;
+  const instancias = value.instanciasPermitidas;
   return isNonEmptyString(value.id)
     && isNonEmptyString(value.organizacionId)
     && isNonEmptyString(value.nombreCompleto)
-    && isNonEmptyString(value.email)
+    && isNonEmptyString(value.emailUsuario)
     && isNonEmptyString(value.rol)
-    && Array.isArray(value.instanciasPermitidas)
-    && value.instanciasPermitidas.every((instanceId) => typeof instanceId === 'number')
-    && typeof value.tiene2FA === 'boolean';
+    && typeof value.totpVinculado === 'boolean'
+    && (instancias === null || (Array.isArray(instancias) && instancias.every((v) => typeof v === 'number')));
 }
 
-// Shape de /auth/login, /auth/2fa/verify y /auth/refresh.
-export function isLoginResponse(value: unknown): value is LoginResponse {
-  if (!isRecord(value) || value.success !== true || !isUserSession(value.user)) return false;
-  if (typeof value.requiresTwoFactor !== 'boolean' || typeof value.requiresTwoFactorSetup !== 'boolean') return false;
-  if (typeof value.recordarSesion !== 'boolean') return false;
-  if (!isOptionalString(value.challengeToken) || !isOptionalString(value.accessToken) || !isOptionalString(value.refreshToken)) return false;
-  if (!isOptionalString(value.challengeExpiresAt) || !isOptionalString(value.accessExpiresAt) || !isOptionalString(value.refreshExpiresAt)) return false;
-  // Para continuar el flujo debe existir un challenge (2FA pendiente) o los tokens emitidos.
-  return isNonEmptyString(value.challengeToken) || isNonEmptyString(value.accessToken);
-}
-
-// Shape de /auth/2fa/setup.
-export function isTwoFactorSetupResponse(value: unknown): value is TwoFactorSetupResponse {
-  if (!isRecord(value)) return false;
-  if (!isNonEmptyString(value.secret) || !isNonEmptyString(value.challengeToken)) return false;
-  if (!isNonEmptyString(value.otpAuthUrl) || !isNonEmptyString(value.expiresAt)) return false;
-  try {
-    const setupUrl = new URL(value.otpAuthUrl);
-    return setupUrl.protocol === 'otpauth:' && setupUrl.hostname === 'totp';
-  } catch {
-    return false;
-  }
+// Traduce el perfil del backend a la sesión que usa la aplicación.
+export function mapPerfilToUserSession(perfil: PerfilResponse): UserSession {
+  return {
+    id: perfil.id,
+    organizacionId: perfil.organizacionId,
+    nombreCompleto: perfil.nombreCompleto,
+    email: perfil.emailUsuario,
+    rol: perfil.rol,
+    instanciasPermitidas: perfil.instanciasPermitidas ?? [],
+    tiene2FA: perfil.totpVinculado,
+  };
 }
 
 export function isCreatedOrganization(value: unknown): value is CreatedOrganization {

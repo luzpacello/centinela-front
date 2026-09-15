@@ -72,7 +72,7 @@ function apiBaseUrl() {
   return (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 }
 
-async function executeJsonRequest(path, payload, { method = 'POST', signal, auth = false, expectedStatus } = {}) {
+async function executeJsonRequest(path, payload, { method = 'POST', signal, auth = false, bearer, expectedStatus } = {}) {
   const controller = new AbortController();
   const abortRequest = () => controller.abort();
   let hasTimedOut = false;
@@ -87,7 +87,11 @@ async function executeJsonRequest(path, payload, { method = 'POST', signal, auth
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
-  if (auth) {
+  // `bearer` permite enviar un token puntual (por ejemplo el jwtTemporal durante
+  // el flujo 2FA) sin depender del token de acceso guardado.
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
+  } else if (auth) {
     const accessToken = getAccessToken();
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -110,10 +114,12 @@ async function executeJsonRequest(path, payload, { method = 'POST', signal, auth
         typeof body?.code === 'string' ? body.code : undefined,
       );
     }
-    if (body === null) {
+    if (expectedStatus && response.status !== expectedStatus) {
       throw new ApiRequestError('El servidor devolvió una respuesta inesperada.', response.status);
     }
-    if (expectedStatus && response.status !== expectedStatus) {
+    // 204 (por ejemplo el logout) es una respuesta válida y sin cuerpo.
+    if (response.status === 204) return null;
+    if (body === null) {
       throw new ApiRequestError('El servidor devolvió una respuesta inesperada.', response.status);
     }
     return body;
@@ -135,7 +141,7 @@ async function renewSession() {
     const body = await executeJsonRequest('/auth/refresh', { refreshToken });
     if (typeof body?.accessToken !== 'string' || typeof body?.refreshToken !== 'string') return false;
     storeAuthTokens({ accessToken: body.accessToken, refreshToken: body.refreshToken });
-    storeUserSession(body.user);
+    // La respuesta de refresh solo trae tokens; el perfil no se toca acá.
     return true;
   } catch {
     clearAuthTokens();
@@ -143,9 +149,9 @@ async function renewSession() {
   }
 }
 
-export async function sendJsonPostRequest(path, payload, { signal, expectedStatus, auth = false } = {}) {
+export async function sendJsonPostRequest(path, payload, { signal, expectedStatus, auth = false, bearer } = {}) {
   try {
-    return await executeJsonRequest(path, payload, { signal, auth, expectedStatus });
+    return await executeJsonRequest(path, payload, { signal, auth, bearer, expectedStatus });
   } catch (error) {
     // Reintento único con refresh ante una sesión expirada en llamadas autenticadas.
     if (auth && error instanceof ApiRequestError && error.status === 401 && error.errorCode === 'INVALID_SESSION') {
@@ -155,4 +161,9 @@ export async function sendJsonPostRequest(path, payload, { signal, expectedStatu
     }
     throw error;
   }
+}
+
+// Lecturas autenticadas (por ejemplo GET /account/profile).
+export async function sendJsonGetRequest(path, { signal, expectedStatus, auth = false, bearer } = {}) {
+  return executeJsonRequest(path, undefined, { method: 'GET', signal, auth, bearer, expectedStatus });
 }
