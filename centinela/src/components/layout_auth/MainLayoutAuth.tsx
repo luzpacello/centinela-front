@@ -9,7 +9,7 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                     <h1 className="text-4xl font-bold text-gray-900"> Centinela </h1>
                 </div>
                 <div className='flex h-full p-4'>
-                    <span className="text-green-600 text-3xl ">info</span>
+                    <span className="text-green-600 text-3xl "> imagenes y informacion random</span>
                 </div>
             </aside>
             <main className="flex-1 flex flex-col overflow-hidden">
