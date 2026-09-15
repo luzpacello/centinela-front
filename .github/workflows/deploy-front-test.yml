@@ -1,0 +1,53 @@
+name: deploy-front-test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-test:
+    name: Build & deploy to PRUEBAS (CT 103)
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: centinela
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SPA
+        env:
+          VITE_API_BASE_URL: /api
+        run: pnpm build
+
+      - name: Package dist
+        run: |
+          set -e
+          test -f dist/index.html
+          tar -czf /tmp/centinela-front-dist.tar.gz -C dist .
+          ls -lh /tmp/centinela-front-dist.tar.gz
+
+      - name: Deploy to CT 103 (PRUEBAS)
+        run: |
+          set -e
+          sudo pct push 103 /tmp/centinela-front-dist.tar.gz /tmp/centinela-front-dist.tar.gz
+          sudo pct exec 103 -- sh -c '
+            rm -rf /var/www/centinela-front &&
+            mkdir -p /var/www/centinela-front &&
+            tar xzf /tmp/centinela-front-dist.tar.gz -C /var/www/centinela-front &&
+            rm -f /tmp/centinela-front-dist.tar.gz &&
+            chown -R www-data:www-data /var/www/centinela-front &&
+            find /var/www/centinela-front -type f -exec chmod 644 {} + &&
+            find /var/www/centinela-front -type d -exec chmod 755 {} +
+          '
+
+      - name: Validate and reload nginx (CT 103)
+        run: |
+          set -e
+          sudo pct exec 103 -- nginx -t
+          sudo pct exec 103 -- systemctl reload nginx
+          sudo pct exec 103 -- systemctl --no-pager --lines=5 status nginx
