@@ -19,7 +19,7 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                     ) : (
                         <div className="border-2 border-dashed border-gray-300 rounded-xl h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50/50">
                             <p >Área de trabajo</p>
-                            <p className="text-sm">Acá adentro van a aparecer los componentes de las pages.</p>
+                            <p className="text-sm">Acá adentro van a aparecer los componentes de las pages. prueba</p>
                         </div>
                     )}
                 </div>
