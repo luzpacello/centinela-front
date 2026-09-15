@@ -1,6 +1,6 @@
 import type { LoginResponse } from '../types/authentication.ts';
 
-// Se conserva en memoria para navegar sin persistir contraseñas, secretos TOTP ni tokens en el navegador.
+// Se conserva en memoria para navegar sin persistir contraseñas ni secretos TOTP en el navegador.
 // Recargar la página requiere iniciar sesión nuevamente; la expiración real la decide el backend.
 let pendingLoginSession: LoginResponse | null = null;
 
@@ -16,6 +16,7 @@ export function clearPendingLoginSession(): void {
   pendingLoginSession = null;
 }
 
+// Con el segundo factor ya vinculado se pide el código; si no, se muestra el QR.
 export function getPendingTwoFactorPath(response: LoginResponse): string {
-  return response.require2faSetup ? '/two-factor/setup' : '/two-factor/verify';
+  return response.totpVinculado ? '/two-factor/verify' : '/two-factor/setup';
 }

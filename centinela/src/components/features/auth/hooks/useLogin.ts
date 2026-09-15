@@ -4,6 +4,6 @@ import type { LoginCredentials } from '../types/authentication';
 
 export function useLogin(initialEmail = '') {
   return useValidatedAuthenticationForm<LoginCredentials>(
-    { email: initialEmail, password: '', rememberMe: false }, validateLoginFields, '/login',
+    { email: initialEmail, password: '', recordarSesion: false }, validateLoginFields, '/login',
   );
 }
