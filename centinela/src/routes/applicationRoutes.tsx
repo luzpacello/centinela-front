@@ -8,10 +8,12 @@ import UsersPage from '@/pages/Users.jsx';
 import NotFoundPage from '@/pages/NotFound.jsx';
 import { TwoFactorPage } from '@/pages/TwoFactor';
 import { LoginContinuation } from '@/components/features/auth/components/LoginContinuation';
-import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction } from '@/components/features/auth/routes/authenticationActions';
+import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
 import { loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
+import ComponentPlayground from '@/pages/ComponentPlayground';
 import CrearUsuarios from '@/pages/CrearUsuarios';
+import SignUpPage from '@/pages/SignUp';
 
 export const applicationRoutes: RouteObject[] = [
   {
@@ -22,6 +24,7 @@ export const applicationRoutes: RouteObject[] = [
         element: <MainLayoutAuth><div className="flex min-h-full items-center justify-center"><Outlet /></div></MainLayoutAuth>,
         children: [
           { path: '/login', Component: LoginPage, loader: clearPendingLoginLoader, action: submitLoginAction },
+          { path: '/signup', Component: SignUpPage, loader: clearPendingLoginLoader, action: submitOrganizationRegistrationAction },
           { path: '/two-factor/setup', Component: LoginContinuation, loader: loadPendingTwoFactorSession },
           { path: '/two-factor/verify', Component: LoginContinuation, loader: loadPendingTwoFactorSession },
           // Conserva la página existente como prototipo de diseño; el login real no navega aquí.
@@ -37,6 +40,7 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/instances', Component: InstancesPage },
           { path: '/users', Component: UsersPage },
           { path: '/users/new', Component: CrearUsuarios },
+          { path: '/components', Component: ComponentPlayground },
         ],
       },
       { path: '*', Component: NotFoundPage },
