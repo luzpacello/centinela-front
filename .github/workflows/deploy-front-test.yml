@@ -1,9 +1,10 @@
 name: deploy-front-test
 
+# El servidor de PRUEBAS debe reflejar SIEMPRE y SOLO main.
+# Por eso no hay workflow_dispatch: el unico disparador posible es un push a main.
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   deploy-test:
@@ -13,6 +14,15 @@ jobs:
       run:
         working-directory: centinela
     steps:
+      - name: Guard - el deploy solo puede ser main
+        working-directory: .
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Este workflow solo despliega refs/heads/main. Ref recibido: ${GITHUB_REF}"
+            exit 1
+          fi
+          echo "OK: desplegando ${GITHUB_REF} (${GITHUB_SHA})"
+
       - name: Checkout
         uses: actions/checkout@v4
 
