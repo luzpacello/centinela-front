@@ -3,6 +3,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { useLogin } from '../hooks/useLogin';
 import { AuthenticationInputField } from './AuthenticationInputField';
+import { Link } from 'react-router/internal/react-server-client';
 
 export default function LoginForm({ initialEmail = '' }: { initialEmail?: string }) {
   const { values, fieldErrors, formError, isSubmitting, updateField, validateField, submitForm } = useLogin(initialEmail);
@@ -36,7 +37,7 @@ export default function LoginForm({ initialEmail = '' }: { initialEmail?: string
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
       </Button>
-      <p className="text-secundario">Registro deshabilitado en esta versión — usá la cuenta provista.</p>
+      <p className="text-secundario">¿No tenés cuenta? <Link to="/signup" className="text-info">Crea una organizacion</Link></p>
     </form>
   );
 }
