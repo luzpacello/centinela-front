@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp';
+// 1. Cambiamos la importación aquí:
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import {
   InputOTP,
   InputOTPGroup,
@@ -9,7 +10,6 @@ import {
 import { Loader2 } from 'lucide-react';
 
 interface TwoFactorFormProps {
-  /** Verifica el código TOTP contra el backend. Debe resolver si la verificación fue aceptada. */
   onSubmit: (code: string) => Promise<void>;
   isSubmitting: boolean;
   error?: string | null;
@@ -31,7 +31,8 @@ export const TwoFactorForm: React.FC<TwoFactorFormProps> = ({ onSubmit, isSubmit
           maxLength={6}
           value={code}
           onChange={(value) => setCode(value)}
-          pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+          // 2. Y actualizamos el pattern aquí:
+          pattern={REGEXP_ONLY_DIGITS}
         >
           <InputOTPGroup className="gap-2">
             <InputOTPSlot index={0} />
