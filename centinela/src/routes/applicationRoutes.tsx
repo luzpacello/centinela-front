@@ -4,12 +4,15 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import LoginPage from '@/pages/Login';
 import DashboardPage from '@/pages/Dashboard.jsx';
 import InstancesPage from '@/pages/Instances.jsx';
+import UsersPage from '@/pages/Users.jsx';
 import NotFoundPage from '@/pages/NotFound.jsx';
 import { TwoFactorPage } from '@/pages/TwoFactor';
 import { LoginContinuation } from '@/components/features/auth/components/LoginContinuation';
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction } from '@/components/features/auth/routes/authenticationActions';
 import { loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
+import ComponentPlayground from '@/pages/ComponentPlayground';
+import CrearUsuarios from '@/pages/CrearUsuarios';
 
 export const applicationRoutes: RouteObject[] = [
   {
@@ -33,6 +36,9 @@ export const applicationRoutes: RouteObject[] = [
           { index: true, loader: () => redirect('/dashboard') },
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
+          { path: '/users', Component: UsersPage },
+          { path: '/users/new', Component: CrearUsuarios },
+          { path: '/components', Component: ComponentPlayground },
         ],
       },
       { path: '*', Component: NotFoundPage },
