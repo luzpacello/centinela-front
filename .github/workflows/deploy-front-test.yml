@@ -22,7 +22,10 @@ jobs:
       - name: Build SPA
         env:
           VITE_API_BASE_URL: /api
-        run: pnpm build
+        run: |
+          export VITE_BUILD_STAMP="$(TZ=America/Argentina/Buenos_Aires date '+%d/%m/%Y %H:%M' 2>/dev/null || date -u '+%d/%m/%Y %H:%M UTC')"
+          echo "Build stamp: $VITE_BUILD_STAMP"
+          pnpm build
 
       - name: Package dist
         run: |
