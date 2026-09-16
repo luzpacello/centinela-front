@@ -1,32 +1,3 @@
-/*import React from 'react';
-import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorForm';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldCheck } from 'lucide-react';
-
-export const TwoFactorPage: React.FC = () => {
-  const handleSuccess = () => {
-    console.log('Autenticación exitosa');
-  };
-
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg border-border">
-        <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Verificación de dos factores</CardTitle>
-          <CardDescription>
-            Ingresa el código de 6 dígitos enviado a tu aplicación o correo electrónico.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TwoFactorForm onSuccess={handleSuccess} />
-        </CardContent>
-      </Card>
-    </div>
-  );
-};*/
 import React, { useState } from 'react';
 import { Stepper } from '@/components/ui/stepper';
 import { Button } from '@/components/ui/button';
