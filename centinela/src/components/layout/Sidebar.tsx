@@ -26,6 +26,14 @@ export default function Sidebar() {
                     </NavLink>
 
                     {/* Más items normales */}
+                    <NavLink to="/users" className={getNavigationLinkClassName}>
+                        <span className="text-gray-400 text-lg"></span> Usuarios
+                    </NavLink>
+
+                    <NavLink to="/users/new" className={getNavigationLinkClassName}>
+                        <span className="text-gray-400 text-lg"></span> Crear usuario
+                    </NavLink>
+
                     <div className="pt-4 pb-2">
                         <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sistema</p>
                     </div>
