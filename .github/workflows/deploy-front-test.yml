@@ -33,7 +33,11 @@ jobs:
         env:
           VITE_API_BASE_URL: /api
         run: |
-          export VITE_BUILD_STAMP="$(TZ=America/Argentina/Buenos_Aires date '+%d/%m/%Y %H:%M' 2>/dev/null || date -u '+%d/%m/%Y %H:%M UTC')"
+          # Sello del front: fecha/hora + commit, con el mismo formato que el back
+          # (GET /api/version). Asi en el login se comparan de un vistazo.
+          BUILD_COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(TZ=America/Argentina/Buenos_Aires date '+%d/%m/%Y %H:%M' 2>/dev/null || date -u '+%d/%m/%Y %H:%M UTC')"
+          export VITE_BUILD_STAMP="$BUILD_TIME · $BUILD_COMMIT"
           echo "Build stamp: $VITE_BUILD_STAMP"
           pnpm build
 
