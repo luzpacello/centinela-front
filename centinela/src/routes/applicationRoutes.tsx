@@ -11,7 +11,6 @@ import { LoginContinuation } from '@/components/features/auth/components/LoginCo
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
 import { loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
-import ComponentPlayground from '@/pages/ComponentPlayground';
 import CrearUsuarios from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
 
@@ -40,7 +39,6 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/instances', Component: InstancesPage },
           { path: '/users', Component: UsersPage },
           { path: '/users/new', Component: CrearUsuarios },
-          { path: '/components', Component: ComponentPlayground },
         ],
       },
       { path: '*', Component: NotFoundPage },
