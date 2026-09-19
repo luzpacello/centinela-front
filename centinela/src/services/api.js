@@ -1,3 +1,7 @@
+import { clearAuthTokens as clearStoredAuthTokens, getAccessToken, getRefreshToken, storeAuthTokens } from '../storage/tokenStorage.ts';
+
+export { getAccessToken, getRefreshToken, storeAuthTokens };
+
 export class ApiRequestError extends Error {
   constructor(message, status = 0, errorCode = undefined) {
     super(message);
@@ -7,8 +11,6 @@ export class ApiRequestError extends Error {
   }
 }
 
-const accessTokenKey = 'centinela_access';
-const refreshTokenKey = 'centinela_refresh';
 const userSessionKey = 'centinela_user';
 
 function readStorage(key) {
@@ -35,19 +37,6 @@ function removeStorage(key) {
   }
 }
 
-export function getAccessToken() {
-  return readStorage(accessTokenKey);
-}
-
-export function getRefreshToken() {
-  return readStorage(refreshTokenKey);
-}
-
-export function storeAuthTokens({ accessToken, refreshToken } = {}) {
-  if (accessToken) writeStorage(accessTokenKey, accessToken);
-  if (refreshToken) writeStorage(refreshTokenKey, refreshToken);
-}
-
 export function storeUserSession(user) {
   if (user) writeStorage(userSessionKey, JSON.stringify(user));
 }
@@ -63,8 +52,7 @@ export function getStoredUserSession() {
 }
 
 export function clearAuthTokens() {
-  removeStorage(accessTokenKey);
-  removeStorage(refreshTokenKey);
+  clearStoredAuthTokens();
   removeStorage(userSessionKey);
 }
 
