@@ -277,7 +277,7 @@ export default function AuditoriaPage() {
                             <button disabled className="p-1.5 rounded border border-border bg-card text-muted-foreground/50 cursor-not-allowed">
                                 <ChevronLeft className="size-4" />
                             </button>
-                            <button aria-current="page" className="rounded border border-green-700 bg-green-700 px-3 py-1 font-medium text-white">1</button>
+                            <button aria-current="page" className="rounded border border-blue-600 bg-blue-600 px-3 py-1 font-medium text-white">1</button>
                             <button className="rounded px-3 py-1 text-slate-700 hover:bg-slate-100">2</button>
                             <button className="rounded px-3 py-1 text-slate-700 hover:bg-slate-100">3</button>
                             <span className="px-1 text-muted-foreground">...</span>
@@ -291,11 +291,11 @@ export default function AuditoriaPage() {
             </Card>
 
             {/* Nota informativa inferior */}
-            <div className="flex items-start gap-3 rounded-xl border border-green-100 bg-green-50/70 p-4 text-sm text-green-900">
-                <div className="mt-0.5 font-semibold text-green-700">i</div>
+            <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900">
+                <div className="mt-0.5 font-semibold text-blue-700">i</div>
                 <div className="flex flex-col gap-0.5">
                     <span className="font-medium">Información sobre retención de registros</span>
-                    <span className="text-xs text-green-800/80">La auditoría registra acciones críticas realizadas por los usuarios en el sistema. Los registros se conservan por 90 días.</span>
+                    <span className="text-xs text-blue-800/80">La auditoría registra acciones críticas realizadas por los usuarios en el sistema. Los registros se conservan por 90 días.</span>
                 </div>
             </div>
         </section>
