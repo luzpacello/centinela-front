@@ -3,7 +3,9 @@ import { applicationRouter } from './routes/router';
 
 function App() {
   return (
+
     <RouterProvider router={applicationRouter} />
+
   );
 }
 
