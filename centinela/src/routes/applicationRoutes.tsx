@@ -9,7 +9,7 @@ import NotFoundPage from '@/pages/NotFound.jsx';
 import { TwoFactorPage } from '@/pages/TwoFactor';
 import { LoginContinuation } from '@/components/features/auth/components/LoginContinuation';
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
-import { loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
+import { loadAdminSession, loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
 import CrearUsuariosPage from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
@@ -41,10 +41,10 @@ export const applicationRoutes: RouteObject[] = [
           { index: true, loader: () => redirect('/dashboard') },
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
-          { path: '/auditoria', Component: AuditoriaPage },
-          { path: '/users', Component: UsersPage },
-          { path: '/users/new', Component: CrearUsuariosPage },
-          { path: '/users/:userId', Component: UserDetailPage },
+          { path: '/auditoria', Component: AuditoriaPage, loader: loadAdminSession },
+          { path: '/users', Component: UsersPage, loader: loadAdminSession },
+          { path: '/users/new', Component: CrearUsuariosPage, loader: loadAdminSession },
+          { path: '/users/:userId', Component: UserDetailPage, loader: loadAdminSession },
         ],
       },
       { path: '*', Component: NotFoundPage },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Search,
     Filter,
@@ -21,110 +21,123 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ApiRequestError, apiClient } from '@/services/apiClient';
+
+// Contrato real de GET /api/admin/users (UsuarioResumenDTO y su resumen).
+interface UsuarioResumenDTO {
+    id: string | number;
+    nombreCompleto?: string | null;
+    nombreUsuario?: string | null;
+    emailUsuario?: string | null;
+    rol?: string | null;
+    activo?: boolean;
+    totpVinculado?: boolean;
+    fechaUltimoAcceso?: string | null;
+    fechaCreacion?: string | null;
+    esUsuarioActual?: boolean;
+}
+
+interface ResumenUsuarios {
+    summary?: { total?: number; admins?: number; operators?: number };
+    users?: UsuarioResumenDTO[];
+}
+
+interface UserRow {
+    id: string | number;
+    name: string;
+    email: string;
+    role: string;
+    roleType: string;
+    status: string;
+    lastAccess: string;
+    twoFactor: string;
+    avatarBg: string;
+}
+
+const EMPTY_TEXT = '—';
+
+function displayText(value?: string | null): string {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text || EMPTY_TEXT;
+}
+
+function formatLastAccess(value?: string | null): string {
+    if (!value) return EMPTY_TEXT;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return EMPTY_TEXT;
+    return date.toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function toUserRow(dto: UsuarioResumenDTO): UserRow {
+    const esAdmin = dto.rol === 'ADMIN';
+    return {
+        id: dto.id,
+        name: displayText(dto.nombreCompleto),
+        email: displayText(dto.emailUsuario),
+        role: displayText(dto.rol),
+        roleType: esAdmin ? 'Admin' : 'US',
+        status: dto.activo ? 'Activo' : 'Inactivo',
+        lastAccess: formatLastAccess(dto.fechaUltimoAcceso),
+        twoFactor: dto.totpVinculado ? 'Activado' : 'Desactivado',
+        avatarBg: esAdmin ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800',
+    };
+}
 
 export default function UsersPage() {
     const [activeTab, setActiveTab] = useState('users'); // 'users' o 'roles'
-    const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+    const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUserId, setSelectedUserId] = useState(1);
+    const [selectedUserId, setSelectedUserId] = useState<string | number>(1);
+    const [users, setUsers] = useState<UserRow[]>([]);
+    const [summary, setSummary] = useState({ total: 0, admins: 0, operators: 0 });
+    const [isLoading, setIsLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // Mock de usuarios según el diseño
-    const usersList = [
-        {
-            id: 1,
-            name: 'AD Admin',
-            email: 'admin@propex.local',
-            role: 'Administrador',
-            roleType: 'Admin',
-            status: 'Activo',
-            lastAccess: 'Hoy, 18:04',
-            twoFactor: 'Activado',
-            avatarBg: 'bg-emerald-100 text-emerald-800',
-        },
-        {
-            id: 2,
-            name: 'usuario1',
-            email: 'usuario1@propex.local',
-            role: 'Administrador',
-            roleType: 'Admin',
-            status: 'Activo',
-            lastAccess: 'Hoy, 17:41',
-            twoFactor: 'Activado',
-            avatarBg: 'bg-blue-100 text-blue-800',
-        },
-        {
-            id: 3,
-            name: 'usuario2',
-            email: 'usuario2@propex.local',
-            role: 'Usuario estándar',
-            roleType: 'US',
-            status: 'Activo',
-            lastAccess: 'Ayer, 22:15',
-            twoFactor: 'Desactivado',
-            avatarBg: 'bg-blue-100 text-blue-800',
-        },
-        {
-            id: 4,
-            name: 'operador',
-            email: 'operador@propex.local',
-            role: 'Usuario estándar',
-            roleType: 'US',
-            status: 'Activo',
-            lastAccess: 'Ayer, 15:30',
-            twoFactor: 'Activado',
-            avatarBg: 'bg-blue-100 text-blue-800',
-        },
-        {
-            id: 5,
-            name: 'readonly',
-            email: 'readonly@propex.local',
-            role: 'Solo lectura',
-            roleType: 'RO',
-            status: 'Activo',
-            lastAccess: '03/05/2024, 11:22',
-            twoFactor: 'Desactivado',
-            avatarBg: 'bg-slate-100 text-slate-700',
-        },
-        {
-            id: 6,
-            name: 'soporte',
-            email: 'soporte@propex.local',
-            role: 'Usuario estándar',
-            roleType: 'US',
-            status: 'Inactivo',
-            lastAccess: 'Nunca',
-            twoFactor: 'Desactivada',
-            avatarBg: 'bg-amber-100 text-amber-800',
-        },
-        {
-            id: 7,
-            name: 'auditor',
-            email: 'auditor@propex.local',
-            role: 'Solo lectura',
-            roleType: 'RO',
-            status: 'Activo',
-            lastAccess: '02/05/2024, 09:10',
-            twoFactor: 'Activado',
-            avatarBg: 'bg-slate-100 text-slate-700',
-        },
-        {
-            id: 8,
-            name: 'devops',
-            email: 'devops@propex.local',
-            role: 'Usuario estándar',
-            roleType: 'US',
-            status: 'Activo',
-            lastAccess: '01/05/2024, 19:05',
-            twoFactor: 'Activado',
-            avatarBg: 'bg-blue-100 text-blue-800',
-        },
-    ];
+    useEffect(() => {
+        const controller = new AbortController();
 
-    const filteredUsers = usersList.filter((user) =>
+        async function loadUsers() {
+            setIsLoading(true);
+            setErrorMessage(null);
+            try {
+                const data = await apiClient.get<ResumenUsuarios>('/admin/users', { signal: controller.signal });
+                setUsers((data.users ?? []).map(toUserRow));
+                setSummary({
+                    total: data.summary?.total ?? 0,
+                    admins: data.summary?.admins ?? 0,
+                    operators: data.summary?.operators ?? 0,
+                });
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                setErrorMessage(
+                    error instanceof ApiRequestError
+                        ? error.message
+                        : 'No se pudo cargar la lista de usuarios. Intentá nuevamente.',
+                );
+            } finally {
+                if (!controller.signal.aborted) setIsLoading(false);
+            }
+        }
+
+        loadUsers();
+        return () => controller.abort();
+    }, []);
+
+    const filteredUsers = users.filter((user) =>
         Object.values(user).some((value) =>
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
     );
+
+    const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0];
+    const adminsPercentage = summary.total > 0 ? ((summary.admins / summary.total) * 100).toFixed(1) : '0.0';
+    const operatorsPercentage = summary.total > 0 ? ((summary.operators / summary.total) * 100).toFixed(1) : '0.0';
 
     return (
         <section className="flex min-w-0 self-start flex-col gap-6 text-slate-900">
@@ -159,7 +172,7 @@ export default function UsersPage() {
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Usuarios totales</span>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">12</span>
+                        <span className="text-metrica">{summary.total}</span>
                         <span className="text-caption">En el sistema</span>
                     </div>
                 </Card>
@@ -167,18 +180,24 @@ export default function UsersPage() {
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Administradores</span>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-blue-600">3</span>
-                        <span className="text-xs font-medium text-blue-600">25% del total</span>
+                        <span className="text-metrica text-blue-600">{summary.admins}</span>
+                        <span className="text-xs font-medium text-blue-600">{adminsPercentage}% del total</span>
                     </div>
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Usuarios estándar</span>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">7</span>
-                        <span className="text-xs font-medium text-slate-600">58.3% del total</span>
+                        <span className="text-metrica">{summary.operators}</span>
+                        <span className="text-xs font-medium text-slate-600">{operatorsPercentage}% del total</span>
                     </div>
                 </Card>
+
+                {/*
+                    Tarjeta "Solo lectura" retirada: el contrato de Swagger de GET /api/admin/users
+                    solo expone las métricas total, admins y operators. READ_ONLY es un nivel de acceso
+                    de instancia, no un rol de usuario, así que no hay un contador que la respalde.
+                    Se conserva el markup original comentado para recuperarlo si el backend lo expone.
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Solo lectura</span>
@@ -187,6 +206,7 @@ export default function UsersPage() {
                         <span className="text-xs font-medium text-slate-600">16.7% del total</span>
                     </div>
                 </Card>
+                */}
             </div>
 
             {/* Pestañas principales y Barra de Acciones */}
@@ -242,7 +262,37 @@ export default function UsersPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                                    {filteredUsers.map((user) => (
+                                    {isLoading &&
+                                        Array.from({ length: 4 }).map((_, index) => (
+                                            <tr key={`skeleton-${index}`} className="animate-pulse">
+                                                <td className="py-3 px-4"><div className="h-9 w-48 rounded bg-slate-100" /></td>
+                                                <td className="py-3 px-4"><div className="h-5 w-24 rounded bg-slate-100" /></td>
+                                                <td className="py-3 px-4"><div className="h-5 w-20 rounded bg-slate-100" /></td>
+                                                <td className="py-3 px-4"><div className="h-5 w-28 rounded bg-slate-100" /></td>
+                                                <td className="py-3 px-4"><div className="h-5 w-16 rounded bg-slate-100" /></td>
+                                                <td className="py-3 px-4"><div className="ml-auto h-5 w-8 rounded bg-slate-100" /></td>
+                                            </tr>
+                                        ))}
+
+                                    {!isLoading && errorMessage && (
+                                        <tr>
+                                            <td colSpan={6} className="py-10 px-4 text-center text-sm text-red-600" role="alert">
+                                                {errorMessage}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {!isLoading && !errorMessage && filteredUsers.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="py-10 px-4 text-center text-sm text-slate-500">
+                                                {users.length === 0
+                                                    ? 'Todavía no hay usuarios para mostrar.'
+                                                    : 'No se encontraron usuarios que coincidan con la búsqueda.'}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {!isLoading && !errorMessage && filteredUsers.map((user) => (
                                         <tr
                                             key={user.id}
                                             onClick={() => setSelectedUserId(user.id)}
@@ -336,7 +386,7 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </Card>
-                    <UserDetailPanel user={usersList.find((user) => user.id === selectedUserId) ?? usersList[0]} />
+                    {selectedUser && <UserDetailPanel user={selectedUser} />}
                 </div>
             )}
         </section>
