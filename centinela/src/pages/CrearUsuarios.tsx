@@ -1,12 +1,23 @@
-import { ArrowLeft, Check, CheckCircle2, Eye, Info, Shield, UserRound, X } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Check, CheckCircle2, Copy, Eye, Info, Shield, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ApiRequestError, apiClient } from '@/services/apiClient';
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 
 interface RoleOption {
     name: string;
     description: string;
     icon: React.ComponentType<{ className?: string }>;
+}
+
+// Respuesta 201 de POST /api/admin/users según el contrato de Swagger.
+interface CreatedUser {
+    id: string;
+    rol: string;
+    activo: boolean;
+    contrasenaTemp?: string | null;
 }
 
 const roles: RoleOption[] = [
@@ -15,7 +26,55 @@ const roles: RoleOption[] = [
     { name: 'Solo lectura', description: 'Puede visualizar recursos pero no realizar cambios.', icon: Eye },
 ];
 
+const EMPTY_FORM = { nombreCompleto: '', nombreUsuario: '', emailUsuario: '', rol: 'OPERATOR' };
+
 export default function CrearUsuarios() {
+    const navigate = useSafeNavigate();
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [tempPassword, setTempPassword] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+
+    function updateField(field: keyof typeof EMPTY_FORM, value: string) {
+        setForm((previous) => ({ ...previous, [field]: value }));
+    }
+
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setErrorMessage(null);
+        setTempPassword(null);
+        setIsSubmitting(true);
+        try {
+            // El backend genera la contraseña temporal y devuelve `contrasenaTemp`.
+            const created = await apiClient.post<CreatedUser>('/admin/users', {
+                nombreCompleto: form.nombreCompleto,
+                nombreUsuario: form.nombreUsuario,
+                emailUsuario: form.emailUsuario,
+                rol: form.rol,
+            });
+            setTempPassword(created.contrasenaTemp ?? null);
+        } catch (error) {
+            setErrorMessage(
+                error instanceof ApiRequestError
+                    ? error.message
+                    : 'No se pudo crear el usuario. Intentá nuevamente.',
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    async function handleCopyPassword() {
+        if (!tempPassword) return;
+        try {
+            await navigator.clipboard?.writeText(tempPassword);
+            setIsCopied(true);
+        } catch {
+            setIsCopied(false);
+        }
+    }
+
     return (
         <section className={style.page}>
             <header>
@@ -23,7 +82,7 @@ export default function CrearUsuarios() {
                 <p className="text-secundario">Agregá un nuevo usuario a tu organización.</p>
             </header>
 
-            <Button type="button" variant="outline" className={style.backButton}>
+            <Button type="button" variant="outline" className={style.backButton} onClick={() => navigate('/users')}>
                 <ArrowLeft className={style.smallIcon} /> Volver a usuarios
             </Button>
 
@@ -32,11 +91,11 @@ export default function CrearUsuarios() {
                     <div className={style.formHeader}>
                         <h2 className="m-0 text-base font-semibold">Información del usuario</h2>
                     </div>
-                    <form className={style.formContent} onSubmit={(event: React.FormEvent<HTMLFormElement>) => event.preventDefault()}>
+                    <form className={style.formContent} onSubmit={handleSubmit}>
                         <div className={style.formFieldsGrid}>
-                            <FormField id="nombre" label="Nombre completo" required placeholder="Ej: Juan Pérez" />
-                            <FormField id="usuario" label="Nombre de usuario" required placeholder="Ej: juanperez" hint="Será utilizado para iniciar sesión en la plataforma." />
-                            <FormField id="correo" label="Correo electrónico" required type="email" placeholder="Ej: juan.perez@propex.local" hint="El usuario recibirá un correo con sus credenciales." />
+                            <FormField id="nombre" label="Nombre completo" required placeholder="Ej: Juan Pérez" value={form.nombreCompleto} onChange={(value) => updateField('nombreCompleto', value)} />
+                            <FormField id="usuario" label="Nombre de usuario" required placeholder="Ej: juanperez" hint="Será utilizado para iniciar sesión en la plataforma." value={form.nombreUsuario} onChange={(value) => updateField('nombreUsuario', value)} />
+                            <FormField id="correo" label="Correo electrónico" required type="email" placeholder="Ej: juan.perez@propex.local" hint="El usuario recibirá un correo con sus credenciales." value={form.emailUsuario} onChange={(value) => updateField('emailUsuario', value)} />
                             <FormField id="confirmar-correo" label="Confirmar correo electrónico" required type="email" placeholder="Repetí el correo electrónico" />
                             <div>
                                 <label className="mb-2 block text-label" htmlFor="contrasena">
@@ -55,10 +114,9 @@ export default function CrearUsuarios() {
                             <label className="mb-2 block text-label" htmlFor="rol">
                                 Rol del usuario <span className="text-red-500">*</span>
                             </label>
-                            <select id="rol" className={style.selectInput}>
-                                <option>Usuario</option>
-                                <option>Administrador</option>
-                                <option>Solo lectura</option>
+                            <select id="rol" className={style.selectInput} value={form.rol} onChange={(event) => updateField('rol', event.target.value)}>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="OPERATOR">OPERATOR</option>
                             </select>
                             <p className="mt-2 text-caption">Definí el rol que tendrá el usuario dentro de la organización.</p>
                         </div>
@@ -67,9 +125,26 @@ export default function CrearUsuarios() {
                             <input id="activo" type="checkbox" defaultChecked className={style.checkbox} /> Estado: Activo
                         </label>
 
+                        {errorMessage && (
+                            <p role="alert" className="text-xs text-red-600">{errorMessage}</p>
+                        )}
+
+                        {tempPassword && (
+                            <div className={style.tempPasswordBox} role="status">
+                                <p className="text-label">Contraseña temporal generada</p>
+                                <div className="flex items-center gap-2">
+                                    <code className={style.tempPasswordValue}>{tempPassword}</code>
+                                    <Button type="button" variant="outline" size="sm" onClick={handleCopyPassword}>
+                                        <Copy className={style.smallIcon} /> {isCopied ? 'Copiada' : 'Copiar'}
+                                    </Button>
+                                </div>
+                                <p className="mt-2 text-caption">Guardala y compartila con el usuario: el backend no vuelve a mostrarla.</p>
+                            </div>
+                        )}
+
                         <div className={style.formActions}>
-                            <Button type="button" variant="outline">Cancelar</Button>
-                            <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+                            <Button type="button" variant="outline" onClick={() => navigate('/users')}>Cancelar</Button>
+                            <Button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white hover:bg-blue-700">
                                 <UserRound className={style.smallIcon} /> Crear usuario
                             </Button>
                         </div>
@@ -132,15 +207,24 @@ interface FormFieldProps {
     hint?: string;
     type?: string;
     required?: boolean;
+    value?: string;
+    onChange?: (value: string) => void;
 }
 
-function FormField({ id, label, placeholder, hint, type = 'text', required = false }: FormFieldProps) {
+function FormField({ id, label, placeholder, hint, type = 'text', required = false, value, onChange }: FormFieldProps) {
     return (
         <div>
-            <label className="mb-2 block text-label" htmlFor={id}>
-                {label} {required && <span className="text-red-500">*</span>}
-            </label>
-            <Input id={id} type={type} placeholder={placeholder} />
+            <div className="mb-2 flex items-center gap-1">
+                <label className="text-label" htmlFor={id}>{label}</label>
+                {required && <span className="text-red-500" aria-hidden="true">*</span>}
+            </div>
+            <Input
+                id={id}
+                type={type}
+                placeholder={placeholder}
+                value={value}
+                onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+            />
             {hint && <p className="mt-2 text-caption">{hint}</p>}
         </div>
     );
@@ -162,6 +246,8 @@ const style = {
     roleItem: 'flex gap-3 rounded-lg border p-3',
     roleIconBox: 'flex size-8 shrink-0 items-center justify-center rounded-full',
     selectedRoleBadge: 'flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm font-medium',
+    tempPasswordBox: 'grid gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4',
+    tempPasswordValue: 'flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 font-mono text-sm text-emerald-800',
     infoBox: 'flex gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-900',
     smallIcon: 'size-4!',
 };
