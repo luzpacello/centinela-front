@@ -1,15 +1,14 @@
 import { ApiRequestError } from '../../../../services/api.js';
 import type { AuthenticationFailure } from '../types/authentication.ts';
 
-// Codes reales del backend El Centinela.
+// Mensajes propios para los códigos que emite hoy el backend.
+// AUTH_FAILED queda afuera a propósito: el backend lo usa tanto para credenciales
+// incorrectas como para cuenta desactivada, así que su mensaje es más preciso que uno fijo.
 const authenticationErrorMessages: Record<string, string> = {
-  INVALID_CREDENTIALS: 'El correo electrónico o la contraseña son incorrectos.',
-  ACCOUNT_INACTIVE: 'La cuenta se encuentra inactiva. Contactá al administrador del sistema.',
-  PASSWORD_CHANGE_REQUIRED: 'Tenés que cambiar tu contraseña antes de continuar.',
-  INVALID_TWO_FACTOR: 'El código de verificación es incorrecto o expiró.',
-  INVALID_CHALLENGE: 'La verificación expiró. Volvé a iniciar sesión.',
-  INVALID_SESSION: 'Tu sesión expiró. Volvé a iniciar sesión.',
   INVALID_REQUEST: 'Revisá los datos ingresados e intentá nuevamente.',
+  TOTP_FAILED: 'El código de verificación es incorrecto o ya se usó. Esperá al siguiente e intentá de nuevo.',
+  TWO_FACTOR_ALREADY_ENABLED: 'Esta cuenta ya tiene el doble factor activo. Para vincular uno nuevo hace falta un restablecimiento administrativo.',
+  QR_ERROR: 'No se pudo generar el código QR. Intentá nuevamente en unos segundos.',
 };
 
 export function mapAuthenticationError<Fields>(

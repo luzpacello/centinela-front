@@ -7,14 +7,20 @@ import {
   type ApiErrorEventDetail,
 } from '@/services/apiClient';
 
+// Títulos para los 403 que emite hoy el backend.
+const forbiddenTitles: Record<string, string> = {
+  INSUFFICIENT_PERMISSIONS: 'Permisos de administrador requeridos',
+  NO_ROLE: 'Permisos de administrador requeridos',
+  INVALID_ROLE: 'Permisos de administrador requeridos',
+  '2FA_REQUIRED': 'Verificación en dos pasos requerida',
+};
+
 export function ApiResponseNotifier() {
   useEffect(() => {
     function handleForbidden(event: Event) {
       const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       toast.add({
-        title: detail.errorCode === 'INSUFFICIENT_PERMISSIONS'
-          ? 'Permisos de administrador requeridos'
-          : 'Acción rechazada',
+        title: (detail.errorCode && forbiddenTitles[detail.errorCode]) || 'Acción rechazada',
         description: detail.message || 'No tenés permisos suficientes para realizar esta acción.',
         type: 'warning',
         priority: 'high',
