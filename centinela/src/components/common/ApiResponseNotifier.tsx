@@ -28,6 +28,13 @@ export function ApiResponseNotifier() {
     }
 
     function handleUnauthorized() {
+      const currentPath = window.location.pathname;
+
+      // EXCEPCIÓN: Si estamos en las rutas de doble factor, un 401 (código incorrecto) 
+      // NO debe expulsar al usuario al login; dejamos que el formulario maneje el error localmente.
+      if (currentPath.includes('/two-factor')) {
+        return;
+      }
       // Un 401 invalida la sesión; un 403 nunca pasa por esta rama.
       clearAuthTokens();
       if (window.location.pathname !== '/login') {
