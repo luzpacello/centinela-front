@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
+import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 
 // Contrato real de GET /api/admin/users (UsuarioResumenDTO y su resumen).
 interface UsuarioResumenDTO {
@@ -90,6 +91,7 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
 }
 
 export default function UsersPage() {
+    const navigate = useSafeNavigate();
     const [activeTab, setActiveTab] = useState('users'); // 'users' o 'roles'
     const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -342,7 +344,10 @@ export default function UsersPage() {
 
                                                 {openDropdownId === user.id && (
                                                     <div className="absolute right-8 top-10 w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 text-left">
-                                                        <button className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => { setOpenDropdownId(null); navigate(`/users/${user.id}`); }}
+                                                            className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
                                                             <Edit3 className="size-3.5 text-slate-500" /> Editar usuario
                                                         </button>
                                                         <button className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
