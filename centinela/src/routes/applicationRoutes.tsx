@@ -32,14 +32,6 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/two-factor/verify', Component: LoginContinuation, loader: loadPendingTwoFactorSession },
           // Conserva la página existente como prototipo de diseño; el login real no navega aquí.
           { path: '/two-factor', element: <div><p role="note" className="mb-4 rounded-lg bg-amber-50 p-3">Vista de diseño de 2FA con datos de ejemplo.</p><TwoFactorPage /></div> },
-          // Rutas temporales de diseño: se pueden visualizar sin sesión ni backend.
-          { path: '/dashboard', Component: DashboardPage },
-          { path: '/instances', Component: InstancesPage },
-          { path: '/auditoria', Component: AuditoriaPage },
-          { path: '/users', Component: UsersPage },
-          { path: '/users/new', Component: CrearUsuariosPage },
-          { path: '/users/:userId', Component: UserDetailPage },
-
         ],
       },
       {
@@ -47,6 +39,12 @@ export const applicationRoutes: RouteObject[] = [
         element: <ProtectedLayout />,
         children: [
           { index: true, loader: () => redirect('/dashboard') },
+          { path: '/dashboard', Component: DashboardPage },
+          { path: '/instances', Component: InstancesPage },
+          { path: '/auditoria', Component: AuditoriaPage },
+          { path: '/users', Component: UsersPage },
+          { path: '/users/new', Component: CrearUsuariosPage },
+          { path: '/users/:userId', Component: UserDetailPage },
         ],
       },
       { path: '*', Component: NotFoundPage },
