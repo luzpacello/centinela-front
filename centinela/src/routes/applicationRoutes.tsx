@@ -13,7 +13,7 @@ import { loadAdminSession, loadProtectedSession } from '@/components/features/au
 import { RouteErrorPage } from './RouteErrorPage';
 import CrearUsuariosPage from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
-import UserDetailPage from '@/pages/UserDetail';
+import DetailsUserPage from '@/pages/detailsUserPage';
 import AuditoriaPage from '@/pages/Auditoria';
 import RecoverPasswordPage from '@/pages/RecoverPassword';
 
@@ -44,7 +44,7 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/auditoria', Component: AuditoriaPage, loader: loadAdminSession },
           { path: '/users', Component: UsersPage, loader: loadAdminSession },
           { path: '/users/new', Component: CrearUsuariosPage, loader: loadAdminSession },
-          { path: '/users/:userId', Component: UserDetailPage, loader: loadAdminSession },
+          { path: '/users/:userId', Component: DetailsUserPage, loader: loadAdminSession },
         ],
       },
       { path: '*', Component: NotFoundPage },
