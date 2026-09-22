@@ -35,7 +35,12 @@ const instances: InstanceAccess[] = [
 
 const accessOptions: AccessLevel[] = ['Acceso completo', 'Solo lectura', 'Sin acceso'];
 
-export default function RolesAndPermissions() {
+interface RolesAndPermissionsProps {
+    role?: string;
+    onRoleChange?: (role: string) => void;
+}
+
+export default function RolesAndPermissions({ role, onRoleChange }: RolesAndPermissionsProps) {
     return (
         <div className={styles.componentContainer}>
             <section className={styles.roleSection} aria-labelledby="user-role-title">
@@ -49,10 +54,16 @@ export default function RolesAndPermissions() {
                         <label htmlFor="assigned-role">Rol asignado</label>
                         <div className={styles.roleSelectContainer}>
                             <ShieldCheck className={styles.roleSelectIcon} aria-hidden="true" />
-                            <NativeSelect id="assigned-role" defaultValue="standard" className={styles.roleSelect}>
-                                <NativeSelectOption value="standard">Operador</NativeSelectOption>
-                                <NativeSelectOption value="admin">Administrador</NativeSelectOption>
-                                <NativeSelectOption value="viewer">Solo lectura</NativeSelectOption>
+                            <NativeSelect
+                                id="assigned-role"
+                                value={role}
+                                defaultValue={role === undefined ? 'OPERATOR' : undefined}
+                                onChange={(event) => onRoleChange?.(event.target.value)}
+                                className={styles.roleSelect}
+                            >
+                                <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
+                                <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
+                                <NativeSelectOption value="READ_ONLY">Solo lectura</NativeSelectOption>
                             </NativeSelect>
                         </div>
                     </div>
