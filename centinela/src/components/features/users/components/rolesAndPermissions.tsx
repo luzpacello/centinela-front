@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import type { useUserInstanceAccess, AccessLevel } from '../hooks/useUserInstanceAccess';
+import { instanceVmid } from '../services/userInstanceService';
 import {
     CheckCircle2,
     Container,
@@ -15,32 +18,35 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-type AccessLevel = 'Acceso completo' | 'Solo lectura' | 'Sin acceso';
-
 interface InstanceAccess {
+    id: string;
     name: string;
     type: 'VM' | 'LXC';
     access: AccessLevel;
     selected: boolean;
 }
 
-const instances: InstanceAccess[] = [
-    { name: 'Ubuntu Server (101)', type: 'VM', access: 'Acceso completo', selected: true },
-    { name: 'Desarrollo (104)', type: 'LXC', access: 'Acceso completo', selected: true },
-    { name: 'Base de datos (108)', type: 'VM', access: 'Sin acceso', selected: false },
-    { name: 'Web Producción (110)', type: 'LXC', access: 'Solo lectura', selected: true },
-    { name: 'Windows 11 (112)', type: 'VM', access: 'Sin acceso', selected: false },
-    { name: 'Backup Server (120)', type: 'LXC', access: 'Sin acceso', selected: false },
-];
-
 const accessOptions: AccessLevel[] = ['Acceso completo', 'Solo lectura', 'Sin acceso'];
 
 interface RolesAndPermissionsProps {
+    instanceAccess: ReturnType<typeof useUserInstanceAccess>;
     role?: string;
     onRoleChange?: (role: string) => void;
 }
 
-export default function RolesAndPermissions({ role, onRoleChange }: RolesAndPermissionsProps) {
+export default function RolesAndPermissions({ role, onRoleChange, instanceAccess }: RolesAndPermissionsProps) {
+    const [search, setSearch] = useState('');
+    const { instances, assignedIds, savedRole, isLoading, isSaving, changeAccess } = instanceAccess;
+    const selectedVmids = new Set(assignedIds.map((id) => String(id).replace(/^(qemu|lxc)\//, '')));
+    const rows: InstanceAccess[] = instances.map((instance): InstanceAccess => {
+        const selected = selectedVmids.has(String(instanceVmid(instance.id)));
+        return {
+            ...instance,
+            name: `${instance.name} (${instanceVmid(instance.id)})`,
+            selected,
+            access: selected ? savedRole === 'READ_ONLY' ? 'Solo lectura' : 'Acceso completo' : 'Sin acceso',
+        };
+    }).filter((instance) => `${instance.name} ${instance.id}`.toLowerCase().includes(search.trim().toLowerCase()));
     return (
         <div className={styles.componentContainer}>
             <section className={styles.roleSection} aria-labelledby="user-role-title">
@@ -82,11 +88,11 @@ export default function RolesAndPermissions({ role, onRoleChange }: RolesAndPerm
 
                 <div className={styles.searchContainer}>
                     <Search className={styles.searchIcon} aria-hidden="true" />
-                    <Input className={styles.searchInput} placeholder="Buscar instancia..." aria-label="Buscar instancia" />
+                    <Input className={styles.searchInput} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar instancia..." aria-label="Buscar instancia" />
                 </div>
 
                 <div className={styles.tableContainer}>
-                    <Table className={styles.accessTable}>
+                    <Table className={styles.accessTable} aria-busy={isLoading || isSaving}>
                         <TableHeader>
                             <TableRow className={styles.tableHeaderRow}>
                                 <TableHead className={styles.selectionColumn}>
@@ -98,8 +104,12 @@ export default function RolesAndPermissions({ role, onRoleChange }: RolesAndPerm
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {instances.map((instance) => (
-                                <InstanceAccessRow key={instance.name} instance={instance} />
+                            {rows.map((instance) => (
+                                <InstanceAccessRow key={instance.id} instance={instance} disabled={isLoading || isSaving}
+                                    onAccessChange={(access) => {
+                                        const original = instances.find((item) => item.id === instance.id);
+                                        if (original) void changeAccess(original, access);
+                                    }} />
                             ))}
                         </TableBody>
                     </Table>
@@ -130,14 +140,19 @@ export default function RolesAndPermissions({ role, onRoleChange }: RolesAndPerm
     );
 }
 
-function InstanceAccessRow({ instance }: { instance: InstanceAccess }) {
+function InstanceAccessRow({ instance, disabled, onAccessChange }: {
+    instance: InstanceAccess;
+    disabled: boolean;
+    onAccessChange: (access: AccessLevel) => void;
+}) {
     const InstanceIcon = instance.name.startsWith('Base') ? Database : instance.type === 'VM' ? Monitor : Container;
 
     return (
         <TableRow className={styles.tableBodyRow}>
             <TableCell className={styles.selectionCell}>
                 <Checkbox
-                    defaultChecked={instance.selected}
+                    checked={instance.selected}
+                    readOnly
                     aria-label={`Seleccionar ${instance.name}`}
                 />
             </TableCell>
@@ -155,7 +170,9 @@ function InstanceAccessRow({ instance }: { instance: InstanceAccess }) {
                     {instance.access === 'Solo lectura' && <Eye className={styles.readOnlySelectIcon} aria-hidden="true" />}
                     {instance.access === 'Sin acceso' && <LockKeyhole className={styles.noAccessSelectIcon} aria-hidden="true" />}
                     <NativeSelect
-                        defaultValue={instance.access}
+                        value={instance.access}
+                        disabled={disabled}
+                        onChange={(event) => onAccessChange(event.target.value as AccessLevel)}
                         aria-label={`Acceso para ${instance.name}`}
                         className={instance.access === 'Acceso completo' ? styles.accessSelect : styles.accessSelectWithIcon}
                     >
