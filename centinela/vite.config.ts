@@ -14,13 +14,13 @@ export default defineConfig({
 
   // Add the following configuration to resolve the alias
 
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080'
-      }
-    },
-  },
+  // server: {
+  //   proxy: {
+  //     '/api': {
+  //       target: 'http://localhost:8080'
+  //     }
+  //   },
+  // },
 
   resolve: {
     alias: {

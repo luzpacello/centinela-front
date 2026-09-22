@@ -176,13 +176,13 @@
     @apply text-sm text-slate-500 dark:text-slate-400;
   }
 
-  label,
+  .label,
   .text-label {
     /* Penpot "Label de formulario": 13px, Medium (500) */
     @apply text-[13px] font-medium text-foreground;
   }
 
-  small,
+  .small,
   .text-caption {
     /* Penpot "Caption/metadata" y "Helper text": 12px, Regular */
     @apply text-xs font-normal text-slate-500 dark:text-slate-400;
@@ -212,5 +212,102 @@
   /* Penpot: Métrica grande */
   .text-metrica {
     @apply text-2xl font-bold text-slate-900 dark:text-slate-50;
+  }
+}
+
+@layer components {
+
+  /* =========================================
+     TABS
+     ========================================= */
+  .tab-base {
+    @apply text-slate-500 border-b-2 border-slate-200 transition-colors duration-150 ease-in-out;
+  }
+
+  .tab-hover {
+    @apply hover:text-slate-700 hover:border-blue-200;
+  }
+
+  .tab-active {
+    @apply text-blue-600 border-blue-600 font-medium;
+  }
+
+  .tab-disabled {
+    @apply text-slate-300 pointer-events-none;
+  }
+
+  /* =========================================
+     TABLAS
+     ========================================= */
+  .table-header-bg {
+    @apply bg-slate-50 border-b border-slate-200;
+  }
+
+  .table-row-base {
+    @apply bg-white border-b border-slate-200 transition-colors;
+  }
+
+  .table-row-hover {
+    @apply hover:bg-slate-100;
+  }
+
+  .table-text-main {
+    /* Mapea a #0F172A */
+    @apply text-slate-900;
+  }
+
+  .table-text-secondary {
+    /* Mapea a #334155 */
+    @apply text-slate-700;
+  }
+
+  /* =========================================
+     FORMULARIOS (Dropdowns, Selects, Checkboxes)
+     ========================================= */
+  .input-base {
+    /* Borde normal #CBD5E1, texto principal #0F172A */
+    @apply bg-white border border-slate-300 text-slate-900 rounded-lg transition-colors;
+  }
+
+  .input-hover {
+    /* Borde hover #94A3B8 */
+    @apply hover:border-slate-400;
+  }
+
+  .input-focus {
+    /* Borde focus/abierto #2563EB */
+    @apply focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600;
+  }
+
+  .input-error {
+    /* Borde error #EF4444 */
+    @apply border-red-500 text-red-500;
+  }
+
+  .dropdown-option {
+    @apply text-slate-900 bg-white transition-colors cursor-pointer;
+  }
+
+  .dropdown-option-hover {
+    /* Mapea a #F1F5F9 */
+    @apply hover:bg-slate-100;
+  }
+
+  .dropdown-option-selected {
+    /* Mapea a fondo #EFF6FF y texto #2563EB */
+    @apply bg-blue-50 text-blue-600;
+  }
+
+  /* =========================================
+     MODALES
+     ========================================= */
+  .modal-overlay {
+    /* Mapea a rgba(15, 23, 42, 0.50) */
+    @apply fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50;
+  }
+
+  .modal-content {
+    /* #0f172a es el equivalente a rgb(15,23,42) y 1f es el 12% de opacidad */
+    @apply bg-white rounded-xl shadow-[0_20px_40px_#0f172a1f] z-50;
   }
 }
