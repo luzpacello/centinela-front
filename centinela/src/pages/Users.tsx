@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { useNavigate } from 'react-router';
+import type { UserDetailsNavigationState } from '@/components/features/users/types/user';
 
 // Contrato real de GET /api/admin/users (UsuarioResumenDTO y su resumen).
 interface UsuarioResumenDTO {
@@ -49,6 +50,7 @@ interface UserRow {
     lastAccess: string;
     twoFactor: string;
     avatarBg: string;
+    isCurrentUser: boolean;
 }
 
 const EMPTY_TEXT = '—';
@@ -83,6 +85,7 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
         lastAccess: formatLastAccess(dto.fechaUltimoAcceso),
         twoFactor: dto.totpVinculado ? 'Activado' : 'Desactivado',
         avatarBg: esAdmin ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800',
+        isCurrentUser: dto.esUsuarioActual === true,
     };
 }
 
@@ -335,7 +338,10 @@ export default function UsersPage() {
                                                     <div className="absolute right-8 top-10 w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 text-left">
                                                         <button
                                                             type="button"
-                                                            onClick={() => navigate(`/users/${encodeURIComponent(String(user.id))}`)}
+                                                            onClick={() => navigate(
+                                                                `/users/${encodeURIComponent(String(user.id))}`,
+                                                                { state: { isCurrentUser: user.isCurrentUser } satisfies UserDetailsNavigationState },
+                                                            )}
                                                             className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                                                         >
                                                             <Edit3 className="size-3.5 text-slate-500" /> Editar usuario
