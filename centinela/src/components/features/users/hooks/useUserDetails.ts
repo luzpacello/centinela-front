@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from '@/components/ui/toast';
 import { ApiRequestError } from '@/services/apiClient';
 import { fetchUserDetails } from '../services/userDetailsService';
 import type { UserDetails } from '../types/user';
@@ -38,12 +39,26 @@ export function useUserDetails(userId: string | undefined, isCurrentUser: boolea
         }
       } catch (error) {
         if (controller.signal.aborted) return;
+        const errorMessage = error instanceof ApiRequestError
+          ? error.message
+          : 'No se pudo cargar el usuario. Intentá nuevamente.';
+
+        // Los errores de autenticación y permisos ya se notifican globalmente.
+        if (!(error instanceof ApiRequestError && (error.status === 401 || error.status === 403))) {
+          toast.add({
+            title: error instanceof ApiRequestError && error.status === 404
+              ? 'Usuario no encontrado'
+              : 'No se pudo cargar el usuario',
+            description: errorMessage,
+            type: 'error',
+            priority: 'high',
+          });
+        }
+
         setState({
           requestKey: selectedRequestKey,
           user: null,
-          errorMessage: error instanceof ApiRequestError
-            ? error.message
-            : 'No se pudo cargar el usuario. Intentá nuevamente.',
+          errorMessage,
         });
       }
     }
