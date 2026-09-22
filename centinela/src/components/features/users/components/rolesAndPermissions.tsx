@@ -30,11 +30,12 @@ const accessOptions: AccessLevel[] = ['Acceso completo', 'Solo lectura', 'Sin ac
 
 interface RolesAndPermissionsProps {
     instanceAccess: ReturnType<typeof useUserInstanceAccess>;
+    pendingAccess?: Record<string, AccessLevel>;
     role?: string;
     onRoleChange?: (role: string) => void;
 }
 
-export default function RolesAndPermissions({ role, onRoleChange, instanceAccess }: RolesAndPermissionsProps) {
+export default function RolesAndPermissions({ role, onRoleChange, instanceAccess, pendingAccess }: RolesAndPermissionsProps) {
     const [search, setSearch] = useState('');
     const { instances, assignedIds, savedRole, isLoading, isSaving, changeAccess } = instanceAccess;
     const selectedVmids = new Set(assignedIds.map((id) => String(id).replace(/^(qemu|lxc)\//, '')));
@@ -43,8 +44,8 @@ export default function RolesAndPermissions({ role, onRoleChange, instanceAccess
         return {
             ...instance,
             name: `${instance.name} (${instanceVmid(instance.id)})`,
-            selected,
-            access: selected ? savedRole === 'READ_ONLY' ? 'Solo lectura' : 'Acceso completo' : 'Sin acceso',
+            selected: pendingAccess?.[instance.id] !== undefined ? pendingAccess[instance.id] !== 'Sin acceso' : selected,
+            access: pendingAccess?.[instance.id] ?? (selected ? savedRole === 'READ_ONLY' ? 'Solo lectura' : 'Acceso completo' : 'Sin acceso'),
         };
     }).filter((instance) => `${instance.name} ${instance.id}`.toLowerCase().includes(search.trim().toLowerCase()));
     return (
@@ -152,7 +153,8 @@ function InstanceAccessRow({ instance, disabled, onAccessChange }: {
             <TableCell className={styles.selectionCell}>
                 <Checkbox
                     checked={instance.selected}
-                    readOnly
+                    disabled={disabled}
+                    onCheckedChange={(checked) => onAccessChange(checked ? 'Acceso completo' : 'Sin acceso')}
                     aria-label={`Seleccionar ${instance.name}`}
                 />
             </TableCell>
