@@ -7,8 +7,25 @@ import {
   type ApiErrorEventDetail,
 } from '@/services/apiClient';
 
+const unauthorizedToastStorageKey = 'centinela:unauthorized-toast';
+
+function showUnauthorizedToast(message?: string) {
+  toast.add({
+    title: 'Sesión vencida',
+    description: message || 'Tu sesión ya no es válida. Iniciá sesión nuevamente.',
+    type: 'warning',
+    priority: 'high',
+  });
+}
+
 export function ApiResponseNotifier() {
   useEffect(() => {
+    const pendingUnauthorizedMessage = window.sessionStorage.getItem(unauthorizedToastStorageKey);
+    if (pendingUnauthorizedMessage) {
+      window.sessionStorage.removeItem(unauthorizedToastStorageKey);
+      showUnauthorizedToast(pendingUnauthorizedMessage);
+    }
+
     function handleForbidden(event: Event) {
       const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       toast.add({
@@ -21,10 +38,15 @@ export function ApiResponseNotifier() {
       });
     }
 
-    function handleUnauthorized() {
+    function handleUnauthorized(event: Event) {
+      const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       // Un 401 invalida la sesión; un 403 nunca pasa por esta rama.
       clearAuthTokens();
       if (window.location.pathname !== '/login') {
+        window.sessionStorage.setItem(
+          unauthorizedToastStorageKey,
+          detail.message || 'Tu sesión ya no es válida. Iniciá sesión nuevamente.',
+        );
         window.location.replace('/login');
       }
     }
