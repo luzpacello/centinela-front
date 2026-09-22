@@ -72,6 +72,12 @@ export default function AuditoriaPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
 
+    // Las métricas se calculan solo con lo que la API devuelve de verdad: el total
+    // del período y el resultado de los registros de esta página. La API no expone
+    // un desglose global por resultado, así que no se muestra ninguno.
+    const exitososEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'EXITO').length;
+    const fallidosEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'FALLA').length;
+
     useEffect(() => {
         const controller = new AbortController();
 
@@ -219,7 +225,7 @@ export default function AuditoriaPage() {
             {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
             {/* Tarjetas de Métricas Superiores */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Eventos totales</span>
                     <div className="flex items-baseline justify-between mt-2">
@@ -231,24 +237,16 @@ export default function AuditoriaPage() {
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Exitosos</span>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-emerald-600">78</span>
-                        <span className="text-xs font-medium text-emerald-600">61.9% del total</span>
-                    </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Advertencias</span>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-amber-600">8</span>
-                        <span className="text-xs font-medium text-amber-600">6.3% del total</span>
+                        <span className="text-metrica text-emerald-600">{exitososEnPagina}</span>
+                        <span className="text-caption">En esta página</span>
                     </div>
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
                     <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Fallidos</span>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-rose-600">40</span>
-                        <span className="text-xs font-medium text-rose-600">31.7% del total</span>
+                        <span className="text-metrica text-rose-600">{fallidosEnPagina}</span>
+                        <span className="text-caption">En esta página</span>
                     </div>
                 </Card>
             </div>
