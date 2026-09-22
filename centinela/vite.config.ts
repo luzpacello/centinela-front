@@ -9,11 +9,18 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  
+
   // Add the following configuration to resolve the alias
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+      },
+    },
+  },
 })
