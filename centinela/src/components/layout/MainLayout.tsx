@@ -1,13 +1,14 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import type { UserSession } from '@/components/features/auth/types/authentication';
 
-export default function MainLayout({ children }: { children?: React.ReactNode }) {
+export default function MainLayout({ children, user }: { children?: React.ReactNode; user?: UserSession }) {
     return (
         <div className="flex h-screen bg-gray-50 font-sans">
 
             {/* Importamos la barra lateral */}
-            <Sidebar />
+            <Sidebar user={user} />
 
             {/* Contenedor derecho (Header + Contenido) */}
             <main className="flex-1 flex flex-col overflow-hidden">

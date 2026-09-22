@@ -22,3 +22,11 @@ export function loadAdminSession() {
   if (user.rol !== 'ADMIN') return redirect('/dashboard');
   return { user };
 }
+
+// Guard de la pantalla de cambio obligatorio: solo exige token de acceso.
+// No consulta el perfil a propósito, porque el backend lo bloquea con 403
+// PASSWORD_CHANGE_REQUIRED justamente mientras el cambio está pendiente.
+export function loadPasswordChangeSession() {
+  if (!getAccessToken()) return redirect('/login');
+  return null;
+}

@@ -1,6 +1,11 @@
 import { NavLink } from 'react-router';
+import type { UserSession } from '@/components/features/auth/types/authentication';
 
-export default function Sidebar() {
+export default function Sidebar({ user }: { user?: UserSession }) {
+    // La gestión de usuarios es exclusiva del rol ADMIN; el guard de las rutas
+    // redirige, pero además ocultamos los accesos para no ofrecer acciones prohibidas.
+    const isAdmin = user?.rol === 'ADMIN';
+
     return (
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between h-full">
 
@@ -25,20 +30,18 @@ export default function Sidebar() {
                         <span className="text-green-600 text-lg"></span> Instancias
                     </NavLink>
 
-                    {/* Más items normales */}
-                    <NavLink to="/users" className={getNavigationLinkClassName}>
-                        <span className="text-gray-400 text-lg"></span> Usuarios
-                    </NavLink>
+                    {/* Administración de usuarios: solo visible para ADMIN */}
+                    {isAdmin && (
+                        <>
+                            <NavLink to="/users" className={getNavigationLinkClassName}>
+                                <span className="text-gray-400 text-lg"></span> Usuarios
+                            </NavLink>
 
-                    <NavLink to="/users/new" className={getNavigationLinkClassName}>
-                        <span className="text-gray-400 text-lg"></span> Crear usuario
-                    </NavLink>
-
-                    <div className="pt-4 pb-2">
-                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sistema</p>
-                    </div>
-                    <NavLink to="/two-factor" className={getNavigationLinkClassName}>Vista de 2FA</NavLink>
-                    <NavLink to="/login" className={getNavigationLinkClassName}>Iniciar sesión</NavLink>
+                            <NavLink to="/users/new" className={getNavigationLinkClassName}>
+                                <span className="text-gray-400 text-lg"></span> Crear usuario
+                            </NavLink>
+                        </>
+                    )}
                 </nav>
             </div>
 

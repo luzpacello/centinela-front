@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Cpu, Database, FileText, MemoryStick, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
+import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Cpu, Database, MemoryStick, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -20,8 +20,7 @@ export default function Dashboard() {
                         <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
                             <Bell className={style.smallIcon} />
                         </Button>
-                        <span className={style.avatar}>A</span>
-                        <ChevronDown className={style.smallIcon} aria-hidden="true" />
+
                     </div>
 
                 </div>
@@ -36,7 +35,7 @@ export default function Dashboard() {
                             <h2 className="text-caption">Instancias totales</h2>
                         </div>
                     </div>
-                    <Separator className="mt-5 mb-5"/>
+                    <Separator className="mt-5 mb-5" />
                     <div className={style.summaryFooter}>
                         <span className="text-caption"><span className={style.greenDot} />0 activas</span>
                         <span className="text-caption"><span className={style.grayDot} />0 detenidas</span>
@@ -50,7 +49,7 @@ export default function Dashboard() {
                             <h2 className="text-caption">En ejecución</h2>
                         </div>
                     </div>
-                    <Separator className="mt-5 mb-5"/>
+                    <Separator className="mt-5 mb-5" />
                     <p className="text-caption"><span className={style.greenText}>0%</span> del total</p>
                 </Card>
                 <Card className={style.summaryCard}>
@@ -61,7 +60,7 @@ export default function Dashboard() {
                             <h2 className="text-caption">Detenidas</h2>
                         </div>
                     </div>
-                    <Separator className="mt-5 mb-5"/>
+                    <Separator className="mt-5 mb-5" />
                     <p className="text-caption"><span className={style.orangeText}>0%</span> del total</p>
                 </Card>
                 <Card className={style.summaryCard}>
@@ -72,7 +71,7 @@ export default function Dashboard() {
                             <h2 className="text-caption">Plantillas</h2>
                         </div>
                     </div>
-                    <Separator className="mt-5 mb-5"/>
+                    <Separator className="mt-5 mb-5" />
 
                     <p className="text-caption">Disponibles para usar</p>
                 </Card>
@@ -109,7 +108,7 @@ export default function Dashboard() {
                         </div>
                         <div className={style.chartPlaceholder}>Gráfica</div>
                     </div>
-                    
+
                     <div className={style.resource}>
                         <span className={style.roundPurpleIcon}><Database className={style.icon} /></span>
                         <div>
@@ -133,7 +132,7 @@ export default function Dashboard() {
                         Ver todas las instancias <ArrowRight className={style.smallIcon} />
                     </Button>
                 </Card>
-                
+
                 <Card className={style.detailCard}>
                     <div className={style.sectionHeader}>
                         <h4>Actividad reciente</h4>
@@ -151,7 +150,7 @@ export default function Dashboard() {
                         <Button type="button" variant="ghost">Ver todas</Button>
                     </div>
                     <div className={style.emptyState}>Sin alertas</div>
-                    
+
                 </Card>
             </div>
 
