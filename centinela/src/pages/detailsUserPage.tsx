@@ -85,6 +85,7 @@ export default function DetailsUserPage() {
 
 function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
     const { values, updateField } = useEditableUser(user);
+    const instanceAccess = useUserInstanceAccess(user);
 
     return (
         <section className={styles.pageContainer}>
@@ -110,7 +111,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <Trash2 className={styles.actionIcon} aria-hidden="true" />
                         Eliminar usuario
                     </Button>
-                    <Button type="button">
+                    <Button type="button" onClick={() => void instanceAccess.saveAssignments()} disabled={instanceAccess.isSaving || Object.keys(instanceAccess.pendingAccess).length === 0} aria-busy={instanceAccess.isSaving}>
                         <Save className={styles.actionIcon} aria-hidden="true" />
                         Guardar cambios
                     </Button>
@@ -119,7 +120,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 
             <div className={styles.contentGrid}>
                 <main className={styles.mainColumn}>
-                    <UserInformationTabs user={user} values={values} onFieldChange={updateField} />
+                    <UserInformationTabs instanceAccess={instanceAccess} values={values} onFieldChange={updateField} />
                 </main>
 
                 <aside className={styles.sidebarColumn}>
@@ -133,16 +134,15 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 }
 
 function UserInformationTabs({
-    user,
+    instanceAccess,
     values,
     onFieldChange,
 }: {
-    user: UserDetails;
+    instanceAccess: ReturnType<typeof useUserInstanceAccess>;
     values: EditableUserValues;
     onFieldChange: UpdateEditableUserField;
 }) {
     const [activeTab, setActiveTab] = useState('general');
-    const instanceAccess = useUserInstanceAccess(user);
 
     return (
         <>
@@ -158,6 +158,7 @@ function UserInformationTabs({
                     <TabsContent value="roles" className={styles.rolesTabContent}>
                         <RolesAndPermissions
                             instanceAccess={instanceAccess}
+                            pendingAccess={instanceAccess.pendingAccess}
                             role={values.rol}
                             onRoleChange={(role) => onFieldChange('rol', role)}
                         />
