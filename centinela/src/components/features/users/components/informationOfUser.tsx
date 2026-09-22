@@ -35,7 +35,7 @@ export default function InformationOfUser() {
                     <div className={styles.controlWithIcon}>
                         <ShieldCheck className={styles.controlIcon} aria-hidden="true" />
                         <NativeSelect id="user-role" defaultValue="standard" className={styles.roleSelect}>
-                            <NativeSelectOption value="standard">Usuario estándar</NativeSelectOption>
+                            <NativeSelectOption value="standard">Operador</NativeSelectOption>
                             <NativeSelectOption value="admin">Administrador</NativeSelectOption>
                             <NativeSelectOption value="viewer">Solo lectura</NativeSelectOption>
                         </NativeSelect>
