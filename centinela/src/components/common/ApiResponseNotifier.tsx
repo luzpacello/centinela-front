@@ -7,6 +7,16 @@ import {
   type ApiErrorEventDetail,
 } from '@/services/apiClient';
 
+const unauthorizedToastStorageKey = 'centinela:unauthorized-toast';
+
+function showUnauthorizedToast(message?: string) {
+  toast.add({
+    title: 'Sesión vencida',
+    description: message || 'Tu sesión ya no es válida. Iniciá sesión nuevamente.',
+    type: 'warning',
+    priority: 'high',
+  });
+}
 // Títulos para los 403 que emite hoy el backend.
 const forbiddenTitles: Record<string, string> = {
   INSUFFICIENT_PERMISSIONS: 'Permisos de administrador requeridos',
@@ -18,6 +28,12 @@ const forbiddenTitles: Record<string, string> = {
 
 export function ApiResponseNotifier() {
   useEffect(() => {
+    const pendingUnauthorizedMessage = window.sessionStorage.getItem(unauthorizedToastStorageKey);
+    if (pendingUnauthorizedMessage) {
+      window.sessionStorage.removeItem(unauthorizedToastStorageKey);
+      showUnauthorizedToast(pendingUnauthorizedMessage);
+    }
+
     function handleForbidden(event: Event) {
       const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       toast.add({
@@ -28,7 +44,8 @@ export function ApiResponseNotifier() {
       });
     }
 
-    function handleUnauthorized() {
+    function handleUnauthorized(event: Event) {
+      const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       const currentPath = window.location.pathname;
 
       // EXCEPCIÓN: Si estamos en las rutas de doble factor, un 401 (código incorrecto) 
@@ -39,6 +56,10 @@ export function ApiResponseNotifier() {
       // Un 401 invalida la sesión; un 403 nunca pasa por esta rama.
       clearAuthTokens();
       if (window.location.pathname !== '/login') {
+        window.sessionStorage.setItem(
+          unauthorizedToastStorageKey,
+          detail.message || 'Tu sesión ya no es válida. Iniciá sesión nuevamente.',
+        );
         window.location.replace('/login');
       }
     }
