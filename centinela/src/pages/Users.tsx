@@ -12,11 +12,7 @@ import {
     Key,
     UserX,
     Trash2,
-    Edit3,
-    X,
-    CalendarDays,
-    Clock3,
-    LockKeyhole
+    Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -93,7 +89,6 @@ export default function UsersPage() {
     const [activeTab, setActiveTab] = useState('users'); // 'users' o 'roles'
     const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUserId, setSelectedUserId] = useState<string | number>(1);
     const [users, setUsers] = useState<UserRow[]>([]);
     const [summary, setSummary] = useState({ total: 0, admins: 0, operators: 0 });
     const [isLoading, setIsLoading] = useState(true);
@@ -135,7 +130,6 @@ export default function UsersPage() {
         )
     );
 
-    const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0];
     const adminsPercentage = summary.total > 0 ? ((summary.admins / summary.total) * 100).toFixed(1) : '0.0';
     const operatorsPercentage = summary.total > 0 ? ((summary.operators / summary.total) * 100).toFixed(1) : '0.0';
 
@@ -234,11 +228,7 @@ export default function UsersPage() {
                     </div>
                 </div>
 
-                {activeTab === 'users' ? (
-                    <div className="border-b border-slate-100 px-5 py-4 text-xs text-slate-500">
-                        Seleccioná un usuario para ver su detalle y administrar sus permisos.
-                    </div>
-                ) : (
+                {activeTab === 'roles' && (
                     <div className="py-4 text-sm text-secundario">
                         Vista de configuración de Roles y Permisos (Sección informativa de roles del sistema).
                     </div>
@@ -247,7 +237,7 @@ export default function UsersPage() {
 
             {/* Tabla de Usuarios */}
             {activeTab === 'users' && (
-                <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+                <div className="min-w-0">
                     <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
@@ -295,8 +285,7 @@ export default function UsersPage() {
                                     {!isLoading && !errorMessage && filteredUsers.map((user) => (
                                         <tr
                                             key={user.id}
-                                            onClick={() => setSelectedUserId(user.id)}
-                                            className={`cursor-pointer transition-colors hover:bg-blue-50/50 ${selectedUserId === user.id ? 'bg-blue-50/70' : ''}`}
+                                            className="transition-colors hover:bg-blue-50/50"
                                         >
                                             <td className="py-3 px-4">
                                                 <div className="flex items-center gap-3">
@@ -386,46 +375,8 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </Card>
-                    {selectedUser && <UserDetailPanel user={selectedUser} />}
                 </div>
             )}
         </section>
     );
-}
-
-function UserDetailPanel({ user }: { user: { name: string; email: string; role: string; status: string; lastAccess: string; twoFactor: string; roleType: string } }) {
-    return (
-        <Card className="flex min-h-[520px] flex-col gap-5 rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-            <div className="flex items-start justify-between">
-                <span className={`flex size-16 items-center justify-center rounded-full text-xl font-semibold ${user.roleType === 'Admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
-                    {user.roleType}
-                </span>
-                <button type="button" className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Cerrar detalle">
-                    <X className="size-4" />
-                </button>
-            </div>
-            <div>
-                <h2 className="mb-1 text-lg font-semibold">{user.name}</h2>
-                <span className="inline-flex rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">{user.role}</span>
-                <p className="mt-2 text-xs text-slate-500">{user.email}</p>
-            </div>
-            <div className="space-y-3 border-t border-slate-100 pt-4 text-xs">
-                <DetailLine icon={CheckCircle2} label="Estado" value={user.status} valueClass="text-emerald-600" />
-                <DetailLine icon={Shield} label="Rol" value={user.role} />
-                <DetailLine icon={CalendarDays} label="Fecha de creación" value="10/04/2024, 14:32" />
-                <DetailLine icon={Clock3} label="Último acceso" value={user.lastAccess} />
-                <DetailLine icon={LockKeyhole} label="Autenticación 2FA" value={user.twoFactor} valueClass={user.twoFactor.includes('Activado') ? 'text-emerald-600' : 'text-slate-500'} />
-            </div>
-            <div className="mt-auto grid gap-2">
-                <Button type="button" variant="outline" className="w-full"><Edit3 className="size-4!" /> Editar usuario</Button>
-                <Button type="button" variant="outline" className="w-full"><Key className="size-4!" /> Restablecer contraseña</Button>
-                <Button type="button" variant="outline" className="w-full"><UserX className="size-4!" /> Desactivar usuario</Button>
-                <Button type="button" variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50"><Trash2 className="size-4!" /> Eliminar usuario</Button>
-            </div>
-        </Card>
-    );
-}
-
-function DetailLine({ icon: Icon, label, value, valueClass = 'text-slate-900' }: { icon: typeof CheckCircle2; label: string; value: string; valueClass?: string }) {
-    return <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-slate-500"><Icon className="size-4" />{label}</span><strong className={`text-right font-medium ${valueClass}`}>{value}</strong></div>;
 }
