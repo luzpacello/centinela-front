@@ -1,3 +1,4 @@
+import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
 import { useState } from 'react';
 import {
     ArrowLeft,
@@ -141,6 +142,7 @@ function UserInformationTabs({
     onFieldChange: UpdateEditableUserField;
 }) {
     const [activeTab, setActiveTab] = useState('general');
+    const instanceAccess = useUserInstanceAccess(user);
 
     return (
         <>
@@ -155,13 +157,14 @@ function UserInformationTabs({
                     </TabsContent>
                     <TabsContent value="roles" className={styles.rolesTabContent}>
                         <RolesAndPermissions
+                            instanceAccess={instanceAccess}
                             role={values.rol}
                             onRoleChange={(role) => onFieldChange('rol', role)}
                         />
                     </TabsContent>
                 </Tabs>
             </Card>
-            {activeTab === 'general' && <AssignedInstancesCard instanceIds={user.instanciasPermitidas} />}
+            {activeTab === 'general' && <AssignedInstancesCard instanceIds={instanceAccess.assignedIds} />}
         </>
     );
 }
