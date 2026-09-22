@@ -4,36 +4,37 @@ import {
     CalendarDays,
     CheckCircle2,
     ChevronRight,
-    Database,
     HardDrive,
     KeyRound,
     Laptop,
+    Loader2,
     LockKeyhole,
     Monitor,
     Save,
     ShieldCheck,
     Trash2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import InformationOfUser from '@/components/features/users/components/informationOfUser';
 import RolesAndPermissions from '@/components/features/users/components/rolesAndPermissions';
+import { useEditableUser } from '@/components/features/users/hooks/useEditableUser';
+import { useUserDetails } from '@/components/features/users/hooks/useUserDetails';
+import type {
+    EditableUserValues,
+    UpdateEditableUserField,
+    UserDetails,
+    UserDetailsNavigationState,
+} from '@/components/features/users/types/user';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-const assignedInstances = [
-    { name: 'Ubuntu Server (101)', type: 'VM', node: 'pve01', status: 'Activo', icon: Monitor },
-    { name: 'Desarrollo (104)', type: 'LXC', node: 'pve01', status: 'Activo', icon: HardDrive },
-    { name: 'Base de datos (108)', type: 'VM', node: 'pve01', status: 'Sin acceso', icon: Database },
-];
-
-const securityInformation = [
-    { label: 'Autenticación 2FA', value: 'Activado', icon: ShieldCheck, highlighted: true },
-    { label: 'Último cambio de contraseña', value: '02/05/2024, 09:10', icon: CalendarDays },
-    { label: 'Intentos de inicio fallidos', value: '0', icon: KeyRound },
-    { label: 'Bloqueado', value: 'No', icon: LockKeyhole },
+const additionalSecurityInformation = [
+    { label: 'Último cambio de contraseña', value: '02/05/2024, 09:10', icon: CalendarDays, highlighted: false },
+    { label: 'Intentos de inicio fallidos', value: '0', icon: KeyRound, highlighted: false },
+    { label: 'Bloqueado', value: 'No', icon: LockKeyhole, highlighted: false },
 ];
 
 const recentActivity = [
@@ -44,7 +45,45 @@ const recentActivity = [
 
 export default function DetailsUserPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { userId } = useParams();
+    const navigationState = location.state as UserDetailsNavigationState | null;
+    const { user, isLoading, errorMessage, retry } = useUserDetails(
+        userId,
+        navigationState?.isCurrentUser === true,
+    );
     const goBack = () => navigate(-1);
+
+    if (isLoading) {
+        return (
+            <section className={styles.pageContainer} aria-busy="true" aria-live="polite">
+                <div className="flex min-h-80 items-center justify-center gap-3 text-slate-500">
+                    <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                    <span>Cargando usuario…</span>
+                </div>
+            </section>
+        );
+    }
+
+    if (!user || errorMessage) {
+        return (
+            <section className={styles.pageContainer}>
+                <div className="flex min-h-80 flex-col items-center justify-center gap-4 text-center">
+                    <p role="alert" className="text-sm text-red-600">{errorMessage ?? 'No se pudo cargar el usuario.'}</p>
+                    <div className="flex gap-3">
+                        <Button type="button" variant="outline" onClick={goBack}>Volver</Button>
+                        {userId && <Button type="button" onClick={retry}>Reintentar</Button>}
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    return <DetailsUserContent key={user.id} user={user} goBack={goBack} />;
+}
+
+function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
+    const { values, updateField } = useEditableUser(user);
 
     return (
         <section className={styles.pageContainer}>
@@ -55,7 +94,7 @@ export default function DetailsUserPage() {
                             Usuarios
                         </button>
                         <ChevronRight className={styles.breadcrumbIcon} aria-hidden="true" />
-                        <span className={styles.currentUserName}>usuario2</span>
+                        <span className={styles.currentUserName}>{user.nombreUsuario}</span>
                     </nav>
                     <h1>Detalle / Edición de usuario</h1>
                     <p className="text-secundario">Gestioná la información, roles y permisos del usuario.</p>
@@ -79,12 +118,12 @@ export default function DetailsUserPage() {
 
             <div className={styles.contentGrid}>
                 <main className={styles.mainColumn}>
-                    <UserInformationTabs />
+                    <UserInformationTabs user={user} values={values} onFieldChange={updateField} />
                 </main>
 
                 <aside className={styles.sidebarColumn}>
-                    <UserSummaryCard />
-                    <SecurityCard />
+                    <UserSummaryCard user={user} values={values} />
+                    <SecurityCard user={user} />
                     <RecentActivityCard />
                 </aside>
             </div>
@@ -92,7 +131,15 @@ export default function DetailsUserPage() {
     );
 }
 
-function UserInformationTabs() {
+function UserInformationTabs({
+    user,
+    values,
+    onFieldChange,
+}: {
+    user: UserDetails;
+    values: EditableUserValues;
+    onFieldChange: UpdateEditableUserField;
+}) {
     const [activeTab, setActiveTab] = useState('general');
 
     return (
@@ -104,19 +151,22 @@ function UserInformationTabs() {
                         <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className={styles.generalInformationTabContent}>
-                        <InformationOfUser />
+                        <InformationOfUser values={values} onFieldChange={onFieldChange} />
                     </TabsContent>
                     <TabsContent value="roles" className={styles.rolesTabContent}>
-                        <RolesAndPermissions />
+                        <RolesAndPermissions
+                            role={values.rol}
+                            onRoleChange={(role) => onFieldChange('rol', role)}
+                        />
                     </TabsContent>
                 </Tabs>
             </Card>
-            {activeTab === 'general' && <AssignedInstancesCard />}
+            {activeTab === 'general' && <AssignedInstancesCard instanceIds={user.instanciasPermitidas} />}
         </>
     );
 }
 
-function AssignedInstancesCard() {
+function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | number> }) {
     return (
         <Card className={styles.assignedInstancesCard}>
             <div className={styles.cardHeaderWithAction}>
@@ -140,22 +190,18 @@ function AssignedInstancesCard() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {assignedInstances.map(({ name, type, node, status, icon: InstanceIcon }) => (
-                        <TableRow key={name} className={styles.tableBodyRow}>
+                    {instanceIds.map((instanceId) => (
+                        <TableRow key={instanceId} className={styles.tableBodyRow}>
                             <TableCell className={styles.instanceNameCell}>
-                                <InstanceIcon className={styles.instanceIcon} aria-hidden="true" />
-                                <p className="text-of-table">{name}</p>
+                                <Monitor className={styles.instanceIcon} aria-hidden="true" />
+                                <p className="text-of-table">Instancia ({instanceId})</p>
                             </TableCell>
+                            <TableCell>—</TableCell>
+                            <TableCell>—</TableCell>
                             <TableCell>
-                                <Badge className={type === 'LXC' ? styles.containerTypeBadge : styles.virtualMachineTypeBadge}>
-                                    {type}
-                                </Badge>
-                            </TableCell>
-                            <TableCell>{node}</TableCell>
-                            <TableCell>
-                                <span className={status === 'Activo' ? styles.activeStatus : styles.inactiveStatus}>
-                                    <span className={status === 'Activo' ? styles.activeStatusDot : styles.inactiveStatusDot} />
-                                    {status}
+                                <span className={styles.activeStatus}>
+                                    <span className={styles.activeStatusDot} />
+                                    Activo
                                 </span>
                             </TableCell>
                         </TableRow>
@@ -171,28 +217,41 @@ function AssignedInstancesCard() {
     );
 }
 
-function UserSummaryCard() {
+function UserSummaryCard({ user, values }: { user: UserDetails; values: EditableUserValues }) {
+    const isActive = values.activo;
+
     return (
         <Card className={styles.sidebarCard}>
             <h4>Resumen del usuario</h4>
             <div className={styles.userSummaryContent}>
                 <div className={styles.userSummaryDetails}>
                     <div className={styles.userNameRow}>
-                        <strong className="body">usuario2</strong>
-                        <Badge className={styles.activeUserBadge}>
-                            <span className={styles.activeUserBadgeDot} /> Activo
+                        <strong className="body">{user.nombreUsuario}</strong>
+                        <Badge className={isActive ? styles.activeUserBadge : styles.inactiveUserBadge}>
+                            <span className={isActive ? styles.activeUserBadgeDot : styles.inactiveUserBadgeDot} />
+                            {isActive ? 'Activo' : 'Inactivo'}
                         </Badge>
                     </div>
-                    <Badge className={styles.standardUserBadge}>Usuario estándar</Badge>
-                    <p className="text-secundario">usuario2@propex.local</p>
-                    <p className="text-secundario">Creado el <strong>03/05/2024, 11:22</strong></p>
+                    <Badge className={styles.standardUserBadge}>{formatRole(values.rol)}</Badge>
+                    <p className="text-secundario">{values.emailUsuario}</p>
+                    <p className="text-secundario">Creado el <strong>{formatDateTime(user.fechaCreacion)}</strong></p>
                 </div>
             </div>
         </Card>
     );
 }
 
-function SecurityCard() {
+function SecurityCard({ user }: { user: UserDetails }) {
+    const securityInformation = [
+        {
+            label: 'Autenticación 2FA',
+            value: user.totpVinculado ? 'Activado' : 'Desactivado',
+            icon: ShieldCheck,
+            highlighted: user.totpVinculado,
+        },
+        ...additionalSecurityInformation,
+    ];
+
     return (
         <Card className={styles.sidebarCard}>
             <h4>Seguridad</h4>
@@ -212,6 +271,26 @@ function SecurityCard() {
             </div>
         </Card>
     );
+}
+
+function formatRole(role: string): string {
+    if (role === 'ADMIN') return 'Administrador';
+    if (role === 'OPERATOR') return 'Operador';
+    if (role === 'READ_ONLY') return 'Solo lectura';
+    return role;
+}
+
+function formatDateTime(value: string | null): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 function RecentActivityCard() {
@@ -283,6 +362,8 @@ const styles = {
     summaryUserName: 'text-base text-slate-950',
     activeUserBadge: 'border-0 bg-emerald-50 text-[11px] font-medium text-emerald-700',
     activeUserBadgeDot: 'size-2 rounded-full bg-emerald-600',
+    inactiveUserBadge: 'border-0 bg-slate-100 text-[11px] font-medium text-slate-600',
+    inactiveUserBadgeDot: 'size-2 rounded-full bg-slate-400',
     standardUserBadge: 'rounded-md border-0 bg-blue-50 text-[11px] font-medium text-blue-700',
     securityList: 'flex flex-col gap-5',
     securityRow: 'flex items-center justify-between gap-4 text-xs',
