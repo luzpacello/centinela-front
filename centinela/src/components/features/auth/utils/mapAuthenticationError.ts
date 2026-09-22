@@ -9,6 +9,14 @@ const authenticationErrorMessages: Record<string, string> = {
   TOTP_FAILED: 'El código de verificación es incorrecto o ya se usó. Esperá al siguiente e intentá de nuevo.',
   TWO_FACTOR_ALREADY_ENABLED: 'Esta cuenta ya tiene el doble factor activo. Para vincular uno nuevo hace falta un restablecimiento administrativo.',
   QR_ERROR: 'No se pudo generar el código QR. Intentá nuevamente en unos segundos.',
+  USER_CONFLICT: 'Ya existe un usuario con el mismo nombre de usuario o correo.',
+  UPDATE_CONFLICT: 'El usuario fue modificado desde otra sesión. Recargá los datos e intentá nuevamente.',
+  PROFILE_UPDATE_CONFLICT: 'Tu perfil fue modificado desde otra sesión. Recargá los datos e intentá nuevamente.',
+  USER_NOT_FOUND: 'No se encontró el usuario solicitado.',
+  SELF_DELETE_NOT_ALLOWED: 'No podés eliminar tu propio usuario.',
+  PASSWORD_CHANGE_FAILED: 'No se pudo cambiar la contraseña. Revisá los datos e intentá nuevamente.',
+  REFRESH_FAILED: 'Tu sesión expiró. Volvé a iniciar sesión.',
+  INVALID_UUID: 'El identificador proporcionado no es válido.',
 };
 
 export function mapAuthenticationError<Fields>(
