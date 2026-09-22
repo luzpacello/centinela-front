@@ -8,7 +8,7 @@ import {
     Search,
     ShieldCheck,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/bardge';
+import { Badge } from '@/components/ui/badge';
 import { InfoCard } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
