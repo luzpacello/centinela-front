@@ -1,59 +1,61 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router';
+import { ChevronDown, LogOut, Shield, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { UserSession } from '@/components/features/auth/types/authentication';
+import { useLogout } from '@/components/features/auth/hooks/useAuth';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
-    // La gestión de usuarios es exclusiva del rol ADMIN; el guard de las rutas
-    // redirige, pero además ocultamos los accesos para no ofrecer acciones prohibidas.
+    const [isOpen, setIsOpen] = useState(false);
+
+    // CORRECCIÓN: Los hooks devuelven objetos en este caso, se usan llaves {} y los nombres exactos
+    const { isLoggingOut, logout } = useLogout();
+
+    const primerNombre = user?.nombreCompleto?.split(' ')[0] ?? 'Admin';
     const isAdmin = user?.rol === 'ADMIN';
 
     return (
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between h-full">
-
-            {/* Logo */}
+        <aside className="flex h-full w-64 flex-col justify-between border-r border-gray-200 bg-white">
+            {/* Parte Superior: Logo y Navegación */}
             <div>
-                <div className="h-16 flex items-center px-6">
-                    <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900">
-                        <span className="text-green-600 text-3xl leading-none"></span>
+                <div className="flex h-16 items-center px-6">
+                    <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+                        <span className="text-3xl leading-none text-green-600"></span>
                         El Centinela
                     </h1>
                 </div>
 
-                {/* Menú de Navegación */}
-                <nav className="px-3 py-2 space-y-1">
-                    {/* Item normal */}
+                <nav className="space-y-1 px-3 py-2">
                     <NavLink to="/dashboard" className={getNavigationLinkClassName}>
-                        <span className="text-gray-400 text-lg"></span> Dashboard
+                        <span className="text-lg text-gray-400"></span> Dashboard
                     </NavLink>
 
-                    {/* Item ACTIVO (Como se ve "Instancias" en la captura) */}
                     <NavLink to="/instances" className={getNavigationLinkClassName}>
-                        <span className="text-green-600 text-lg"></span> Instancias
+                        <span className="text-lg text-green-600"></span> Instancias
                     </NavLink>
 
-                    {/* Administración de usuarios: solo visible para ADMIN */}
                     {isAdmin && (
                         <>
                             <NavLink to="/users" className={getNavigationLinkClassName}>
-                                <span className="text-gray-400 text-lg"></span> Usuarios
+                                <span className="text-lg text-gray-400"></span> Usuarios
                             </NavLink>
 
                             <NavLink to="/users/new" className={getNavigationLinkClassName}>
-                                <span className="text-gray-400 text-lg"></span> Crear usuario
+                                <span className="text-lg text-gray-400"></span> Crear usuario
                             </NavLink>
                         </>
                     )}
                 </nav>
             </div>
 
-            {/* Tarjeta de Estado y Perfil de Usuario */}
-            <div className="p-4 space-y-4">
-
+            {/* Parte Inferior: Estado y Perfil */}
+            <div className="space-y-4 p-4">
                 {/* Tarjeta de Proxmox VE */}
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span className="font-semibold text-sm text-gray-900">Proxmox VE</span>
-                        <span className="text-xs text-green-600 font-medium ml-auto bg-green-50 px-2 py-0.5 rounded-full">Conectado</span>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm font-semibold text-gray-900">Proxmox VE</span>
+                        <span className="ml-auto rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">Conectado</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
                         <div>
@@ -63,18 +65,66 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                     </div>
                 </div>
 
-                {/* Perfil del Usuario */}
-                <div className="flex items-center gap-3 pt-2">
-                    <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center font-semibold text-white text-sm">
-                        AD
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-900 leading-tight">Admin</p>
-                        <p className="text-xs text-gray-500">Administrador</p>
-                    </div>
-                    <span className="text-gray-400 text-xs">▼</span>
-                </div>
+                {/* Contenedor del Perfil de Usuario con Menú Desplegable */}
+                <div className="relative pt-2">
+                    {/* Cuadro desplegable (Dropdown) - Posicionado hacia arriba */}
+                    {isOpen && (
+                        <>
+                            <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setIsOpen(false)}
+                            />
 
+                            <div className={style.dropdownCard}>
+                                <div className={style.userInfoSection}>
+                                    <div className={style.userNameRow}>
+                                        <User className="size-4 text-slate-400" />
+                                        <h4 className="m-0 truncate text-slate-900">{user?.nombreCompleto ?? 'Admin'}</h4>
+                                    </div>
+                                    <div className={style.userRoleRow}>
+                                        <Shield className="size-3.5 text-blue-600" />
+                                        <p className="text-caption text-blue-600">{user?.rol ?? 'Admin'}</p>
+                                    </div>
+                                </div>
+
+                                <div className={style.divider} />
+
+                                <div className={style.actionSection}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setIsOpen(false);
+                                            logout();
+                                        }}
+                                        disabled={isLoggingOut}
+                                        className={style.logoutButton}
+                                    >
+                                        <LogOut className={style.logoutIcon} aria-hidden="true" />
+                                        <span className="bg-transparent">{isLoggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Botón Trigger del Perfil */}
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)}
+                        aria-expanded={isOpen}
+                        className={style.triggerButton}
+                    >
+                        <div className={style.avatar}>
+                            {primerNombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 text-left leading-tight">
+                            <p className="text-sm font-semibold text-gray-900">{user?.nombreCompleto ?? 'Admin'}</p>
+                            <p className="text-xs text-gray-500">{user?.rol ?? 'Administrador'}</p>
+                        </div>
+                        <ChevronDown className={`${style.arrowIcon} ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                </div>
             </div>
         </aside>
     );
@@ -83,3 +133,20 @@ export default function Sidebar({ user }: { user?: UserSession }) {
 function getNavigationLinkClassName({ isActive }: { isActive: boolean }) {
     return `flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`;
 }
+
+const style = {
+    // Botón del perfil en el sidebar
+    triggerButton: 'flex w-full items-center gap-3 rounded-xl p-2 transition-colors hover:bg-gray-50 focus:outline-none',
+    avatar: 'flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white shadow-sm',
+    arrowIcon: 'size-4 text-gray-400 transition-transform duration-200',
+
+    // Dropdown adaptado para abrirse hacia arriba (bottom-full y mb-2)
+    dropdownCard: 'absolute bottom-full left-0 z-20 mb-2 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ring-1 ring-black/5',
+    userInfoSection: 'mb-1 flex flex-col gap-1 rounded-lg bg-slate-50/60 px-3 py-2.5',
+    userNameRow: 'flex items-center gap-2',
+    userRoleRow: 'flex items-center gap-1.5',
+    divider: 'my-1 border-t border-slate-100',
+    actionSection: 'p-0.5',
+    logoutButton: 'flex w-full items-center justify-start gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 active:bg-blue-50 active:text-blue-800',
+    logoutIcon: 'size-4',
+};

@@ -1,6 +1,6 @@
 import React from 'react';
 import Sidebar from './Sidebar';
-import Header from './Header';
+// import Header from './Header';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 
 export default function MainLayout({ children, user }: { children?: React.ReactNode; user?: UserSession }) {
@@ -14,7 +14,7 @@ export default function MainLayout({ children, user }: { children?: React.ReactN
             <main className="flex-1 flex flex-col overflow-hidden">
 
                 {/* Importamos el Header */}
-                <Header />
+                {/* <Header /> */}
 
                 {/* Área donde van a inyectarse las pantallas con React Router (Outlet) */}
                 <div className="flex-1 p-8 overflow-auto">
