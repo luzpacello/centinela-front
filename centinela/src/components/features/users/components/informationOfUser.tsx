@@ -2,8 +2,14 @@ import { Building2, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
 import { Switch } from '@/components/ui/switch';
+import type { EditableUserValues, UpdateEditableUserField } from '../types/user';
 
-export default function InformationOfUser() {
+interface InformationOfUserProps {
+    values: EditableUserValues;
+    onFieldChange: UpdateEditableUserField;
+}
+
+export default function InformationOfUser({ values, onFieldChange }: InformationOfUserProps) {
     return (
         <section className={styles.informationSection} aria-labelledby="general-information-title">
             <h4 id="general-information-title">Información general</h4>
@@ -12,20 +18,22 @@ export default function InformationOfUser() {
                 <InputField
                     id="full-name"
                     label="Nombre completo"
-                    value="Usuario Dos"
+                    value={values.nombreCompleto}
+                    onChange={(value) => onFieldChange('nombreCompleto', value)}
                     icon={UserRound}
                 />
                 <InputField
                     id="email"
                     label="Correo electrónico"
-                    value="usuario2@propex.local"
+                    value={values.emailUsuario}
+                    onChange={(value) => onFieldChange('emailUsuario', value)}
                     type="email"
                     icon={Mail}
                 />
                 <InputField
                     id="organization"
                     label="Organización (solo lectura)"
-                    value="Universidad Nacional de Tierra del Fuego"
+                    value={values.organizacionId}
                     icon={Building2}
                     readOnly
                 />
@@ -34,10 +42,15 @@ export default function InformationOfUser() {
                     <label htmlFor="user-role">Rol</label>
                     <div className={styles.controlWithIcon}>
                         <ShieldCheck className={styles.controlIcon} aria-hidden="true" />
-                        <NativeSelect id="user-role" defaultValue="standard" className={styles.roleSelect}>
-                            <NativeSelectOption value="standard">Operador</NativeSelectOption>
-                            <NativeSelectOption value="admin">Administrador</NativeSelectOption>
-                            <NativeSelectOption value="viewer">Solo lectura</NativeSelectOption>
+                        <NativeSelect
+                            id="user-role"
+                            value={values.rol}
+                            onChange={(event) => onFieldChange('rol', event.target.value)}
+                            className={styles.roleSelect}
+                        >
+                            <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
+                            <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
+                            <NativeSelectOption value="READ_ONLY">Solo lectura</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 </div>
@@ -49,7 +62,8 @@ export default function InformationOfUser() {
                     </div>
                     <Switch
                         id="active-user"
-                        defaultChecked
+                        checked={values.activo}
+                        onCheckedChange={(checked) => onFieldChange('activo', checked)}
                         aria-label="Usuario activo"
                         className={styles.activeUserSwitch}
                     />
@@ -66,9 +80,10 @@ interface InputFieldProps {
     icon: React.ComponentType<{ className?: string }>;
     type?: string;
     readOnly?: boolean;
+    onChange?: (value: string) => void;
 }
 
-function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false }: InputFieldProps) {
+function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false, onChange }: InputFieldProps) {
     return (
         <div className={styles.fieldContainer}>
             <label htmlFor={id}>{label}</label>
@@ -79,7 +94,7 @@ function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = fa
                     type={type}
                     value={value}
                     readOnly={readOnly}
-                    onChange={() => undefined}
+                    onChange={(event) => onChange?.(event.target.value)}
                     className={styles.textInput}
                 />
             </div>
