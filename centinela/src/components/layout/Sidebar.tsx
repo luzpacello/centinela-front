@@ -42,12 +42,6 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                             </NavLink>
                         </>
                     )}
-
-                    <div className="pt-4 pb-2">
-                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sistema</p>
-                    </div>
-                    <NavLink to="/two-factor" className={getNavigationLinkClassName}>Vista de 2FA</NavLink>
-                    <NavLink to="/login" className={getNavigationLinkClassName}>Iniciar sesión</NavLink>
                 </nav>
             </div>
 
