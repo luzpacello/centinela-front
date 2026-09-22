@@ -13,6 +13,7 @@ const forbiddenTitles: Record<string, string> = {
   NO_ROLE: 'Permisos de administrador requeridos',
   INVALID_ROLE: 'Permisos de administrador requeridos',
   '2FA_REQUIRED': 'Verificación en dos pasos requerida',
+  PASSWORD_CHANGE_REQUIRED: 'Cambio de contraseña requerido',
 };
 
 export function ApiResponseNotifier() {
