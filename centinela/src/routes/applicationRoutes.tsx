@@ -2,14 +2,13 @@ import { Outlet, redirect, type RouteObject } from 'react-router';
 import MainLayoutAuth from '@/components/layout_auth/MainLayoutAuth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import LoginPage from '@/pages/Login';
-import DashboardPage from '@/pages/Dashboard.jsx';
-import InstancesPage from '@/pages/Instances.jsx';
+import DashboardPage from '@/pages/Dashboard';
+import InstancesPage from '@/pages/Instances';
 import UsersPage from '@/pages/Users';
-import NotFoundPage from '@/pages/NotFound.jsx';
+import NotFoundPage from '@/pages/NotFound';
 import { TwoFactorPage } from '@/pages/TwoFactor';
-//import { LoginContinuation } from '@/components/features/auth/components/LoginContinuation';
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
-import { loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
+import { loadAdminSession, loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
 import CrearUsuariosPage from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
@@ -45,9 +44,15 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
           { path: '/auditoria', Component: AuditoriaPage },
-          { path: '/users', Component: UsersPage },
-          { path: '/users/new', Component: CrearUsuariosPage },
-          { path: '/users/:userId', Component: UserDetailPage },
+          {
+            // Guard administrativo: un OPERATOR es redirigido al dashboard.
+            loader: loadAdminSession,
+            children: [
+              { path: '/users', Component: UsersPage },
+              { path: '/users/new', Component: CrearUsuariosPage },
+              { path: '/users/:userId', Component: UserDetailPage },
+            ],
+          },
         ],
       },
       { path: '*', Component: NotFoundPage },

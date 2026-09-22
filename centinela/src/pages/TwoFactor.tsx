@@ -33,7 +33,7 @@ export const TwoFactorPage: React.FC = () => {
       clearPendingLoginSession();
       navigate('/dashboard', { replace: true });
     } catch(error) {
-      const errorMessage = mapAuthenticationError(ErrorEvent, 'twoFactor').message ?? 'No se pudo verificar el código.';
+      const errorMessage = mapAuthenticationError(error, 'twoFactor').message ?? 'No se pudo verificar el código.';
       setSubmitError(errorMessage);
       toast.add({
         title: 'Error de verificación',

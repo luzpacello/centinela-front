@@ -11,7 +11,7 @@ export default function ProtectedLayout() {
   const { isLoggingOut, logout } = useLogout();
 
   return (
-    <MainLayout>
+    <MainLayout user={user}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-5 py-4">
         <div className="text-left">
           <p className="font-semibold text-gray-900">{user.nombreCompleto}</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { ArrowLeft, CheckCircle2, ChevronDown, Info, LockKeyhole, Monitor, Save, Shield, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,22 @@ interface UserFormState {
     activo: boolean;
 }
 
+// Contrato real de GET /api/admin/users/:id (UsuarioDetalleDTO).
+interface UsuarioDetalleDTO {
+    id: string | number;
+    nombreCompleto?: string | null;
+    nombreUsuario?: string | null;
+    emailUsuario?: string | null;
+    organizacionId?: string | null;
+    rol?: string | null;
+    activo?: boolean;
+    totpVinculado?: boolean;
+    cambioContrasenaRequerido?: boolean;
+    fechaCreacion?: string | null;
+    fechaUltimoAcceso?: string | null;
+    instanciasPermitidas?: number[] | null;
+}
+
 const USER_FALLBACK_ID = 'unknown';
 
 /**
@@ -40,21 +56,63 @@ export default function UserDetail() {
     const [activeTab, setActiveTab] = useState(tabs[0]);
     const params = useParams<{ userId?: string }>();
     const userId = resolveUserId(params?.userId);
-    const [form, setForm] = useState<UserFormState>({
-        nombreCompleto: 'Usuario Dos',
-        emailUsuario: 'usuario2@propex.local',
-        rol: 'OPERATOR',
-        activo: true,
-    });
+    const [form, setForm] = useState<UserFormState | null>(null);
+    const [nombreUsuario, setNombreUsuario] = useState('');
+    const [isLoadingUser, setIsLoadingUser] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Carga el usuario real: sin esto el formulario arrancaba con datos mock
+    // ("Usuario Dos" / usuario2@propex.local) y el PUT pisaba datos reales.
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadUser() {
+            setIsLoadingUser(true);
+            setLoadError(null);
+            try {
+                const data = await apiClient.get<UsuarioDetalleDTO>(
+                    `/admin/users/${encodeURIComponent(userId)}`,
+                    { signal: controller.signal },
+                );
+                if (!data || typeof data !== 'object') {
+                    throw new ApiRequestError('Usuario no encontrado.', 404);
+                }
+                setForm({
+                    nombreCompleto: data.nombreCompleto ?? '',
+                    emailUsuario: data.emailUsuario ?? '',
+                    rol: data.rol ?? 'OPERATOR',
+                    activo: Boolean(data.activo),
+                });
+                setNombreUsuario(data.nombreUsuario ?? '');
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                setForm(null);
+                setNombreUsuario('');
+                setLoadError(
+                    error instanceof ApiRequestError && error.status === 404
+                        ? 'Usuario no encontrado.'
+                        : error instanceof ApiRequestError
+                            ? error.message
+                            : 'No se pudo cargar el usuario. Intentá nuevamente.',
+                );
+            } finally {
+                if (!controller.signal.aborted) setIsLoadingUser(false);
+            }
+        }
+
+        loadUser();
+        return () => controller.abort();
+    }, [userId]);
+
     function updateForm(patch: Partial<UserFormState>) {
-        setForm((previous) => ({ ...previous, ...patch }));
+        setForm((previous) => (previous ? { ...previous, ...patch } : previous));
     }
 
     async function handleSaveChanges() {
+        if (!form) return;
         setFeedback(null);
         setIsSaving(true);
         try {
@@ -76,6 +134,7 @@ export default function UserDetail() {
     }
 
     async function handleDeleteUser() {
+        if (!form) return;
         setFeedback(null);
         setIsDeleting(true);
         try {
@@ -96,30 +155,32 @@ export default function UserDetail() {
     return (
         <section className="flex min-w-0 flex-col gap-5 text-slate-900">
             <header className="flex flex-wrap items-start justify-between gap-4">
-                <div><p className="mb-2 text-xs text-slate-500">Usuarios <span className="mx-2">›</span> <strong className="text-slate-700">usuario2</strong></p><h1>Detalle / Edición de usuario</h1><p className="text-secundario">Gestioná la información, roles y permisos del usuario.</p></div>
-                <div className="flex flex-wrap gap-3"><Button type="button" variant="outline"><ArrowLeft className="size-4!" /> Volver</Button><Button type="button" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={handleDeleteUser} disabled={isDeleting}><Trash2 className="size-4!" /> Eliminar usuario</Button><Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleSaveChanges} disabled={isSaving}><Save className="size-4!" /> Guardar cambios</Button></div>
+                <div><p className="mb-2 text-xs text-slate-500">Usuarios <span className="mx-2">›</span> <strong className="text-slate-700">{form?.nombreCompleto || nombreUsuario || userId}</strong></p><h1>Detalle / Edición de usuario</h1><p className="text-secundario">Gestioná la información, roles y permisos del usuario.</p></div>
+                <div className="flex flex-wrap gap-3"><Button type="button" variant="outline"><ArrowLeft className="size-4!" /> Volver</Button><Button type="button" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={handleDeleteUser} disabled={isDeleting || !form}><Trash2 className="size-4!" /> Eliminar usuario</Button><Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleSaveChanges} disabled={isSaving || !form}><Save className="size-4!" /> Guardar cambios</Button></div>
             </header>
 
+            {isLoadingUser && <p role="status" className="text-xs text-slate-500">Cargando usuario…</p>}
+            {loadError && <p role="alert" className="text-xs text-red-600">{loadError}</p>}
             {feedback && <p role={feedback.type === 'error' ? 'alert' : 'status'} className={`text-xs ${feedback.type === 'error' ? 'text-red-600' : 'text-emerald-700'}`}>{feedback.message}</p>}
 
-            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_18.5rem]">
+            {form && <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_18.5rem]">
                 <div className="flex min-w-0 flex-col gap-4">
                     <Card className="gap-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
                         <nav className="flex overflow-x-auto border-b border-slate-100 px-5 pt-3" aria-label="Secciones del usuario">{tabs.map((tab) => <button type="button" key={tab} onClick={() => setActiveTab(tab)} className={`shrink-0 border-b-2 px-3 pb-3 text-xs font-medium transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{tab}</button>)}</nav>
-                        {activeTab === 'Información general' && <GeneralTab form={form} onChange={updateForm} />}
+                        {activeTab === 'Información general' && <GeneralTab form={form} nombreUsuario={nombreUsuario} onChange={updateForm} />}
                         {activeTab === 'Roles y permisos' && <PermissionsTab rol={form.rol} onRol={(rol) => updateForm({ rol })} />}
                         {activeTab !== 'Información general' && activeTab !== 'Roles y permisos' && <PlaceholderTab name={activeTab} />}
                     </Card>
                     {activeTab === 'Información general' && <InstancesAccess />}
                 </div>
                 <aside className="flex flex-col gap-4"><UserSummary /><SecurityCard /><ActivityCard /></aside>
-            </div>
+            </div>}
         </section>
     );
 }
 
-function GeneralTab({ form, onChange }: { form: UserFormState; onChange: (patch: Partial<UserFormState>) => void }) {
-    return <div className="grid gap-5 p-5"><h2 className="m-0 text-base font-semibold">Información general</h2><div className="grid gap-5 md:grid-cols-2"><Field id="nombre" label="Nombre completo" value={form.nombreCompleto} onChange={(value) => onChange({ nombreCompleto: value })} /><Field id="usuario" label="Nombre de usuario" value="usuario2" /><Field id="email" label="Email" value={form.emailUsuario} type="email" onChange={(value) => onChange({ emailUsuario: value })} /><Field id="organizacion" label="Organización (solo lectura)" value="Universidad Nacional de Tierra del Fuego" readOnly /><div><label className="mb-2 block text-label" htmlFor="rol">Rol</label><select id="rol" className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.rol} onChange={(event) => onChange({ rol: event.target.value })}><option value="ADMIN">ADMIN</option><option value="OPERATOR">OPERATOR</option></select></div><label className="flex items-center justify-between text-label"><span>Usuario activo<small className="mt-1 block text-caption">El usuario puede acceder al sistema.</small></span><input type="checkbox" checked={form.activo} onChange={(event) => onChange({ activo: event.target.checked })} className="size-5 accent-blue-600" /></label></div><div className="border-t border-slate-100 pt-4"><div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900"><Info className="size-4 shrink-0 text-blue-600" /> Los cambios en la información del usuario, roles o permisos pueden afectar el acceso al sistema.</div></div></div>;
+function GeneralTab({ form, nombreUsuario, onChange }: { form: UserFormState; nombreUsuario: string; onChange: (patch: Partial<UserFormState>) => void }) {
+    return <div className="grid gap-5 p-5"><h2 className="m-0 text-base font-semibold">Información general</h2><div className="grid gap-5 md:grid-cols-2"><Field id="nombre" label="Nombre completo" value={form.nombreCompleto} onChange={(value) => onChange({ nombreCompleto: value })} /><Field id="usuario" label="Nombre de usuario" value={nombreUsuario} /><Field id="email" label="Email" value={form.emailUsuario} type="email" onChange={(value) => onChange({ emailUsuario: value })} /><Field id="organizacion" label="Organización (solo lectura)" value="Universidad Nacional de Tierra del Fuego" readOnly /><div><label className="mb-2 block text-label" htmlFor="rol">Rol</label><select id="rol" className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={form.rol} onChange={(event) => onChange({ rol: event.target.value })}><option value="ADMIN">ADMIN</option><option value="OPERATOR">OPERATOR</option></select></div><label className="flex items-center justify-between text-label"><span>Usuario activo<small className="mt-1 block text-caption">El usuario puede acceder al sistema.</small></span><input type="checkbox" checked={form.activo} onChange={(event) => onChange({ activo: event.target.checked })} className="size-5 accent-blue-600" /></label></div><div className="border-t border-slate-100 pt-4"><div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900"><Info className="size-4 shrink-0 text-blue-600" /> Los cambios en la información del usuario, roles o permisos pueden afectar el acceso al sistema.</div></div></div>;
 }
 
 function PermissionsTab({ rol, onRol }: { rol: string; onRol: (value: string) => void }) {
