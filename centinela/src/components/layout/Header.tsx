@@ -72,13 +72,11 @@ export default function Header({ user }: { user?: UserSession }) {
 }
 
 const style = {
-    header: 'sticky top-0 z-10 flex h-16 w-full shrink-0 items-center justify-end bg-slate-50/40 px-6 backdrop-blur-md border-b border-white/30',
+    header: 'sticky top-1 z-10 flex h-12 w-full shrink-0 items-center justify-end bg-slate-50/20 px-6 backdrop-blur-md border-b border-white/20',
     profileContainer: 'relative',
 
     // Ajusté un poquito el padding (p-1.5 pr-2) para que la cápsula quede más redondita y simétrica al no tener texto
     triggerButton: 'flex items-center gap-1.5 rounded-full border border-white/50 bg-white/80 p-1.5 pr-2 shadow-sm backdrop-blur-sm transition-all hover:border-slate-300 hover:bg-white hover:shadow-md focus:outline-none',
-
-    // Volvemos al avatar azul sólido, y lo hice apenitas más grande (h-8 w-8) para que tenga buena presencia
     avatar: 'flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white',
 
     arrowIcon: 'size-4 text-slate-400 transition-transform duration-200',
