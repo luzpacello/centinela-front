@@ -7,7 +7,6 @@ import InstancesPage from '@/pages/Instances';
 import UsersPage from '@/pages/Users';
 import NotFoundPage from '@/pages/NotFound';
 import { TwoFactorPage } from '@/pages/TwoFactor';
-//import { LoginContinuation } from '@/components/features/auth/components/LoginContinuation';
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
 import { loadAdminSession, loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
