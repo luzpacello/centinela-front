@@ -15,6 +15,17 @@ import {
   mapPerfilToUserSession,
 } from '../utils/validateAuthenticationResponses.ts';
 
+// Estado en el que el backend bloquea toda petición autenticada (incluido
+// GET /account/profile) con 403 PASSWORD_CHANGE_REQUIRED hasta que el usuario
+// cambie su contraseña temporal. Se distingue de un fallo real para que el
+// llamador derive a /change-password en vez de mostrar un error genérico.
+export class PasswordChangeRequiredError extends Error {
+  constructor() {
+    super('Debe cambiar su contraseña temporal antes de continuar.');
+    this.name = 'PasswordChangeRequiredError';
+  }
+}
+
 // POST /auth/login — valida credenciales y devuelve el JWT temporal del flujo 2FA.
 // No emite tokens de sesión ni datos del usuario: eso ocurre al completar el 2FA.
 export async function submitLoginCredentials(credentials: LoginCredentials, signal?: AbortSignal): Promise<LoginResponse> {
@@ -39,12 +50,23 @@ export async function fetchUserProfile(signal?: AbortSignal): Promise<UserSessio
 }
 
 // Guarda los tokens emitidos al completar el 2FA y a continuación guarda el perfil.
+// Si el backend responde 403 PASSWORD_CHANGE_REQUIRED, los tokens ya quedaron
+// guardados (la pantalla de cambio los necesita) pero no se guarda la sesión de
+// usuario: se lanza PasswordChangeRequiredError para que el llamador derive.
 export async function persistSessionFromTokens(tokens: TokenResponse, signal?: AbortSignal): Promise<UserSession> {
   if (!isTokenResponse(tokens)) {
     throw new ApiRequestError('La respuesta del servidor no contiene una sesión válida.');
   }
   storeAuthTokens({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
-  const user = await fetchUserProfile(signal);
+  let user: UserSession;
+  try {
+    user = await fetchUserProfile(signal);
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 403 && error.errorCode === 'PASSWORD_CHANGE_REQUIRED') {
+      throw new PasswordChangeRequiredError();
+    }
+    throw error;
+  }
   storeUserSession(user);
   return user;
 }

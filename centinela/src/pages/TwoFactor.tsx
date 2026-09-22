@@ -9,7 +9,7 @@ import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorFor
 import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
 import type { LoginResponse } from '@/components/features/auth/types/authentication';
 import { clearPendingLoginSession } from '@/storage/tokenStorage';
-import { persistSessionFromTokens } from '@/components/features/auth/services/authService';
+import { PasswordChangeRequiredError, persistSessionFromTokens } from '@/components/features/auth/services/authService';
 import { mapAuthenticationError } from '@/components/features/auth/utils/mapAuthenticationError';
 import { use2FA } from '@/components/features/2fa/hooks/use2FA';
 import { toast } from '@/components/ui/toast';
@@ -33,6 +33,13 @@ export const TwoFactorPage: React.FC = () => {
       clearPendingLoginSession();
       navigate('/dashboard', { replace: true });
     } catch(error) {
+      // El backend exige cambiar la contraseña temporal antes de dejar entrar:
+      // se deriva a la pantalla de cambio en vez de mostrar un error de verificación.
+      if (error instanceof PasswordChangeRequiredError) {
+        clearPendingLoginSession();
+        navigate('/change-password', { replace: true });
+        return;
+      }
       const errorMessage = mapAuthenticationError(error, 'twoFactor').message ?? 'No se pudo verificar el código.';
       setSubmitError(errorMessage);
       toast.add({

@@ -15,6 +15,7 @@ const authenticationErrorMessages: Record<string, string> = {
   USER_NOT_FOUND: 'No se encontró el usuario solicitado.',
   SELF_DELETE_NOT_ALLOWED: 'No podés eliminar tu propio usuario.',
   PASSWORD_CHANGE_FAILED: 'No se pudo cambiar la contraseña. Revisá los datos e intentá nuevamente.',
+  PASSWORD_CHANGE_REQUIRED: 'Debe cambiar su contraseña temporal antes de continuar.',
   REFRESH_FAILED: 'Tu sesión expiró. Volvé a iniciar sesión.',
   INVALID_UUID: 'El identificador proporcionado no es válido.',
 };

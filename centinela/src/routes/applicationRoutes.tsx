@@ -8,13 +8,14 @@ import UsersPage from '@/pages/Users';
 import NotFoundPage from '@/pages/NotFound';
 import { TwoFactorPage } from '@/pages/TwoFactor';
 import { clearPendingLoginLoader, loadPendingTwoFactorSession, submitLoginAction, submitOrganizationRegistrationAction } from '@/components/features/auth/routes/authenticationActions';
-import { loadAdminSession, loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
+import { loadAdminSession, loadPasswordChangeSession, loadProtectedSession } from '@/components/features/auth/routes/sessionGuard';
 import { RouteErrorPage } from './RouteErrorPage';
 import CrearUsuariosPage from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
 import UserDetailPage from '@/pages/UserDetail';
 import AuditoriaPage from '@/pages/Auditoria';
 import RecoverPasswordPage from '@/pages/RecoverPassword';
+import ChangePasswordPage from '@/pages/ChangePassword';
 
 export const applicationRoutes: RouteObject[] = [
   {
@@ -27,6 +28,9 @@ export const applicationRoutes: RouteObject[] = [
           { path: '/login', Component: LoginPage, loader: clearPendingLoginLoader, action: submitLoginAction },
           { path: '/signup', Component: SignUpPage, loader: clearPendingLoginLoader, action: submitOrganizationRegistrationAction },
           { path: '/recover-password', Component: RecoverPasswordPage, loader: clearPendingLoginLoader },
+          // Cambio obligatorio de contraseña temporal: exige token pero no perfil,
+          // porque el backend bloquea el perfil con 403 en este estado.
+          { path: '/change-password', Component: ChangePasswordPage, loader: loadPasswordChangeSession },
           { path: '/two-factor/setup', Component: TwoFactorPage, loader: loadPendingTwoFactorSession },
           { path: '/two-factor/verify', Component: TwoFactorPage, loader: loadPendingTwoFactorSession },
           // Conserva la página existente como prototipo de diseño; el login real no navega aquí.

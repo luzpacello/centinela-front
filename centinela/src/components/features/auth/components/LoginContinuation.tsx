@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
 import type { LoginResponse } from '../types/authentication';
 import { clearPendingLoginSession } from '../services/pendingLoginSession';
-import { persistSessionFromTokens } from '../services/authService';
+import { PasswordChangeRequiredError, persistSessionFromTokens } from '../services/authService';
 import { mapAuthenticationError } from '../utils/mapAuthenticationError';
 import { use2FA } from '@/components/features/2fa/hooks/use2FA';
 import { TwoFactorForm } from '@/components/features/2fa/components/TwoFactorForm';
@@ -28,6 +28,12 @@ export function LoginContinuation() {
       clearPendingLoginSession();
       navigate('/dashboard', { replace: true });
     } catch (error) {
+      // El backend exige cambiar la contraseña temporal antes de dejar entrar.
+      if (error instanceof PasswordChangeRequiredError) {
+        clearPendingLoginSession();
+        navigate('/change-password', { replace: true });
+        return;
+      }
       setSubmitError(mapAuthenticationError(error, 'twoFactor').message ?? 'No se pudo verificar el código.');
     } finally {
       setIsSubmitting(false);
