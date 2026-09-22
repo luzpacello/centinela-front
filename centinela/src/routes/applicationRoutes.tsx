@@ -12,7 +12,7 @@ import { loadAdminSession, loadPasswordChangeSession, loadProtectedSession } fro
 import { RouteErrorPage } from './RouteErrorPage';
 import CrearUsuariosPage from '@/pages/CrearUsuarios';
 import SignUpPage from '@/pages/SignUp';
-import UserDetailPage from '@/pages/UserDetail';
+import DetailsUserPage from '@/pages/detailsUserPage';
 import AuditoriaPage from '@/pages/Auditoria';
 import RecoverPasswordPage from '@/pages/RecoverPassword';
 import ChangePasswordPage from '@/pages/ChangePassword';
@@ -54,7 +54,7 @@ export const applicationRoutes: RouteObject[] = [
             children: [
               { path: '/users', Component: UsersPage },
               { path: '/users/new', Component: CrearUsuariosPage },
-              { path: '/users/:userId', Component: UserDetailPage },
+              { path: '/users/:userId', Component: DetailsUserPage },
             ],
           },
         ],
