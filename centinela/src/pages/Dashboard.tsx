@@ -20,8 +20,7 @@ export default function Dashboard() {
                         <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
                             <Bell className={style.smallIcon} />
                         </Button>
-                        <span className={style.avatar}>A</span>
-                        <ChevronDown className={style.smallIcon} aria-hidden="true" />
+
                     </div>
 
                 </div>
