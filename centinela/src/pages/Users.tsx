@@ -160,7 +160,7 @@ export default function UsersPage() {
                     <Button type="button" variant="outline">
                         <Filter className="size-4!" /> Filtros
                     </Button>
-                    <Button type="button">
+                    <Button type="button" onClick={() => navigate('/users/new')}>
                         <UserPlus className="size-4!" /> Nuevo usuario
                     </Button>
                 </div>
