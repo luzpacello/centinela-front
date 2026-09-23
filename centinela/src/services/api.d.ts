@@ -27,8 +27,7 @@ export function sendJsonGetRequest(
 ): Promise<unknown>;
 
 export function getAccessToken(): string | null;
-export function getRefreshToken(): string | null;
-export function storeAuthTokens(tokens?: { accessToken?: string; refreshToken?: string }): void;
+export function storeAuthTokens(tokens?: { accessToken?: string }): void;
 export function storeUserSession(user: StoredSessionUser): void;
 export function getStoredUserSession(): StoredSessionUser | null;
 export function clearAuthTokens(): void;
