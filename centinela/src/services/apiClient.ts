@@ -1,4 +1,4 @@
-import { getAccessToken, getRefreshToken, storeAuthTokens } from '@/storage/tokenStorage';
+import { getAccessToken, storeAuthTokens } from '@/storage/tokenStorage';
 
 export const API_FORBIDDEN_EVENT = 'centinela:api-forbidden';
 export const API_UNAUTHORIZED_EVENT = 'centinela:api-unauthorized';
@@ -110,24 +110,35 @@ async function performJsonRequest(
   }
 }
 
-async function tryToRenewSession(signal?: AbortSignal): Promise<boolean> {
-  const refreshToken = typeof window === 'undefined' ? null : getRefreshToken();
-  if (!refreshToken) return false;
+// Las peticiones concurrentes comparten una sola renovación de la cookie.
+let pendingSessionRenewal: Promise<boolean> | null = null;
 
+async function renewSessionWithCookie(): Promise<boolean> {
+  const previousAccessToken = readStoredAccessToken();
   try {
     const { body, response } = await performJsonRequest('/auth/refresh', {
       method: 'POST',
-      payload: { refreshToken },
-      signal,
+      payload: {},
     });
     if (!response.ok || typeof body !== 'object' || body === null) return false;
     const tokens = body as Record<string, unknown>;
-    if (typeof tokens.accessToken !== 'string' || typeof tokens.refreshToken !== 'string') return false;
-    storeAuthTokens({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+    if (typeof tokens.accessToken !== 'string' || !tokens.accessToken.trim()) return false;
+    // No restaurar una sesión cerrada o reemplazada mientras se renovaba.
+    if (readStoredAccessToken() !== previousAccessToken) return false;
+    storeAuthTokens({ accessToken: tokens.accessToken });
     return true;
   } catch {
     return false;
   }
+}
+
+function tryToRenewSession(): Promise<boolean> {
+  if (!pendingSessionRenewal) {
+    pendingSessionRenewal = renewSessionWithCookie().finally(() => {
+      pendingSessionRenewal = null;
+    });
+  }
+  return pendingSessionRenewal;
 }
 
 function reportHttpError(error: ApiRequestError): void {
@@ -145,12 +156,18 @@ function reportHttpError(error: ApiRequestError): void {
 }
 
 async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const usedStoredAccessToken = !options.bearer && Boolean(readStoredAccessToken());
+  const originalAccessToken = readStoredAccessToken();
+  const usedStoredAccessToken = !options.bearer && Boolean(originalAccessToken);
   let result = await performJsonRequest(path, options);
 
   // Se intenta renovar una sola vez antes de invalidar una sesión autenticada.
-  if (result.response.status === 401 && usedStoredAccessToken && path !== '/auth/refresh') {
-    if (await tryToRenewSession(options.signal)) {
+  if (result.response.status === 401 && usedStoredAccessToken && !['/auth/refresh', '/auth/logout', '/auth/login'].includes(path)) {
+    // Otra petición puede haber renovado el token antes de que llegue este 401.
+    const sessionWasRenewed = readStoredAccessToken() !== originalAccessToken
+      ? Boolean(readStoredAccessToken())
+      : await tryToRenewSession();
+    options.signal?.throwIfAborted();
+    if (sessionWasRenewed) {
       result = await performJsonRequest(path, options);
     }
     options.signal?.throwIfAborted();

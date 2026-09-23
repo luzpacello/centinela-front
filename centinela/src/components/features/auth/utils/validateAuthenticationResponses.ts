@@ -33,7 +33,6 @@ export function isTwoFactorQrResponse(value: unknown): value is TwoFactorQrRespo
 export function isTokenResponse(value: unknown): value is TokenResponse {
   if (!isRecord(value)) return false;
   return isNonEmptyString(value.accessToken)
-    && isNonEmptyString(value.refreshToken)
     && typeof value.expiresIn === 'number';
 }
 

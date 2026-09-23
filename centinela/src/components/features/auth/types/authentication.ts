@@ -35,7 +35,6 @@ export interface TwoFactorQrResponse {
 // Contrato real de POST /auth/2fa/verify y POST /auth/refresh.
 export interface TokenResponse {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number;
 }
 

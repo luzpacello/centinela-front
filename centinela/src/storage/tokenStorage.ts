@@ -3,7 +3,6 @@ import { isLoginResponse } from '../components/features/auth/utils/validateAuthe
 
 const pendingLoginKey = 'centinela_pending_login';
 const accessTokenKey = 'centinela_access';
-const refreshTokenKey = 'centinela_refresh';
 
 export function savePendingLoginSession(response: LoginResponse): void {
   // Los indicadores permiten restaurar el paso de 2FA después de recargar.
@@ -35,18 +34,14 @@ export function getAccessToken(): string | null {
   return window.sessionStorage.getItem(accessTokenKey);
 }
 
-export function getRefreshToken(): string | null {
-  return window.sessionStorage.getItem(refreshTokenKey);
-}
-
-export function storeAuthTokens({ accessToken, refreshToken }: { accessToken?: string; refreshToken?: string } = {}): void {
-  if (accessToken) window.sessionStorage.setItem(accessTokenKey, accessToken);
-  if (refreshToken) window.sessionStorage.setItem(refreshTokenKey, refreshToken);
-  if (accessToken && refreshToken) clearPendingLoginSession();
+export function storeAuthTokens({ accessToken }: { accessToken?: string } = {}): void {
+  if (accessToken) {
+    window.sessionStorage.setItem(accessTokenKey, accessToken);
+    clearPendingLoginSession();
+  }
 }
 
 export function clearAuthTokens(): void {
   clearPendingLoginSession();
   window.sessionStorage.removeItem(accessTokenKey);
-  window.sessionStorage.removeItem(refreshTokenKey);
 }
