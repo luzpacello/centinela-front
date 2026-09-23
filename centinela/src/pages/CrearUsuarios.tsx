@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Check, CheckCircle2, Copy, Eye, Info, Shield, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, ChevronRight, Copy, Eye, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ const EMPTY_FORM = { nombreCompleto: '', nombreUsuario: '', emailUsuario: '', ro
 
 export default function CrearUsuarios() {
     const navigate = useSafeNavigate();
+    const goBack = () => window.history.back();
     const [form, setForm] = useState(EMPTY_FORM);
     const [tempPassword, setTempPassword] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,14 +78,24 @@ export default function CrearUsuarios() {
 
     return (
         <section className={style.page}>
-            <header>
-                <h1>Crear usuario</h1>
-                <p className="text-secundario">Agregá un nuevo usuario a tu organización.</p>
-            </header>
+            <header className={style.pageHeader}>
+                <div className={style.headingContainer}>
+                    <nav className={style.breadcrumb} aria-label="Navegación secundaria">
+                        <span>Usuarios</span>
+                        <ChevronRight className={style.breadcrumbIcon} aria-hidden="true" />
+                        <span className={style.currentPageName}>Crear usuario</span>
+                    </nav>
+                    <h1>Crear usuario</h1>
+                    <p className="text-secundario">Agregá un nuevo usuario a tu organización.</p>
+                </div>
 
-            <Button type="button" variant="outline" className={style.backButton} onClick={() => navigate('/users')}>
-                <ArrowLeft className={style.smallIcon} /> Volver a usuarios
-            </Button>
+                <div className={style.headerActions}>
+                    <Button type="button" variant="outline" onClick={goBack}>
+                        <ArrowLeft className={style.smallIcon} aria-hidden="true" />
+                        Volver
+                    </Button>
+                </div>
+            </header>
 
             <div className={style.mainGrid}>
                 <Card className={style.formCard}>
@@ -144,8 +155,8 @@ export default function CrearUsuarios() {
 
                         <div className={style.formActions}>
                             <Button type="button" variant="outline" onClick={() => navigate('/users')}>Cancelar</Button>
-                            <Button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white hover:bg-blue-700">
-                                <UserRound className={style.smallIcon} /> Crear usuario
+                            <Button type="submit" disabled={isSubmitting}>
+                                <UserPlus className="size-4!" />  Crear usuario
                             </Button>
                         </div>
                     </form>
@@ -232,7 +243,12 @@ function FormField({ id, label, placeholder, hint, type = 'text', required = fal
 
 const style = {
     page: 'flex min-w-0 flex-col gap-5 text-slate-900',
-    backButton: 'w-full justify-start border-slate-100 bg-white text-xs text-blue-600 shadow-sm hover:text-blue-700',
+    pageHeader: 'flex flex-col items-start justify-between gap-5 lg:flex-row',
+    headingContainer: 'min-w-0',
+    breadcrumb: 'mb-3 flex items-center gap-1.5 text-xs text-slate-500',
+    breadcrumbIcon: 'size-3.5',
+    currentPageName: 'font-semibold text-slate-900',
+    headerActions: 'flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end',
     mainGrid: 'grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]',
     formCard: 'gap-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0',
     formHeader: 'border-b border-slate-100 px-5 py-4',
