@@ -1,7 +1,6 @@
 import {
   ApiRequestError,
   clearAuthTokens,
-  getRefreshToken,
   sendJsonGetRequest,
   sendJsonPostRequest,
   storeAuthTokens,
@@ -49,15 +48,15 @@ export async function fetchUserProfile(signal?: AbortSignal): Promise<UserSessio
   return mapPerfilToUserSession(perfil);
 }
 
-// Guarda los tokens emitidos al completar el 2FA y a continuación guarda el perfil.
-// Si el backend responde 403 PASSWORD_CHANGE_REQUIRED, los tokens ya quedaron
-// guardados (la pantalla de cambio los necesita) pero no se guarda la sesión de
+// Guarda el access token emitido al completar el 2FA y luego el perfil.
+// Si el backend responde 403 PASSWORD_CHANGE_REQUIRED, el access token queda
+// guardado para la pantalla de cambio, pero no se guarda la sesión de
 // usuario: se lanza PasswordChangeRequiredError para que el llamador derive.
 export async function persistSessionFromTokens(tokens: TokenResponse, signal?: AbortSignal): Promise<UserSession> {
   if (!isTokenResponse(tokens)) {
     throw new ApiRequestError('La respuesta del servidor no contiene una sesión válida.');
   }
-  storeAuthTokens({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+  storeAuthTokens({ accessToken: tokens.accessToken });
   let user: UserSession;
   try {
     user = await fetchUserProfile(signal);
@@ -73,11 +72,8 @@ export async function persistSessionFromTokens(tokens: TokenResponse, signal?: A
 
 // POST /auth/logout — responde 204 sin cuerpo.
 export async function logoutSession(): Promise<void> {
-  const refreshToken = getRefreshToken();
   try {
-    if (refreshToken) {
-      await sendJsonPostRequest('/auth/logout', { refreshToken }, { expectedStatus: 204 });
-    }
+    await sendJsonPostRequest('/auth/logout', {}, { expectedStatus: 204 });
   } finally {
     // Siempre se limpia la sesión local aunque el backend falle o el token ya no exista.
     clearAuthTokens();
