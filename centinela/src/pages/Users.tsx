@@ -160,7 +160,7 @@ export default function UsersPage() {
                     <Button type="button" variant="outline">
                         <Filter className="size-4!" /> Filtros
                     </Button>
-                    <Button type="button" className="bg-blue-600 text-white shadow-sm hover:bg-blue-700">
+                    <Button type="button">
                         <UserPlus className="size-4!" /> Nuevo usuario
                     </Button>
                 </div>
