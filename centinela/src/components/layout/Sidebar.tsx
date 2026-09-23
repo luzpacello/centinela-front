@@ -39,10 +39,6 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                             <NavLink to="/users" end className={getNavigationLinkClassName}>
                                 <span className="text-lg text-slate-400"></span> Usuarios
                             </NavLink>
-
-                            <NavLink to="/users/new" className={getNavigationLinkClassName}>
-                                <span className="text-lg text-slate-400"></span> Crear usuario
-                            </NavLink>
                         </>
                     )}
                 </nav>
