@@ -1,7 +1,7 @@
-import { clearAuthTokens as clearStoredAuthTokens, getAccessToken, getRefreshToken, storeAuthTokens } from '../storage/tokenStorage.ts';
+import { clearAuthTokens as clearStoredAuthTokens, getAccessToken, storeAuthTokens } from '../storage/tokenStorage.ts';
 import { ApiRequestError, apiClient } from './apiClient.ts';
 
-export { getAccessToken, getRefreshToken, storeAuthTokens };
+export { getAccessToken, storeAuthTokens };
 export { ApiRequestError };
 
 const userSessionKey = 'centinela_user';
