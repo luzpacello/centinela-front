@@ -1,208 +1,153 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router';
-import { Bell, ChartNoAxesCombined, ChevronDown, LayoutGrid, LogOut, UserRound, UserPlus, Users, Circle } from 'lucide-react';
-import {
-    Sidebar as SidebarShell,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-} from '@/components/ui/sidebar';
+import { ChevronDown, LogOut, Shield, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 import { useLogout } from '@/components/features/auth/hooks/useAuth';
-import logoCentinela from '@/assets/logo.png';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
+    const [isOpen, setIsOpen] = useState(false);
     const { isLoggingOut, logout } = useLogout();
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-    const isAdmin = user?.rol === 'ADMIN';
     const primerNombre = user?.nombreCompleto?.split(' ')[0] ?? 'Admin';
-
-    const items = [
-        { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-        { to: '/instances', label: 'Instancias', icon: ChartNoAxesCombined },
-    ];
+    const isAdmin = user?.rol === 'ADMIN';
 
     return (
-        <SidebarShell collapsible="icon" className={style.sidebar}>
+        <aside className="flex h-full w-64 flex-col justify-between border-r border-slate-200 bg-white">
+            {/* Parte Superior: Logo y Navegación */}
+            <div>
+                <div className="flex h-16 items-center px-6">
+                    <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+                        {/* Cambiado a blue-600 para la gama austral */}
+                        <span className="text-3xl leading-none text-blue-600"></span>
+                        El Centinela
+                    </h1>
+                </div>
 
-            {/* ENCABEZADO Y LOGO */}
-            <SidebarHeader className={style.header}>
-                <div className={style.headerContent}>
-                    <div className={style.logoContainer}>
-                        <img
-                            src={logoCentinela}
-                            alt="Logo El Centinela"
-                            className={style.logoImage}
-                        />
+                <nav className="space-y-1 px-3 py-2">
+                    <NavLink to="/dashboard" className={getNavigationLinkClassName}>
+                        <span className="text-lg text-slate-400"></span> Dashboard
+                    </NavLink>
+
+                    <NavLink to="/instances" className={getNavigationLinkClassName}>
+                        {/* El ícono de la vista activa ahora es blue-600 */}
+                        <span className="text-lg text-blue-600"></span> Instancias
+                    </NavLink>
+
+                    {isAdmin && (
+                        <>
+                            <NavLink to="/users" end className={getNavigationLinkClassName}>
+                                <span className="text-lg text-slate-400"></span> Usuarios
+                            </NavLink>
+
+                            <NavLink to="/users/new" className={getNavigationLinkClassName}>
+                                <span className="text-lg text-slate-400"></span> Crear usuario
+                            </NavLink>
+                        </>
+                    )}
+                </nav>
+            </div>
+
+            {/* Parte Inferior: Estado y Perfil */}
+            <div className="space-y-4 p-4">
+                {/* Tarjeta de Proxmox VE */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        {/* Este punto y texto lo dejamos en verde porque en el diseño "Corriendo" es verde */}
+                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm font-semibold text-slate-900">Proxmox VE</span>
+                        <span className="ml-auto rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">Conectado</span>
                     </div>
-                    <div className={style.logoTextContainer}>
-                        <p className={style.logoTitle}>El Centinela</p>
-                        <p className={style.logoSubtitle}>Panel de control</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
+                        <div>
+                            <p className="mb-0.5">Nodo</p>
+                            <p className="font-medium text-slate-700">pve01</p>
+                        </div>
                     </div>
                 </div>
-            </SidebarHeader>
 
-            {/* CONTENIDO PRINCIPAL */}
-            <SidebarContent className="gap-4 p-3">
-                <SidebarGroup>
-                    <SidebarMenu className="space-y-1">
-                        {items.map(({ to, label, icon: Icon }) => (
-                            <SidebarMenuItem key={to}>
-                                <NavigationItem to={to} label={label} icon={Icon} end={to === '/dashboard'} />
-                            </SidebarMenuItem>
-                        ))}
+                {/* Contenedor del Perfil de Usuario con Menú Desplegable */}
+                <div className="relative pt-2">
+                    {isOpen && (
+                        <>
+                            <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setIsOpen(false)}
+                            />
 
-                        {isAdmin && (
-                            <>
-                                <SidebarMenuItem>
-                                    <NavigationItem to="/users" label="Usuarios" icon={Users} />
-                                </SidebarMenuItem>
+                            <div className={style.dropdownCard}>
+                                <div className={style.userInfoSection}>
+                                    <div className={style.userNameRow}>
+                                        <User className="size-4 text-slate-400" />
+                                        <h4 className="m-0 truncate text-slate-900">{user?.nombreCompleto ?? 'Admin'}</h4>
+                                    </div>
+                                    <div className={style.userRoleRow}>
+                                        <Shield className="size-3.5 text-blue-600" />
+                                        <p className="text-caption text-blue-600">{user?.rol ?? 'Admin'}</p>
+                                    </div>
+                                </div>
 
-                                <SidebarMenuItem>
-                                    <NavigationItem to="/users/new" label="Crear usuario" icon={UserPlus} />
-                                </SidebarMenuItem>
-                            </>
-                        )}
-                    </SidebarMenu>
-                </SidebarGroup>
+                                <div className={style.divider} />
 
-                {/* TARJETA PROXMOX */}
-                <div className={style.proxmoxCard}>
-                    <div className={style.proxmoxHeader}>
-                        <span className={style.proxmoxDot} aria-hidden="true" />
-                        <span className={style.proxmoxTitle}>Proxmox VE</span>
-                        <span className={style.proxmoxBadge}>Conectado</span>
-                    </div>
-                    <div className={style.proxmoxBody}>
-                        <p className={style.proxmoxLabel}>Nodo</p>
-                        <p className={style.proxmoxValue}>pve01</p>
-                    </div>
-                </div>
-            </SidebarContent>
+                                <div className={style.actionSection}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setIsOpen(false);
+                                            logout();
+                                        }}
+                                        disabled={isLoggingOut}
+                                        className={style.logoutButton}
+                                    >
+                                        <LogOut className={style.logoutIcon} aria-hidden="true" />
+                                        <span className="bg-transparent">{isLoggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-            {/* PIE DE PÁGINA (USUARIO) */}
-            <SidebarFooter className={style.footer}>
-                <div className="relative">
-                    {/* BOTÓN DEL USUARIO */}
                     <button
                         type="button"
-                        onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                        className={style.userTriggerBtn}
+                        onClick={() => setIsOpen(!isOpen)}
+                        aria-expanded={isOpen}
+                        className={style.triggerButton}
                     >
-                        <div className={style.userAvatar}>
+                        <div className={style.avatar}>
                             {primerNombre.charAt(0).toUpperCase()}
                         </div>
-
-                        <div className={style.userInfo}>
-                            <p className={style.userName}>{user?.nombreCompleto ?? 'Admin'}</p>
-                            <p className={style.userEmail}>{user?.email ?? 'admin@centinela.com'}</p>
+                        <div className="flex-1 text-left leading-tight">
+                            <p className="text-sm font-semibold text-slate-900">{user?.nombreCompleto ?? 'Admin'}</p>
+                            <p className="text-xs text-slate-500">{user?.rol ?? 'Administrador'}</p>
                         </div>
-
-                        <ChevronDown
-                            className={`${style.userTriggerIcon} ${isUserMenuOpen ? 'rotate-180' : ''}`}
-                            aria-hidden="true"
-                        />
+                        <ChevronDown className={`${style.arrowIcon} ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
-
-                    {/* MENÚ DESPLEGABLE */}
-                    {isUserMenuOpen && (
-                        <div className={style.dropdownContainer}>
-                            <div className={style.dropdownHeader}>
-                                <p className={style.userName}>{user?.nombreCompleto ?? 'Admin'}</p>
-                                <p className={style.userEmail}>{user?.rol ?? 'Administrador'}</p>
-                            </div>
-
-                            <button type="button" className={style.dropdownActionBtn} onClick={() => setIsUserMenuOpen(false)}>
-                                <UserRound className="size-4" aria-hidden="true" /> Cuenta
-                            </button>
-
-                            <button type="button" className={style.dropdownActionBtn} onClick={() => setIsUserMenuOpen(false)}>
-                                <Bell className="size-4" aria-hidden="true" /> Notificaciones
-                            </button>
-
-                            <button type="button" className={style.dropdownActionBtn} onClick={() => setIsUserMenuOpen(false)}>
-                                <Circle className="size-4" aria-hidden="true" /> Estado
-                            </button>
-
-                            <div className={style.dropdownDivider} />
-
-                            <button
-                                type="button"
-                                className={style.dropdownActionBtn}
-                                onClick={() => { setIsUserMenuOpen(false); logout(); }}
-                                disabled={isLoggingOut}
-                            >
-                                <LogOut className="size-4" aria-hidden="true" />
-                                {isLoggingOut ? 'Cerrando...' : 'Cerrar sesión'}
-                            </button>
-                        </div>
-                    )}
                 </div>
-            </SidebarFooter>
-        </SidebarShell>
+            </div>
+        </aside>
     );
 }
 
-// COMPONENTE DE NAVEGACIÓN
-function NavigationItem({ to, label, icon: Icon, end = false }: { to: string; label: string; icon: typeof LayoutGrid; end?: boolean; }) {
-    return (
-        <SidebarMenuButton
-            tooltip={label}
-            render={
-                <NavLink
-                    to={to}
-                    end={end}
-                    className={({ isActive }) => isActive ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : undefined}
-                />
-            }
-        >
-            <Icon aria-hidden="true" />
-            <span>{label}</span>
-        </SidebarMenuButton>
-    );
+// CORRECCIÓN PRINCIPAL: Colores activos en azul y hover en slate
+function getNavigationLinkClassName({ isActive }: { isActive: boolean }) {
+    return `flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive
+        ? 'bg-blue-50 text-blue-600'
+        // Cambiamos el hover a bg-blue-50 y text-blue-600 para el efecto celeste
+        : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
+        }`;
 }
 
-// OBJETO DE ESTILOS (Limpia)
 const style = {
-    // Estructura general
-    sidebar: 'border-r border-sidebar-border bg-sidebar text-sidebar-foreground',
-    header: 'border-b border-sidebar-border px-4 py-4 group-data-[collapsible=icon]:px-2',
-    headerContent: 'flex items-center gap-3 group-data-[collapsible=icon]:justify-center',
-    footer: 'border-t border-sidebar-border p-3 group-data-[collapsible=icon]:p-2',
-
-    // Logo
-    logoContainer: 'flex aspect-square size-15 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm',
-    logoImage: 'h-full w-full object-cover',
-    logoTextContainer: 'leading-tight group-data-[collapsible=icon]:hidden',
-    logoTitle: 'text-lg font-semibold text-sidebar-foreground',
-    logoSubtitle: 'text-xs text-sidebar-foreground/70',
-
-    // Tarjeta Proxmox
-    proxmoxCard: 'mt-auto rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-4 group-data-[collapsible=icon]:hidden',
-    proxmoxHeader: 'mb-3 flex items-center gap-2',
-    proxmoxDot: 'h-2.5 w-2.5 rounded-full bg-emerald-500',
-    proxmoxTitle: 'text-sm font-semibold text-sidebar-foreground',
-    proxmoxBadge: 'ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700',
-    proxmoxBody: 'text-xs text-sidebar-foreground/70',
-    proxmoxLabel: 'mb-1',
-    proxmoxValue: 'font-medium text-sidebar-foreground',
-
-    // Botón de Usuario (Trigger)
-    userTriggerBtn: 'flex w-full items-center gap-3 rounded-xl border border-sidebar-border bg-background px-2.5 py-2.5 text-left shadow-sm transition-colors hover:bg-sidebar-accent/60 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:shadow-none',
-    userAvatar: 'flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground',
-    userInfo: 'min-w-0 flex-1 group-data-[collapsible=icon]:hidden',
-    userName: 'truncate text-sm font-semibold text-foreground',
-    userEmail: 'truncate text-xs text-muted-foreground',
-    userTriggerIcon: 'size-4 shrink-0 text-muted-foreground transition-transform group-data-[collapsible=icon]:hidden',
-
-    // Menú Desplegable de Usuario (Dropdown)
-    dropdownContainer: 'absolute bottom-full left-0 right-0 z-20 mb-2 rounded-xl border border-border bg-background p-1.5 text-foreground shadow-lg ring-1 ring-border/60',
-    dropdownHeader: 'border-b border-border px-2.5 py-2.5',
-    dropdownActionBtn: 'flex w-full items-center justify-start gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-    dropdownDivider: 'my-1 border-t border-border',
+    triggerButton: 'flex w-full items-center gap-3 rounded-xl p-2 transition-colors hover:bg-slate-100 focus:outline-none',
+    avatar: 'flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white shadow-sm',
+    arrowIcon: 'size-4 text-slate-400 transition-transform duration-200',
+    dropdownCard: 'absolute bottom-full left-0 z-20 mb-2 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg ring-1 ring-black/5',
+    userInfoSection: 'mb-1 flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2.5',
+    userNameRow: 'flex items-center gap-2',
+    userRoleRow: 'flex items-center gap-1.5',
+    divider: 'my-1 border-t border-slate-100',
+    actionSection: 'p-0.5',
+    logoutButton: 'flex w-full items-center justify-start gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 active:bg-blue-50 active:text-blue-800',
+    logoutIcon: 'size-4',
 };
