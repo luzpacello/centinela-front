@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router';
-import { Bell, ChartNoAxesCombined, ChevronDown, CreditCard, LayoutGrid, LogOut, UserRound, UserPlus, Users, Pointer, Circle } from 'lucide-react';
+import { Bell, ChartNoAxesCombined, ChevronDown, LayoutGrid, LogOut, UserRound, UserPlus, Users, Circle } from 'lucide-react';
 import {
     Sidebar as SidebarShell,
     SidebarContent,
