@@ -1,3 +1,4 @@
+import { FieldError } from '@/components/ui/field';
 import { Building2, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
@@ -7,9 +8,10 @@ import type { EditableUserValues, UpdateEditableUserField } from '../types/user'
 interface InformationOfUserProps {
     values: EditableUserValues;
     onFieldChange: UpdateEditableUserField;
+    emailError?: string;
 }
 
-export default function InformationOfUser({ values, onFieldChange }: InformationOfUserProps) {
+export default function InformationOfUser({ values, onFieldChange, emailError }: InformationOfUserProps) {
     return (
         <section className={styles.informationSection} aria-labelledby="general-information-title">
             <h4 id="general-information-title">Información general</h4>
@@ -27,6 +29,7 @@ export default function InformationOfUser({ values, onFieldChange }: Information
                     label="Correo electrónico"
                     value={values.emailUsuario}
                     onChange={(value) => onFieldChange('emailUsuario', value)}
+                    error={emailError}
                     type="email"
                     icon={Mail}
                 />
@@ -80,10 +83,11 @@ interface InputFieldProps {
     icon: React.ComponentType<{ className?: string }>;
     type?: string;
     readOnly?: boolean;
+    error?: string;
     onChange?: (value: string) => void;
 }
 
-function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false, onChange }: InputFieldProps) {
+function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false, onChange, error }: InputFieldProps) {
     return (
         <div className={styles.fieldContainer}>
             <label htmlFor={id}>{label}</label>
@@ -94,10 +98,13 @@ function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = fa
                     type={type}
                     value={value}
                     readOnly={readOnly}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? `${id}-error` : undefined}
                     onChange={(event) => onChange?.(event.target.value)}
                     className={styles.textInput}
                 />
             </div>
+            {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
         </div>
     );
 }

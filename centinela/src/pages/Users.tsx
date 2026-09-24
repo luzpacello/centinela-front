@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { useNavigate } from 'react-router';
 import type { UserDetailsNavigationState } from '@/components/features/users/types/user';
@@ -54,6 +55,7 @@ interface UserRow {
 }
 
 const EMPTY_TEXT = '—';
+const USERS_PER_PAGE = 10;
 
 function displayText(value?: string | null): string {
     const text = typeof value === 'string' ? value.trim() : '';
@@ -91,9 +93,10 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
 
 export default function UsersPage() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('users'); // 'users' o 'roles'
+    const [activeTab] = useState('users'); // 'users' o 'roles'
     const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const [users, setUsers] = useState<UserRow[]>([]);
     const [summary, setSummary] = useState({ total: 0, admins: 0, operators: 0 });
     const [isLoading, setIsLoading] = useState(true);
@@ -134,6 +137,11 @@ export default function UsersPage() {
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
     );
+    const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+    const firstUserIndex = (currentPage - 1) * USERS_PER_PAGE;
+    const paginatedUsers = filteredUsers.slice(firstUserIndex, firstUserIndex + USERS_PER_PAGE);
+    const firstVisibleUser = filteredUsers.length === 0 ? 0 : firstUserIndex + 1;
+    const lastVisibleUser = Math.min(firstUserIndex + USERS_PER_PAGE, filteredUsers.length);
 
     const adminsPercentage = summary.total > 0 ? ((summary.admins / summary.total) * 100).toFixed(1) : '0.0';
     const operatorsPercentage = summary.total > 0 ? ((summary.operators / summary.total) * 100).toFixed(1) : '0.0';
@@ -154,7 +162,10 @@ export default function UsersPage() {
                             placeholder="Buscar usuario..."
                             className="pl-10"
                             value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
+                            onChange={(event) => {
+                                setSearchTerm(event.target.value);
+                                setCurrentPage(1);
+                            }}
                         />
                     </div>
                     <Button type="button" variant="outline">
@@ -169,7 +180,7 @@ export default function UsersPage() {
             {/* Tarjetas de Métricas Superiores */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Usuarios totales</span>
+                    <h4>Usuarios totales</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica">{summary.total}</span>
                         <span className="text-caption">En el sistema</span>
@@ -177,18 +188,18 @@ export default function UsersPage() {
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Administradores</span>
+                    <h4>Administradores</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica text-blue-600">{summary.admins}</span>
-                        <span className="text-xs font-medium text-blue-600">{adminsPercentage}% del total</span>
+                        <span className="text-caption text-blue-600">{adminsPercentage}% del total</span>
                     </div>
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Usuarios estándar</span>
+                    <h4>Operadores</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica">{summary.operators}</span>
-                        <span className="text-xs font-medium text-slate-600">{operatorsPercentage}% del total</span>
+                        <span className="text-caption text-slate-600">{operatorsPercentage}% del total</span>
                     </div>
                 </Card>
 
@@ -208,107 +219,76 @@ export default function UsersPage() {
                 */}
             </div>
 
-            {/* Pestañas principales y Barra de Acciones */}
-            <Card className="gap-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 pt-3">
-                    <div className="flex flex-wrap items-center gap-1">
-                        <button
-                            onClick={() => setActiveTab('users')}
-                            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'users'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            Usuarios
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('roles')}
-                            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'roles'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            Roles y permisos
-                        </button>
-                    </div>
-                </div>
 
-                {activeTab === 'roles' && (
-                    <div className="py-4 text-sm text-secundario">
-                        Vista de configuración de Roles y Permisos (Sección informativa de roles del sistema).
-                    </div>
-                )}
-            </Card>
 
             {/* Tabla de Usuarios */}
             {activeTab === 'users' && (
                 <div className="min-w-0">
                     <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="border-b border-slate-100 bg-slate-50/60 text-slate-700">
-                                    <tr className="text-xs font-medium uppercase tracking-wider">
-                                        <th className="py-3.5 px-4">Usuario</th>
-                                        <th className="py-3.5 px-4">Rol</th>
-                                        <th className="py-3.5 px-4">Estado</th>
-                                        <th className="py-3.5 px-4">Último acceso</th>
-                                        <th className="py-3.5 px-4">2FA</th>
-                                        <th className="py-3.5 px-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                        <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isLoading}>
+                                <TableHeader>
+                                    <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                                        <TableHead className="header-of-table px-4">Usuario</TableHead>
+                                        <TableHead className="header-of-table px-4">Rol</TableHead>
+                                        <TableHead className="header-of-table px-4">Estado</TableHead>
+                                        <TableHead className="header-of-table px-4">Último acceso</TableHead>
+                                        <TableHead className="header-of-table px-4">2FA</TableHead>
+                                        <TableHead className="header-of-table px-4 text-right">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                     {isLoading &&
                                         Array.from({ length: 4 }).map((_, index) => (
-                                            <tr key={`skeleton-${index}`} className="animate-pulse">
-                                                <td className="py-3 px-4"><div className="h-9 w-48 rounded bg-slate-100" /></td>
-                                                <td className="py-3 px-4"><div className="h-5 w-24 rounded bg-slate-100" /></td>
-                                                <td className="py-3 px-4"><div className="h-5 w-20 rounded bg-slate-100" /></td>
-                                                <td className="py-3 px-4"><div className="h-5 w-28 rounded bg-slate-100" /></td>
-                                                <td className="py-3 px-4"><div className="h-5 w-16 rounded bg-slate-100" /></td>
-                                                <td className="py-3 px-4"><div className="ml-auto h-5 w-8 rounded bg-slate-100" /></td>
-                                            </tr>
+                                            <TableRow key={`skeleton-${index}`} className="animate-pulse">
+                                                <TableCell className="p-4"><div className="h-9 w-48 rounded bg-slate-100" /></TableCell>
+                                                <TableCell className="p-4"><div className="h-5 w-24 rounded bg-slate-100" /></TableCell>
+                                                <TableCell className="p-4"><div className="h-5 w-20 rounded bg-slate-100" /></TableCell>
+                                                <TableCell className="p-4"><div className="h-5 w-28 rounded bg-slate-100" /></TableCell>
+                                                <TableCell className="p-4"><div className="h-5 w-16 rounded bg-slate-100" /></TableCell>
+                                                <TableCell className="p-4"><div className="ml-auto h-5 w-8 rounded bg-slate-100" /></TableCell>
+                                            </TableRow>
                                         ))}
 
                                     {!isLoading && errorMessage && (
-                                        <tr>
-                                            <td colSpan={6} className="py-10 px-4 text-center text-sm text-red-600" role="alert">
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-red-600" role="alert">
                                                 {errorMessage}
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
 
                                     {!isLoading && !errorMessage && filteredUsers.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="py-10 px-4 text-center text-sm text-slate-500">
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
                                                 {users.length === 0
                                                     ? 'Todavía no hay usuarios para mostrar.'
                                                     : 'No se encontraron usuarios que coincidan con la búsqueda.'}
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
 
-                                    {!isLoading && !errorMessage && filteredUsers.map((user) => (
-                                        <tr
+                                    {!isLoading && !errorMessage && paginatedUsers.map((user) => (
+                                        <TableRow
                                             key={user.id}
-                                            className="transition-colors hover:bg-blue-50/50"
+                                            className="hover:bg-slate-50/70"
                                         >
-                                            <td className="py-3 px-4">
+                                            <TableCell className="p-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`size-9 rounded-full flex items-center justify-center font-bold text-xs ${user.avatarBg}`}>
                                                         {user.roleType}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium text-slate-900">{user.name}</span>
-                                                        <span className="text-xs text-secundario">{user.email}</span>
+                                                        <span className="text-destacado">{user.name}</span>
+                                                        <span className="table-text-secondary ">{user.email}</span>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="py-3 px-4">
+                                            </TableCell>
+                                            <TableCell className="p-4">
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
                                                     <Shield className="size-3 text-slate-500" /> {user.role}
                                                 </span>
-                                            </td>
-                                            <td className="py-3 px-4">
+                                            </TableCell>
+                                            <TableCell className="p-4">
                                                 {user.status === 'Activo' ? (
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                         <CheckCircle2 className="size-3" /> Activo
@@ -318,14 +298,14 @@ export default function UsersPage() {
                                                         <XCircle className="size-3" /> Inactivo
                                                     </span>
                                                 )}
-                                            </td>
-                                            <td className="py-3 px-4 text-secundario">{user.lastAccess}</td>
-                                            <td className="py-3 px-4">
+                                            </TableCell>
+                                            <TableCell className="p-4 text-secundario">{user.lastAccess}</TableCell>
+                                            <TableCell className="p-4">
                                                 <span className={`text-xs font-medium ${user.twoFactor.includes('Activado') ? 'text-emerald-600' : 'text-slate-400'}`}>
                                                     {user.twoFactor}
                                                 </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-right relative">
+                                            </TableCell>
+                                            <TableCell className="relative p-4 text-right">
                                                 <button
                                                     onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
                                                     className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors inline-flex items-center justify-center"
@@ -361,17 +341,16 @@ export default function UsersPage() {
                                                         </button>
                                                     </div>
                                                 )}
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                </TableBody>
+                            </Table>
 
                         {/* Paginador */}
                         <div className="flex flex-col sm:flex-row items-center justify-between p-5 border-t border-slate-100 gap-4 text-xs text-secundario">
                             <div>
-                                Mostrando <strong>1 a 8</strong> de <strong>12</strong> usuarios
+                                Mostrando <strong>{firstVisibleUser} a {lastVisibleUser}</strong> de <strong>{filteredUsers.length}</strong> usuarios
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -379,12 +358,35 @@ export default function UsersPage() {
                                     <span>10 por página</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <button type="button" aria-label="Página anterior" disabled className="rounded border border-slate-200 bg-white p-1.5 text-slate-400/50">
+                                    <button
+                                        type="button"
+                                        aria-label="Página anterior"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                        className="rounded border border-slate-200 bg-white p-1.5 text-slate-700 transition-colors hover:bg-slate-100 disabled:text-slate-400/50"
+                                    >
                                         <ChevronLeft className="size-4" />
                                     </button>
-                                    <button type="button" aria-current="page" className="rounded border border-blue-600 bg-blue-600 px-3 py-1 font-medium text-white">1</button>
-                                    <button type="button" className="rounded px-3 py-1 text-slate-700 hover:bg-slate-100">2</button>
-                                    <button type="button" aria-label="Página siguiente" className="rounded border border-slate-200 bg-white p-1.5 text-slate-700 transition-colors hover:bg-slate-100">
+                                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                                        <button
+                                            key={page}
+                                            type="button"
+                                            aria-current={currentPage === page ? 'page' : undefined}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={currentPage === page
+                                                ? 'rounded border border-blue-600 bg-blue-600 px-3 py-1 font-medium text-white'
+                                                : 'rounded px-3 py-1 text-slate-700 hover:bg-slate-100'}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        aria-label="Página siguiente"
+                                        disabled={currentPage === totalPages}
+                                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                                        className="rounded border border-slate-200 bg-white p-1.5 text-slate-700 transition-colors hover:bg-slate-100 disabled:text-slate-400/50"
+                                    >
                                         <ChevronRight className="size-4" />
                                     </button>
                                 </div>

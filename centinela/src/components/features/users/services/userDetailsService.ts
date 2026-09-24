@@ -58,3 +58,22 @@ export async function fetchUserDetails(
     instanciasPermitidas: response.instanciasPermitidas ?? [],
   };
 }
+
+export async function updateUserDetails(
+  userId: string,
+  data: Partial<Pick<UserDetails, 'activo' | 'emailUsuario' | 'nombreCompleto' | 'rol'>>,
+): Promise<UserDetails> {
+  const response = await apiClient.request<unknown>(`/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT', payload: data, expectedStatus: 200,
+  });
+  if (isUserDetailsResponse(response) && response.id === userId) {
+    return { ...response, instanciasPermitidas: response.instanciasPermitidas ?? [] };
+  }
+  // El PUT devuelve un resumen: consultar el detalle completo sin inventar los campos faltantes.
+  if (!isRecord(response) || response.id !== userId
+    || typeof response.nombreCompleto !== 'string' || typeof response.emailUsuario !== 'string'
+    || typeof response.rol !== 'string' || typeof response.activo !== 'boolean') {
+    throw new ApiRequestError('No se pudo interpretar la respuesta de actualización del usuario.');
+  }
+  return fetchUserDetails(userId);
+}
