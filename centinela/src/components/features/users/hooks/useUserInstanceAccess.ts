@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
 import { ApiRequestError } from '@/services/apiClient';
-import { assignUserInstances, fetchUserInstanceInventory, fetchUserInstancePermissions, instanceVmid, type UserInstance } from '../services/userInstanceService';
+import { assignUserInstances, fetchUserInstanceInventory, fetchUserInstancePermissions, instanceVmid, type InstancePermissionLevel, type UserInstance, type UserInstancePermission } from '../services/userInstanceService';
 import type { UserDetails } from '../types/user';
 
 export type AccessLevel = 'Acceso completo' | 'Solo lectura' | 'Sin acceso';
+
+function permissionLevelFromAccess(access: Exclude<AccessLevel, 'Sin acceso'>): InstancePermissionLevel {
+  return access === 'Solo lectura' ? 'READ_ONLY' : 'FULL_ACCESS';
+}
 
 function reportError(error: unknown, title = 'No se pudo actualizar el acceso a instancias') {
   // ApiResponseNotifier ya presenta los errores de sesión y permisos.
@@ -18,8 +22,8 @@ function reportError(error: unknown, title = 'No se pudo actualizar el acceso a 
 
 export function useUserInstanceAccess(user: UserDetails) {
   const [instances, setInstances] = useState<UserInstance[]>([]);
-  const [assignedIds, setAssignedIds] = useState<number[]>([]);
-  const savedRole = user.rol;
+  const [assignedPermissions, setAssignedPermissions] = useState<UserInstancePermission[]>([]);
+  const assignedIds = assignedPermissions.map((permission) => permission.vmid);
   const [pendingAccess, setPendingAccess] = useState<Record<string, AccessLevel>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,10 +35,10 @@ export function useUserInstanceAccess(user: UserDetails) {
       fetchUserInstanceInventory(controller.signal),
       fetchUserInstancePermissions(user.id, controller.signal),
     ])
-      .then(([inventory, permittedVmids]) => {
+      .then(([inventory, permissions]) => {
         if (!controller.signal.aborted) {
           setInstances(inventory);
-          setAssignedIds(permittedVmids);
+          setAssignedPermissions(permissions);
         }
       })
       .catch((error: unknown) => {
@@ -65,22 +69,29 @@ export function useUserInstanceAccess(user: UserDetails) {
     let assignmentWasSaved = false;
     try {
       // El PUT reemplaza todos los permisos: preservar incluso VMID fuera del inventario.
-      const currentPermittedVmids = await fetchUserInstancePermissions(user.id);
-      const updatedPermittedVmids = new Set(currentPermittedVmids);
+      const currentPermissions = await fetchUserInstancePermissions(user.id);
+      const updatedPermissionsByVmid = new Map(currentPermissions.map((permission) => [permission.vmid, permission]));
       for (const instanceId of pendingInstanceIds) {
         const vmid = instanceVmid(instanceId);
-        if (pendingAccess[instanceId] === 'Sin acceso') updatedPermittedVmids.delete(vmid);
-        else updatedPermittedVmids.add(vmid);
+        const access = pendingAccess[instanceId];
+        if (access === 'Sin acceso') updatedPermissionsByVmid.delete(vmid);
+        else updatedPermissionsByVmid.set(vmid, { vmid, nivelAcceso: permissionLevelFromAccess(access) });
       }
-      const vmids = [...updatedPermittedVmids];
-      await assignUserInstances(user.id, vmids);
+      const updatedPermissions = [...updatedPermissionsByVmid.values()];
+      await assignUserInstances(user.id, updatedPermissions);
       assignmentWasSaved = true;
       // El 204 confirma la escritura, incluso si falla la lectura de verificación.
-      setAssignedIds(vmids);
-      const confirmedPermittedVmids = await fetchUserInstancePermissions(user.id);
-      setAssignedIds(confirmedPermittedVmids);
-      const confirmedVmids = new Set(confirmedPermittedVmids);
-      if (!pendingInstanceIds.every((id) => confirmedVmids.has(instanceVmid(id)) === (pendingAccess[id] !== 'Sin acceso'))) {
+      setAssignedPermissions(updatedPermissions);
+      const confirmedPermissions = await fetchUserInstancePermissions(user.id);
+      setAssignedPermissions(confirmedPermissions);
+      const confirmedPermissionsByVmid = new Map(confirmedPermissions.map((permission) => [permission.vmid, permission.nivelAcceso]));
+      if (!pendingInstanceIds.every((id) => {
+        const access = pendingAccess[id];
+        const confirmedLevel = confirmedPermissionsByVmid.get(instanceVmid(id));
+        return access === 'Sin acceso'
+          ? confirmedLevel === undefined
+          : confirmedLevel === permissionLevelFromAccess(access);
+      })) {
         throw new ApiRequestError('No se pudieron confirmar los cambios de acceso a instancias.');
       }
       setPendingAccess({});
@@ -105,5 +116,5 @@ export function useUserInstanceAccess(user: UserDetails) {
     }
   }
 
-  return { instances, assignedIds, savedRole, isLoading, isSaving, pendingAccess, changeAccess, saveAssignments };
+  return { instances, assignedIds, assignedPermissions, isLoading, isSaving, pendingAccess, changeAccess, saveAssignments };
 }
