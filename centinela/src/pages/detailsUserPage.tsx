@@ -1,3 +1,5 @@
+import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
+import { deactivateUserAccount } from '@/components/features/users/services/userDeactivationService';
 import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
 import { useRef, useState } from 'react';
 import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
@@ -87,6 +89,13 @@ export default function DetailsUserPage() {
 }
 
 function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
+    const navigate = useNavigate();
+    const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
+    async function confirmUserDeletion() {
+        await deactivateUserAccount(user.id);
+        toast.add({ title: 'Usuario eliminado', description: 'La cuenta fue desactivada y sus sesiones fueron invalidadas.', type: 'success' });
+
+    }
     const [confirmedUser, setConfirmedUser] = useState(user);
     const { values, updateField, reset } = useEditableUser(confirmedUser);
     const instanceAccess = useUserInstanceAccess(confirmedUser);
@@ -142,6 +151,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 
     return (
         <section className={styles.pageContainer}>
+            {isDeleteConfirmationOpen && <ConfirmUserAction variant="destructive" onCompleted={() => { setIsDeleteConfirmationOpen(false); navigate('/users', { replace: true }); }} title="Eliminar usuario" description={`Se dará de baja la cuenta de ${confirmedUser.nombreUsuario} y se invalidarán todas sus sesiones activas. La cuenta no se borrará físicamente.`} onConfirm={confirmUserDeletion} onCancel={() => setIsDeleteConfirmationOpen(false)} />}
             <header className={styles.pageHeader}>
                 <div className={styles.headingContainer}>
                     <nav className={styles.breadcrumb} aria-label="Navegación secundaria">
@@ -160,7 +170,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <ArrowLeft className={styles.actionIcon} aria-hidden="true" />
                         Volver
                     </Button>
-                    <Button type="button" variant="outline" className={styles.deleteButton}>
+                    <Button type="button" variant="outline" className={styles.deleteButton} disabled={isSaving} onClick={() => setIsDeleteConfirmationOpen(true)}>
                         <Trash2 className={styles.actionIcon} aria-hidden="true" />
                         Eliminar usuario
                     </Button>
