@@ -57,7 +57,7 @@ export function useUserInstanceAccess(user: UserDetails) {
     });
   }
 
-  async function saveAssignments() {
+  async function saveAssignments({ notify = true }: { notify?: boolean } = {}) {
     const pendingInstanceIds = Object.keys(pendingAccess);
     if (saving.current || isLoading || pendingInstanceIds.length === 0) return;
     saving.current = true;
@@ -84,12 +84,18 @@ export function useUserInstanceAccess(user: UserDetails) {
         throw new ApiRequestError('No se pudieron confirmar los cambios de acceso a instancias.');
       }
       setPendingAccess({});
-      toast.add({
+      if (notify) toast.add({
         title: 'Acceso a instancias actualizado',
         description: 'Los cambios de acceso a instancias se guardaron correctamente.',
         type: 'success',
       });
     } catch (error) {
+      if (!notify) {
+        if (assignmentWasSaved && !(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
+          throw new ApiRequestError('Los permisos se guardaron, pero no se pudo confirmar su estado.');
+        }
+        throw error;
+      }
       reportError(error, assignmentWasSaved
         ? 'Asignación guardada; no se pudo confirmar su estado'
         : 'No se pudo actualizar el acceso a instancias');
