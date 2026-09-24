@@ -37,15 +37,16 @@ interface RolesAndPermissionsProps {
 
 export default function RolesAndPermissions({ role, onRoleChange, instanceAccess, pendingAccess }: RolesAndPermissionsProps) {
     const [search, setSearch] = useState('');
-    const { instances, assignedIds, savedRole, isLoading, isSaving, changeAccess } = instanceAccess;
-    const selectedVmids = new Set(assignedIds.map((id) => String(id).replace(/^(qemu|lxc)\//, '')));
+    const { instances, assignedPermissions, isLoading, isSaving, changeAccess } = instanceAccess;
+    const permissionsByVmid = new Map(assignedPermissions.map((permission) => [permission.vmid, permission.nivelAcceso]));
     const rows: InstanceAccess[] = instances.map((instance): InstanceAccess => {
-        const selected = selectedVmids.has(String(instanceVmid(instance.id)));
+        const assignedLevel = permissionsByVmid.get(instanceVmid(instance.id));
+        const selected = assignedLevel !== undefined;
         return {
             ...instance,
             name: `${instance.name} (${instanceVmid(instance.id)})`,
             selected: pendingAccess?.[instance.id] !== undefined ? pendingAccess[instance.id] !== 'Sin acceso' : selected,
-            access: pendingAccess?.[instance.id] ?? (selected ? savedRole === 'READ_ONLY' ? 'Solo lectura' : 'Acceso completo' : 'Sin acceso'),
+            access: pendingAccess?.[instance.id] ?? (assignedLevel === 'READ_ONLY' ? 'Solo lectura' : assignedLevel === 'FULL_ACCESS' ? 'Acceso completo' : 'Sin acceso'),
         };
     }).filter((instance) => `${instance.name} ${instance.id}`.toLowerCase().includes(search.trim().toLowerCase()));
     return (

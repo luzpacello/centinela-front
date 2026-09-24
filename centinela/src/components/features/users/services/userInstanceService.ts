@@ -6,6 +6,13 @@ export interface UserInstance {
   type: 'VM' | 'LXC';
 }
 
+export type InstancePermissionLevel = 'FULL_ACCESS' | 'READ_ONLY';
+
+export interface UserInstancePermission {
+  vmid: number;
+  nivelAcceso: InstancePermissionLevel;
+}
+
 export function instanceVmid(id: string | number): number {
   const value = String(id).replace(/^(qemu|lxc)\//, '');
   const vmid = /^\d+$/.test(value) ? Number(value) : NaN;
@@ -36,21 +43,37 @@ export async function fetchUserInstanceInventory(signal?: AbortSignal): Promise<
   });
 }
 
-export async function fetchUserInstancePermissions(userId: string, signal?: AbortSignal): Promise<number[]> {
-  const response = await apiClient.get<{ vmids: number[] }>(
+export async function fetchUserInstancePermissions(userId: string, signal?: AbortSignal): Promise<UserInstancePermission[]> {
+  const response = await apiClient.get<{ permisos: UserInstancePermission[] }>(
     `/admin/users/${encodeURIComponent(userId)}/permissions`,
     { signal, expectedStatus: 200 },
   );
-  if (!Array.isArray(response?.vmids) || !response.vmids.every((vmid) => typeof vmid === 'number')) {
+  if (!Array.isArray(response?.permisos) || !response.permisos.every((permission) =>
+    permission
+    && typeof permission.vmid === 'number'
+    && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))) {
     throw new ApiRequestError('No se pudieron interpretar los permisos de instancias del usuario.');
   }
-  return [...new Set(response.vmids.map(instanceVmid))];
+  return [...new Map(response.permisos.map((permission) => {
+    const normalizedPermission: UserInstancePermission = {
+      vmid: instanceVmid(permission.vmid),
+      nivelAcceso: permission.nivelAcceso,
+    };
+    return [normalizedPermission.vmid, normalizedPermission];
+  })).values()];
 }
 
-export async function assignUserInstances(userId: string, vmids: number[]): Promise<void> {
+export async function assignUserInstances(userId: string, permissions: UserInstancePermission[]): Promise<void> {
+  const normalizedPermissions = [...new Map(permissions.map((permission) => {
+    const normalizedPermission: UserInstancePermission = {
+      vmid: instanceVmid(permission.vmid),
+      nivelAcceso: permission.nivelAcceso,
+    };
+    return [normalizedPermission.vmid, normalizedPermission];
+  })).values()];
   await apiClient.request(`/admin/users/${encodeURIComponent(userId)}/permissions`, {
     method: 'PUT',
-    payload: { vmids: [...new Set(vmids.map(instanceVmid))] },
+    payload: { permisos: normalizedPermissions },
     expectedStatus: 204,
   });
 }
