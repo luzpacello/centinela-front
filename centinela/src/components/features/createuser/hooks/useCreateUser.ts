@@ -1,6 +1,7 @@
-import { createUser, type CreateUserPayload } from '../services/createUserService';
+import { createUser } from '../services/createUserService';
 import { toast } from '@/components/ui/toast';
 import { ApiRequestError } from '@/services/apiClient';
+import type { CreateUserPayload } from '../types/createUser';
 
 export function useCreateUser() {
   async function submitNewUser(data: CreateUserPayload): Promise<boolean> {
