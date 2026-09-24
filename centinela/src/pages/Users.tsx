@@ -1,3 +1,6 @@
+import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
+import { deactivateUserAccount } from '@/components/features/users/services/userDeactivationService';
+import { toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
 import {
     Search,
@@ -102,6 +105,15 @@ export default function UsersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    const [pendingAccountAction, setPendingAccountAction] = useState<{ user: UserRow; action: 'delete' | 'deactivate' } | null>(null);
+    const [listRefreshVersion, setListRefreshVersion] = useState(0);
+    async function confirmAccountAction() {
+        if (!pendingAccountAction) return;
+        await deactivateUserAccount(String(pendingAccountAction.user.id));
+        toast.add({ title: pendingAccountAction.action === 'delete' ? 'Usuario eliminado' : 'Usuario desactivado', description: 'La cuenta fue desactivada y sus sesiones fueron invalidadas.', type: 'success' });
+        setListRefreshVersion((version) => version + 1);
+    }
+
     useEffect(() => {
         const controller = new AbortController();
 
@@ -130,7 +142,7 @@ export default function UsersPage() {
 
         loadUsers();
         return () => controller.abort();
-    }, []);
+    }, [listRefreshVersion]);
 
     const filteredUsers = users.filter((user) =>
         Object.values(user).some((value) =>
@@ -148,6 +160,7 @@ export default function UsersPage() {
 
     return (
         <section className="flex min-w-0 self-start flex-col gap-6 text-slate-900">
+            {pendingAccountAction && <ConfirmUserAction variant="destructive" onCompleted={() => setPendingAccountAction(null)} title={pendingAccountAction.action === 'delete' ? 'Eliminar usuario' : 'Desactivar usuario'} description={`Se desactivará la cuenta de ${pendingAccountAction.user.name} y se invalidarán sus sesiones. La cuenta no se borrará físicamente.`} onConfirm={confirmAccountAction} onCancel={() => setPendingAccountAction(null)} />}
             {/* Cabecera */}
             <div className="flex flex-wrap items-start justify-between gap-5 pb-1">
                 <div>
@@ -333,10 +346,10 @@ export default function UsersPage() {
                                                         <button className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                                                             <Key className="size-3.5 text-slate-500" /> Restablecer contraseña
                                                         </button>
-                                                        <button className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                        <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: 'deactivate' }); }} className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                                                             <UserX className="size-3.5 text-amber-500" /> Desactivar usuario
                                                         </button>
-                                                        <button className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100">
+                                                        <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: 'delete' }); }} className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100">
                                                             <Trash2 className="size-3.5" /> Eliminar usuario
                                                         </button>
                                                     </div>
