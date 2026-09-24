@@ -1,5 +1,8 @@
 import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
+import { ApiRequestError } from '@/services/apiClient';
+import { toast } from '@/components/ui/toast';
 import {
     ArrowLeft,
     CalendarDays,
@@ -84,8 +87,58 @@ export default function DetailsUserPage() {
 }
 
 function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
-    const { values, updateField } = useEditableUser(user);
-    const instanceAccess = useUserInstanceAccess(user);
+    const [confirmedUser, setConfirmedUser] = useState(user);
+    const { values, updateField, reset } = useEditableUser(confirmedUser);
+    const instanceAccess = useUserInstanceAccess(confirmedUser);
+    const [isSaving, setIsSaving] = useState(false);
+    const [emailError, setEmailError] = useState<string | undefined>();
+    const saveInProgress = useRef(false);
+    const profileChanges: Partial<Pick<UserDetails, 'nombreCompleto' | 'emailUsuario' | 'rol' | 'activo'>> = {};
+    if (values.nombreCompleto !== confirmedUser.nombreCompleto) profileChanges.nombreCompleto = values.nombreCompleto;
+    if (values.emailUsuario !== confirmedUser.emailUsuario) profileChanges.emailUsuario = values.emailUsuario;
+    if (values.rol !== confirmedUser.rol) profileChanges.rol = values.rol;
+    if (values.activo !== confirmedUser.activo) profileChanges.activo = values.activo;
+    const hasProfileChanges = Object.keys(profileChanges).length > 0;
+    const hasPermissionChanges = Object.keys(instanceAccess.pendingAccess).length > 0;
+
+    const handleFieldChange: UpdateEditableUserField = (field, value) => {
+        if (saveInProgress.current) return;
+        if (field === 'emailUsuario') setEmailError(undefined);
+        updateField(field, value);
+    };
+
+    async function handleSaveChanges() {
+        if (saveInProgress.current || (!hasProfileChanges && !hasPermissionChanges)) return;
+        saveInProgress.current = true;
+        setIsSaving(true);
+        setEmailError(undefined);
+        let profileWasSaved = false;
+        try {
+            if (hasProfileChanges) {
+                const savedUser = await updateUserDetails(user.id, profileChanges);
+                setConfirmedUser(savedUser);
+                reset(savedUser);
+                profileWasSaved = true;
+            }
+            if (hasPermissionChanges) await instanceAccess.saveAssignments({ notify: false });
+            toast.add({ title: 'Cambios guardados', description: 'Los cambios del usuario se guardaron correctamente.', type: 'success' });
+        } catch (error) {
+            if (error instanceof ApiRequestError && error.status === 409 && !profileWasSaved) {
+                setEmailError('El correo ingresado ya pertenece a otro usuario.');
+            }
+            // Los errores 401/403 ya se muestran en ApiResponseNotifier.
+            if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
+                toast.add({
+                    title: profileWasSaved ? 'Perfil guardado; permisos pendientes' : 'No se pudieron guardar todos los cambios',
+                    description: error instanceof Error ? error.message : 'Intentá nuevamente.',
+                    type: 'error',
+                });
+            }
+        } finally {
+            saveInProgress.current = false;
+            setIsSaving(false);
+        }
+    }
 
     return (
         <section className={styles.pageContainer}>
@@ -98,7 +151,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <ChevronRight className={styles.breadcrumbIcon} aria-hidden="true" />
                         <span className={styles.currentUserName}>{user.nombreUsuario}</span>
                     </nav>
-                    <h1>Detalle / Edición de usuario</h1>
+                    <h1>Edición de usuario</h1>
                     <p className="text-secundario">Gestioná la información, roles y permisos del usuario.</p>
                 </div>
 
@@ -111,7 +164,7 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <Trash2 className={styles.actionIcon} aria-hidden="true" />
                         Eliminar usuario
                     </Button>
-                    <Button type="button" onClick={() => void instanceAccess.saveAssignments()} disabled={instanceAccess.isSaving || Object.keys(instanceAccess.pendingAccess).length === 0} aria-busy={instanceAccess.isSaving}>
+                    <Button type="button" onClick={() => void handleSaveChanges()} disabled={isSaving || (!hasProfileChanges && !hasPermissionChanges) || (hasPermissionChanges && instanceAccess.isLoading)} aria-busy={isSaving}>
                         <Save className={styles.actionIcon} aria-hidden="true" />
                         Guardar cambios
                     </Button>
@@ -119,12 +172,12 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
             </header>
 
             <div className={styles.contentGrid}>
-                <main className={styles.mainColumn}>
-                    <UserInformationTabs instanceAccess={instanceAccess} values={values} onFieldChange={updateField} />
+                <main className={styles.mainColumn} inert={isSaving} aria-busy={isSaving}>
+                    <UserInformationTabs instanceAccess={instanceAccess} values={values} onFieldChange={handleFieldChange} emailError={emailError} />
                 </main>
 
                 <aside className={styles.sidebarColumn}>
-                    <UserSummaryCard user={user} values={values} />
+                    <UserSummaryCard user={confirmedUser} values={confirmedUser} />
                     <SecurityCard user={user} />
                     <RecentActivityCard />
                 </aside>
@@ -137,10 +190,12 @@ function UserInformationTabs({
     instanceAccess,
     values,
     onFieldChange,
+    emailError,
 }: {
     instanceAccess: ReturnType<typeof useUserInstanceAccess>;
     values: EditableUserValues;
     onFieldChange: UpdateEditableUserField;
+    emailError?: string;
 }) {
     const [activeTab, setActiveTab] = useState('general');
 
@@ -153,7 +208,7 @@ function UserInformationTabs({
                         <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className={styles.generalInformationTabContent}>
-                        <InformationOfUser values={values} onFieldChange={onFieldChange} />
+                        <InformationOfUser values={values} onFieldChange={onFieldChange} emailError={emailError} />
                     </TabsContent>
                     <TabsContent value="roles" className={styles.rolesTabContent}>
                         <RolesAndPermissions
