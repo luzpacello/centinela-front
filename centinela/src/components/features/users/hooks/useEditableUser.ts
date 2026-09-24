@@ -21,7 +21,7 @@ export function useEditableUser(user: UserDetails) {
     setValues((currentValues) => ({ ...currentValues, [field]: value }));
   }, []);
 
-  const reset = useCallback(() => setValues(toEditableValues(user)), [user]);
+  const reset = useCallback((savedUser: UserDetails = user) => setValues(toEditableValues(savedUser)), [user]);
 
   return { values, updateField, reset };
 }
