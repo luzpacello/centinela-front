@@ -7,6 +7,7 @@ import { AuthenticationInputField } from '@/components/features/auth/components/
 import { apiClient, ApiRequestError } from '@/services/apiClient';
 import { clearAuthTokens } from '@/services/api';
 import { toast } from '@/components/ui/toast';
+import { useLogout } from '@/components/features/auth/hooks/useAuth';
 
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 12;
@@ -38,6 +39,7 @@ function validateChangePasswordFields(values: ChangePasswordFields): ChangePassw
 // la sesión local y se vuelve al login para obtener un token sin el flag.
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
+  const { logout, isLoggingOut } = useLogout();
   const [values, setValues] = useState<ChangePasswordFields>({
     contrasenaActual: '',
     contrasenaNueva: '',
@@ -53,7 +55,7 @@ export default function ChangePasswordPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isLoggingOut) return;
     const errors = validateChangePasswordFields(values);
     setFieldErrors(errors);
     if (Object.values(errors).some(Boolean)) return;
@@ -93,32 +95,42 @@ export default function ChangePasswordPage() {
       <h1>Cambio obligatorio de contraseña</h1>
       <p className="text-secundario">Tu cuenta tiene una contraseña temporal. Definí una nueva para poder continuar.</p>
 
-      <form noValidate onSubmit={handleSubmit} aria-busy={isSubmitting} className="flex w-full flex-col gap-5">
+      <form noValidate onSubmit={handleSubmit} aria-busy={isSubmitting || isLoggingOut} className="flex w-full flex-col gap-5">
         <AuthenticationInputField
           id="change-password-current" name="contrasenaActual" label="Contraseña actual" type="password"
-          autoComplete="current-password" placeholder="Contraseña actual" required disabled={isSubmitting}
+          autoComplete="current-password" placeholder="Contraseña actual" required disabled={isSubmitting || isLoggingOut}
           value={values.contrasenaActual} error={fieldErrors.contrasenaActual}
           onChange={(event) => updateField('contrasenaActual', event.target.value)}
         />
 
         <AuthenticationInputField
           id="change-password-new" name="contrasenaNueva" label="Contraseña nueva" type="password"
-          autoComplete="new-password" placeholder="Entre 8 y 12 caracteres" required disabled={isSubmitting}
+          autoComplete="new-password" placeholder="Entre 8 y 12 caracteres" required disabled={isSubmitting || isLoggingOut}
           value={values.contrasenaNueva} error={fieldErrors.contrasenaNueva}
           onChange={(event) => updateField('contrasenaNueva', event.target.value)}
         />
 
         <AuthenticationInputField
           id="change-password-confirmation" name="confirmarContrasena" label="Confirmar contraseña nueva" type="password"
-          autoComplete="new-password" placeholder="Repetí la contraseña nueva" required disabled={isSubmitting}
+          autoComplete="new-password" placeholder="Repetí la contraseña nueva" required disabled={isSubmitting || isLoggingOut}
           value={values.confirmarContrasena} error={fieldErrors.confirmarContrasena}
           onChange={(event) => updateField('confirmarContrasena', event.target.value)}
         />
 
         {formError && <FieldError>{formError}</FieldError>}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || isLoggingOut}>
           {isSubmitting ? 'Cambiando contraseña…' : 'Cambiar contraseña'}
+        </Button>
+        <Button
+          type="button"
+          role="button"
+          variant="outline"
+          className="w-full"
+          disabled={isSubmitting || isLoggingOut}
+          onClick={() => void logout()}
+        >
+          Cerrar sesión
         </Button>
       </form>
     </section>
