@@ -17,7 +17,7 @@ export interface StoredSessionUser {
 export function sendJsonPostRequest(
   path: string,
   payload: unknown,
-  options?: { signal?: AbortSignal; expectedStatus?: number; auth?: boolean; bearer?: string },
+  options?: { signal?: AbortSignal; expectedStatus?: number; auth?: boolean; bearer?: string; skipAuthorization?: boolean },
 ): Promise<unknown>;
 
 // Lecturas autenticadas (por ejemplo GET /account/profile).
