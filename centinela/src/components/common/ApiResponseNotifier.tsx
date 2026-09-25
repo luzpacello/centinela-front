@@ -3,7 +3,7 @@ import { toast } from '@/components/ui/toast';
 import { clearAuthTokens } from '@/services/api';
 import {
   API_FORBIDDEN_EVENT,
-  API_UNAUTHORIZED_EVENT,
+  API_SESSION_EXPIRED_EVENT,
   type ApiErrorEventDetail,
 } from '@/services/apiClient';
 
@@ -65,10 +65,10 @@ export function ApiResponseNotifier() {
     }
 
     window.addEventListener(API_FORBIDDEN_EVENT, handleForbidden);
-    window.addEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+    window.addEventListener(API_SESSION_EXPIRED_EVENT, handleUnauthorized);
     return () => {
       window.removeEventListener(API_FORBIDDEN_EVENT, handleForbidden);
-      window.removeEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+      window.removeEventListener(API_SESSION_EXPIRED_EVENT, handleUnauthorized);
     };
   }, []);
 

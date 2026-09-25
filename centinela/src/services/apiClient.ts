@@ -2,6 +2,7 @@ import { getAccessToken, storeAuthTokens } from '@/storage/tokenStorage';
 
 export const API_FORBIDDEN_EVENT = 'centinela:api-forbidden';
 export const API_UNAUTHORIZED_EVENT = 'centinela:api-unauthorized';
+export const API_SESSION_EXPIRED_EVENT = 'centinela:api-session-expired';
 
 export interface ApiErrorEventDetail {
   errorCode?: string;
@@ -14,6 +15,7 @@ interface ApiRequestOptions {
   payload?: unknown;
   signal?: AbortSignal;
   bearer?: string;
+  skipAuthorization?: boolean;
   expectedStatus?: number;
 }
 
@@ -66,7 +68,7 @@ function getErrorFromResponse(response: Response, body: unknown): ApiRequestErro
 
 async function performJsonRequest(
   path: string,
-  { method = 'GET', payload, signal, bearer }: ApiRequestOptions,
+  { method = 'GET', payload, signal, bearer, skipAuthorization = false }: ApiRequestOptions,
 ): Promise<ParsedResponse> {
   const controller = new AbortController();
   const abortRequest = () => controller.abort();
@@ -81,11 +83,11 @@ async function performJsonRequest(
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   };
+  if (payload !== undefined) headers['Content-Type'] = 'application/json';
   // El token de acceso se inyecta para todas las llamadas; `bearer` permite
   // reemplazarlo por el JWT temporal que se usa durante el flujo de 2FA.
-  const authorizationToken = bearer || readStoredAccessToken();
+  const authorizationToken = skipAuthorization ? null : bearer || readStoredAccessToken();
   if (authorizationToken) headers.Authorization = `Bearer ${authorizationToken}`;
 
   try {
@@ -118,7 +120,6 @@ async function renewSessionWithCookie(): Promise<boolean> {
   try {
     const { body, response } = await performJsonRequest('/auth/refresh', {
       method: 'POST',
-      payload: {},
     });
     if (!response.ok || typeof body !== 'object' || body === null) return false;
     const tokens = body as Record<string, unknown>;
@@ -151,7 +152,11 @@ function reportHttpError(error: ApiRequestError): void {
   if (error.status === 403) {
     emitApiEvent(API_FORBIDDEN_EVENT, detail);
   } else if (error.status === 401) {
-    emitApiEvent(API_UNAUTHORIZED_EVENT, detail);
+    if (error.errorCode === 'TOKEN_REVOKED') {
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event(API_UNAUTHORIZED_EVENT));
+    } else {
+      emitApiEvent(API_SESSION_EXPIRED_EVENT, detail);
+    }
   }
 }
 
@@ -159,9 +164,11 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
   const originalAccessToken = readStoredAccessToken();
   const usedStoredAccessToken = !options.bearer && Boolean(originalAccessToken);
   let result = await performJsonRequest(path, options);
+  const tokenWasRevoked = result.response.status === 401
+    && getErrorFromResponse(result.response, result.body).errorCode === 'TOKEN_REVOKED';
 
   // Se intenta renovar una sola vez antes de invalidar una sesión autenticada.
-  if (result.response.status === 401 && usedStoredAccessToken && !['/auth/refresh', '/auth/logout', '/auth/login'].includes(path)) {
+  if (result.response.status === 401 && !tokenWasRevoked && usedStoredAccessToken && !['/auth/refresh', '/auth/logout', '/auth/login'].includes(path)) {
     // Otra petición puede haber renovado el token antes de que llegue este 401.
     const sessionWasRenewed = readStoredAccessToken() !== originalAccessToken
       ? Boolean(readStoredAccessToken())

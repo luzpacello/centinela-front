@@ -8,7 +8,7 @@ const userSessionKey = 'centinela_user';
 
 function readStorage(key) {
   try {
-    return window.localStorage.getItem(key);
+    return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -16,7 +16,8 @@ function readStorage(key) {
 
 function writeStorage(key, value) {
   try {
-    window.localStorage.setItem(key, value);
+    window.sessionStorage.setItem(key, value);
+    window.localStorage.removeItem(key);
   } catch {
     // El almacenamiento puede estar bloqueado (modo privado); la sesión queda solo en memoria.
   }
@@ -24,6 +25,7 @@ function writeStorage(key, value) {
 
 function removeStorage(key) {
   try {
+    window.sessionStorage.removeItem(key);
     window.localStorage.removeItem(key);
   } catch {
     // Sin acción.
@@ -49,15 +51,15 @@ export function clearAuthTokens() {
   removeStorage(userSessionKey);
 }
 
-async function executeJsonRequest(path, payload, { method = 'POST', signal, auth = false, bearer, expectedStatus } = {}) {
+async function executeJsonRequest(path, payload, { method = 'POST', signal, auth = false, bearer, skipAuthorization = false, expectedStatus } = {}) {
   // `auth` se conserva por compatibilidad: el cliente ahora inyecta el token
   // automáticamente en todas las solicitudes salientes.
   void auth;
-  return apiClient.request(path, { method, payload, signal, bearer, expectedStatus });
+  return apiClient.request(path, { method, payload, signal, bearer, skipAuthorization, expectedStatus });
 }
 
-export async function sendJsonPostRequest(path, payload, { signal, expectedStatus, auth = false, bearer } = {}) {
-  return executeJsonRequest(path, payload, { signal, auth, bearer, expectedStatus });
+export async function sendJsonPostRequest(path, payload, { signal, expectedStatus, auth = false, bearer, skipAuthorization = false } = {}) {
+  return executeJsonRequest(path, payload, { signal, auth, bearer, skipAuthorization, expectedStatus });
 }
 
 // Lecturas autenticadas (por ejemplo GET /account/profile).
