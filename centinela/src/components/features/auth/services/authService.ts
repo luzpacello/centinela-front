@@ -1,6 +1,5 @@
 import {
   ApiRequestError,
-  clearAuthTokens,
   sendJsonGetRequest,
   sendJsonPostRequest,
   storeAuthTokens,
@@ -72,10 +71,8 @@ export async function persistSessionFromTokens(tokens: TokenResponse, signal?: A
 
 // POST /auth/logout — responde 204 sin cuerpo.
 export async function logoutSession(): Promise<void> {
-  try {
-    await sendJsonPostRequest('/auth/logout', {}, { expectedStatus: 204 });
-  } finally {
-    // Siempre se limpia la sesión local aunque el backend falle o el token ya no exista.
-    clearAuthTokens();
-  }
+  await sendJsonPostRequest('/auth/logout', undefined, {
+    skipAuthorization: true,
+    expectedStatus: 204,
+  });
 }
