@@ -25,11 +25,14 @@ export default function LoginForm({ initialEmail = '' }: { initialEmail?: string
           onChange={(event) => updateField('password', event.target.value)} onBlur={() => validateField('password')}
         />
 
-        <Field orientation="horizontal">
-          <Checkbox id="remember-me" name="recordarSesion" checked={values.recordarSesion}
-            onCheckedChange={(checked) => updateField('recordarSesion', checked)} disabled={isSubmitting} />
-          <FieldLabel htmlFor="remember-me">Recordarme</FieldLabel>
-        </Field>
+        <div className='flex'>
+          <Field orientation="horizontal">
+            <Checkbox id="remember-me" name="recordarSesion" checked={values.recordarSesion}
+              onCheckedChange={(checked) => updateField('recordarSesion', checked)} disabled={isSubmitting} />
+            <FieldLabel htmlFor="remember-me">Recordarme</FieldLabel>
+          </Field>
+          <Link to="/recover-password" className="text-info w-[300px]">¿Olvidaste tu contraseña?</Link>
+        </div>
         
       </FieldGroup>
       {formError && <FieldError>{formError}</FieldError>}
