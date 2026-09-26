@@ -15,7 +15,8 @@ import {
     Key,
     UserX,
     Trash2,
-    Edit3
+    Edit3,
+    QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -106,6 +107,10 @@ export default function UsersPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [pendingAccountAction, setPendingAccountAction] = useState<{ user: UserRow; action: 'delete' | 'deactivate' } | null>(null);
+    const [pendingAdminAction, setPendingAdminAction] = useState<{
+        user: UserRow;
+        action: 'reset-password' | 'reset-2fa';
+    } | null>(null);
     const [listRefreshVersion, setListRefreshVersion] = useState(0);
     async function confirmAccountAction() {
         if (!pendingAccountAction) return;
@@ -114,6 +119,45 @@ export default function UsersPage() {
         setListRefreshVersion((version) => version + 1);
     }
 
+    async function confirmAdminAction() {
+        if (!pendingAdminAction) return;
+        const {user, action} = pendingAdminAction;
+        if (action === 'reset-password') {
+            await apiClient.post(
+                `/admin/users/${encodeURIComponent(String(user.id))}/password/reset`,
+                {},
+            );
+            toast.add({
+                title: 'Contraseña restablecida',
+                description: 'Se ha generado una clave temporal y fue despechada al correo del usuario.',
+                type: 'success',
+                priority: 'high',
+            });
+            return;
+        }
+
+        await apiClient.post(
+            `/admin/users/${encodeURIComponent(String(user.id))}/2fa/reset`,
+            {},
+        );
+        setUsers((currentUsers) =>
+            currentUsers.map((currentUser) =>
+                currentUser.id === user.id
+                    ? {
+                        ...currentUser,
+                        twoFactor: 'Desactivado',
+                    }
+                    : currentUser,
+            ),
+        );
+        toast.add({
+            title: '2FA desvinculado',
+            description:
+                'La aplicación autenticadora fue desvinculada. El usuario deberá escanear un nuevo código QR en su próximo inicio de sesión.',
+            type: 'success',
+            priority: 'high',
+        });
+    }
     useEffect(() => {
         const controller = new AbortController();
 
@@ -161,6 +205,28 @@ export default function UsersPage() {
     return (
         <section className="flex min-w-0 self-start flex-col gap-6 text-slate-900">
             {pendingAccountAction && <ConfirmUserAction variant="destructive" onCompleted={() => setPendingAccountAction(null)} title={pendingAccountAction.action === 'delete' ? 'Eliminar usuario' : 'Desactivar usuario'} description={`Se desactivará la cuenta de ${pendingAccountAction.user.name} y se invalidarán sus sesiones. La cuenta no se borrará físicamente.`} onConfirm={confirmAccountAction} onCancel={() => setPendingAccountAction(null)} />}
+                        {pendingAdminAction && (
+                <ConfirmUserAction
+                    variant={
+                        pendingAdminAction.action === 'reset-2fa'
+                            ? 'destructive'
+                            : 'confirmation'
+                    }
+                    title={
+                        pendingAdminAction.action === 'reset-password'
+                            ? 'Restablecer contraseña'
+                            : 'Desvincular 2FA'
+                    }
+                    description={
+                        pendingAdminAction.action === 'reset-password'
+                            ? `Se generará una nueva contraseña temporal para ${pendingAdminAction.user.name} y será enviada a su correo. La contraseña no se mostrará en pantalla. También se invalidarán sus sesiones activas.`
+                            : 'Esta acción desvinculará la aplicación autenticadora del usuario. Se le exigirá escanear un nuevo código QR en su próximo inicio de sesión. También se invalidarán todas sus sesiones activas.'
+                    }
+                    onConfirm={confirmAdminAction}
+                    onCompleted={() => setPendingAdminAction(null)}
+                    onCancel={() => setPendingAdminAction(null)}
+                />
+            )}
             {/* Cabecera */}
             <div className="flex flex-wrap items-start justify-between gap-5 pb-1">
                 <div>
@@ -343,8 +409,33 @@ export default function UsersPage() {
                                                         >
                                                             <Edit3 className="size-3.5 text-slate-500" /> Editar usuario
                                                         </button>
-                                                        <button className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                                            <Key className="size-3.5 text-slate-500" /> Restablecer contraseña
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setOpenDropdownId(null);
+                                                                setPendingAdminAction({
+                                                                    user,
+                                                                    action: 'reset-password',
+                                                                });
+                                                            }}
+                                                            className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
+                                                            <Key className="size-3.5 text-slate-500" /> 
+                                                            Restablecer contraseña
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setOpenDropdownId(null);
+                                                                setPendingAdminAction({
+                                                                    user,
+                                                                    action: 'reset-2fa',
+                                                                });
+                                                            }}
+                                                            className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
+                                                            <QrCode className="size-3.5 text-slate-500" /> 
+                                                            Restablecer 2FA
                                                         </button>
                                                         <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: 'deactivate' }); }} className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                                                             <UserX className="size-3.5 text-amber-500" /> Desactivar usuario
