@@ -8,9 +8,7 @@ import { apiClient, ApiRequestError } from '@/services/apiClient';
 import { clearAuthTokens } from '@/services/api';
 import { toast } from '@/components/ui/toast';
 import { useLogout } from '@/components/features/auth/hooks/useAuth';
-
-const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 12;
+import { validatePasswordComplexity } from '@/components/features/auth/utils/validateAuthenticationFields';
 
 interface ChangePasswordFields {
   contrasenaActual: string;
@@ -25,8 +23,9 @@ function validateChangePasswordFields(values: ChangePasswordFields): ChangePassw
   if (!values.contrasenaActual.trim()) {
     errors.contrasenaActual = 'Ingresá tu contraseña actual.';
   }
-  if (values.contrasenaNueva.length < MIN_PASSWORD_LENGTH || values.contrasenaNueva.length > MAX_PASSWORD_LENGTH) {
-    errors.contrasenaNueva = `La contraseña nueva debe tener entre ${MIN_PASSWORD_LENGTH} y ${MAX_PASSWORD_LENGTH} caracteres.`;
+  const passwordValidation = validatePasswordComplexity (values.contrasenaNueva);
+  if (!passwordValidation.isValid) {
+    errors.contrasenaNueva = passwordValidation.missingConditions.join(' ');
   }
   if (values.confirmarContrasena !== values.contrasenaNueva) {
     errors.confirmarContrasena = 'Las contraseñas nuevas no coinciden.';
@@ -102,6 +101,9 @@ export default function ChangePasswordPage() {
           value={values.contrasenaActual} error={fieldErrors.contrasenaActual}
           onChange={(event) => updateField('contrasenaActual', event.target.value)}
         />
+        <p className="text-caption">
+          Usá la contraseña temporal que recibiste para acceder a tu cuenta.
+        </p>
 
         <AuthenticationInputField
           id="change-password-new" name="contrasenaNueva" label="Contraseña nueva" type="password"

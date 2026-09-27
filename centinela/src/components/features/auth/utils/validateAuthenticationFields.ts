@@ -48,3 +48,27 @@ export function validateOrganizationRegistrationFields(
   
   return errors;
 }
+
+export interface PasswordComplexityResult {
+  isValid: boolean;
+  missingConditions: string[];
+}
+
+export function validatePasswordComplexity(
+  password: string
+) : PasswordComplexityResult { 
+  const missingConditions: string[] = [];
+  if (password.length < 8 || password.length > 12) {
+    missingConditions.push('Debe tener 8 y 12 caracteres.');
+  }
+  if (!/[0-9]/.test(password)) {
+    missingConditions.push('Debe contener al menos una letra mayúscula.');
+  }
+  if (!/[!@#$%^&*\-_=+]/.test(password)) {
+    missingConditions.push('Debe contener al menos un símbolo: ! @ # $ % ^ & * - _ = +.',);
+  }
+  return {
+    isValid: missingConditions.length === 0,
+    missingConditions,
+  };
+}
