@@ -8,6 +8,7 @@ import { ContainerCard, InfoCard } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router';
 import { toast } from '@/components/ui/toast';
 import { apiClient, ApiRequestError } from '@/services/apiClient';
+import { validatePasswordComplexity } from '@/components/features/auth/utils/validateAuthenticationFields';
 
 const steps = ['Solicitar', 'Verificar', 'Nueva contraseña'];
 const MAX_RESET_ATTEMPTS = 3;
@@ -36,28 +37,11 @@ export const RecoverPassword: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
 
-
     /* Validación de correo */
     const isValidEmail = (value: string): boolean => {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     };
-    /*Validación de reglas para contra */
-    const validatePassword = (value: string): string[] => {
-        const errors: string[] = [];
-        if (value.length < 8 || value.length > 12) {
-            errors.push('Debe tener entre 8 y 12 caracteres.');
-        }
-        if (!/[A-Z]/.test(value)) {
-            errors.push('Debe contener al menos una letra mayúscula.');
-        }
-        if (!/[0-9]/.test(value)) {
-            errors.push('Debe contener al menos un número.');
-        }
-        if (!/[^A-Za-z0-9]/.test(value)) {
-            errors.push('Debe contener al menos un carácter especial.');
-        }
-        return errors;
-    };
+
     /*Paso 1: solicitud de recuperación */
     const handleRequestCode = async () => {
         setEmailError('');
@@ -110,13 +94,13 @@ export const RecoverPassword: React.FC = () => {
     };
     /*paso 3, se valida la contraseña y se envia la solicitu de reset */
     const handleResetPassword = async () => {
-            setPasswordError('');
+        setPasswordError('');
         setConfirmationError('');
         setCodeError('');
         if (resetBlocked) return;
-        const passwordErrors = validatePassword(password);
-        if (passwordErrors.length > 0) {
-          setPasswordError(passwordErrors.join(' '));
+        const passwordValidation = validatePasswordComplexity(password);
+        if (!passwordValidation.isValid) {
+          setPasswordError(passwordValidation.missingConditions.join(' '));
           return;
         }
         if (password !== passwordConfirmation) {
@@ -395,7 +379,7 @@ export const RecoverPassword: React.FC = () => {
                                 }}
                                 placeholder="Entre 8 y 12 caracteres"
                                 className="pr-10"
-                                aria-invalid={Boolean(password)}
+                                aria-invalid={Boolean(passwordError)}
                                 aria-describedby={
                                     passwordError ? 'recover-password-error' : undefined
                                 }
@@ -417,12 +401,28 @@ export const RecoverPassword: React.FC = () => {
                         <div className='text-sm text-muted-foreground'>
                             {!passwordError && (
                                 <>
-                                    <p>La contraseña debe tener:</p>
+                                    <p>La contraseña debe cumplir con:</p>
                                     <ul className='ml-5 list-disc'>
-                                        <li>tener entre 8 y 12 caracteres;</li>
-                                        <li>contener al menos una mayúscula;</li>
-                                        <li>contener al menos un número;</li>
-                                        <li>contener al menos un carácter especial.</li>
+                                        <li className={
+                                                password.length >= 8 && password.length <= 12
+                                                    ? 'text-green-600'
+                                                    : ''
+                                            }>Tener entre 8 y 12 caracteres.</li>
+                                        <li className={
+                                                /[A-Z]/.test(password)
+                                                    ? 'text-green-600'
+                                                    : ''
+                                            }>Contener al menos una mayúscula.</li>
+                                        <li className={
+                                                /[0-9]/.test(password)
+                                                    ? 'text-green-600'
+                                                    : ''
+                                            }>Contener al menos un número;</li>
+                                        <li className={
+                                                /[!@#$%^&*\-_=+]/.test(password)
+                                                    ? 'text-green-600'
+                                                    : ''
+                                            }>Contener al menos un símbolo permitido: {'!@#$%^&*\-_=+'}.</li>
                                     </ul>
                                 </>
                             )}
