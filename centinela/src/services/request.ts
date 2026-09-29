@@ -15,7 +15,7 @@ async function request(params: Irequest) {
 
     const confi = {
         method,
-        credentials: 'include',
+        credentials: "include" as RequestCredentials,
         headers: {
             Authorization: `Bearer ${token}`,
             Accept: 'application/json'
