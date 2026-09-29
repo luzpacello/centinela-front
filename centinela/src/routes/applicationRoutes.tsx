@@ -17,13 +17,16 @@ import AuditoriaPage from '@/pages/Auditoria';
 import RecoverPasswordPage from '@/pages/RecoverPassword';
 import ChangePasswordPage from '@/pages/ChangePassword';
 
+const styles = {
+  centraForm: "flex min-h-full items-center justify-center",
+};
 export const applicationRoutes: RouteObject[] = [
   {
     element: <Outlet />,
     errorElement: <RouteErrorPage />,
     children: [
       {
-        element: <MainLayoutAuth><div className="flex min-h-full items-center justify-center"><Outlet /></div></MainLayoutAuth>,
+        element: <MainLayoutAuth><div className={styles.centraForm}><Outlet /></div></MainLayoutAuth>,
         children: [
           { path: '/login', Component: LoginPage, loader: clearPendingLoginLoader, action: submitLoginAction },
           { path: '/signup', Component: SignUpPage, loader: clearPendingLoginLoader, action: submitOrganizationRegistrationAction },
@@ -47,11 +50,12 @@ export const applicationRoutes: RouteObject[] = [
           { index: true, loader: () => redirect('/dashboard') },
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
-          { path: '/auditoria', Component: AuditoriaPage },
+
           {
             // Guard administrativo: un OPERATOR es redirigido al dashboard.
             loader: loadAdminSession,
             children: [
+              { path: '/auditoria', Component: AuditoriaPage },
               { path: '/users', Component: UsersPage },
               { path: '/users/new', Component: CrearUsuariosPage },
               { path: '/users/:userId', Component: DetailsUserPage },
@@ -63,3 +67,4 @@ export const applicationRoutes: RouteObject[] = [
     ],
   },
 ];
+

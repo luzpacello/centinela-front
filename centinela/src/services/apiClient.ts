@@ -40,7 +40,7 @@ function getApiBaseUrl(): string {
   return (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 }
 
-function readStoredAccessToken(): string | null {
+export function readStoredAccessToken(): string | null {
   return typeof window === 'undefined' ? null : getAccessToken();
 }
 

@@ -16,6 +16,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { getAccessToken } from '@/storage/tokenStorage';
+// import { get } from '@/services/request';
+// import { data } from 'react-router';
 
 const AUDIT_PAGE_SIZE = 10;
 const EMPTY_TEXT = '—';
@@ -77,6 +79,10 @@ export default function AuditoriaPage() {
     // un desglose global por resultado, así que no se muestra ninguno.
     const exitososEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'EXITO').length;
     const fallidosEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'FALLA').length;
+
+    // useEffect(() => {
+    //     get("/api/admin/audit?pagina=1&tamano=10").then(data => console.log("imprimir data ", data))
+    // }, [])
 
     useEffect(() => {
         const controller = new AbortController();
