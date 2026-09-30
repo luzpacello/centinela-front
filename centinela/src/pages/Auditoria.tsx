@@ -231,7 +231,7 @@ export default function AuditoriaPage() {
             {/* Tarjetas de Métricas Superiores */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Eventos totales</span>
+                    <h4>Eventos totales</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica">{total}</span>
                         <span className="text-caption">En el período seleccionado</span>
@@ -239,15 +239,15 @@ export default function AuditoriaPage() {
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Exitosos</span>
+                    <h4>Exitosos</h4>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-emerald-600">{exitososEnPagina}</span>
+                        <span className="text-metrica text-blue-600">{exitososEnPagina}</span>
                         <span className="text-caption">En esta página</span>
                     </div>
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Fallidos</span>
+                    <h4>Fallidos</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica text-rose-600">{fallidosEnPagina}</span>
                         <span className="text-caption">En esta página</span>
