@@ -63,7 +63,6 @@ function formatFechaHora(value?: string | null): string {
 export default function AuditoriaPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [pagina, setPagina] = useState(1);
-    const [accion, setAccion] = useState('');
     const [resultado, setResultado] = useState('');
     const [usuarioId, setUsuarioId] = useState('');
     const [desde, setDesde] = useState('');
@@ -95,7 +94,6 @@ export default function AuditoriaPage() {
                     pagina: String(pagina),
                     tamano: String(AUDIT_PAGE_SIZE),
                 });
-                if (accion) params.set('accion', accion);
                 if (resultado) params.set('resultado', resultado);
                 if (usuarioId) params.set('usuarioId', usuarioId);
                 if (desde) params.set('desde', desde);
@@ -123,7 +121,7 @@ export default function AuditoriaPage() {
 
         loadAudit();
         return () => controller.abort();
-    }, [pagina, accion, resultado, usuarioId, desde, hasta]);
+    }, [pagina, resultado, usuarioId, desde, hasta]);
 
     // Todo cambio de filtro vuelve a la primera página.
     function updateFilter(setter: (value: string) => void, value: string) {
@@ -233,7 +231,7 @@ export default function AuditoriaPage() {
             {/* Tarjetas de Métricas Superiores */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Eventos totales</span>
+                    <h4>Eventos totales</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica">{total}</span>
                         <span className="text-caption">En el período seleccionado</span>
@@ -241,15 +239,15 @@ export default function AuditoriaPage() {
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Exitosos</span>
+                    <h4>Exitosos</h4>
                     <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-emerald-600">{exitososEnPagina}</span>
+                        <span className="text-metrica text-blue-600">{exitososEnPagina}</span>
                         <span className="text-caption">En esta página</span>
                     </div>
                 </Card>
 
                 <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Fallidos</span>
+                    <h4>Fallidos</h4>
                     <div className="flex items-baseline justify-between mt-2">
                         <span className="text-metrica text-rose-600">{fallidosEnPagina}</span>
                         <span className="text-caption">En esta página</span>
@@ -295,18 +293,6 @@ export default function AuditoriaPage() {
                         </select>
                     </div>
 
-                    {/* Filtro por acción */}
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                        <input
-                            type="text"
-                            aria-label="Acción"
-                            placeholder="Acción (ej: LOGIN)"
-                            value={accion}
-                            onChange={(event) => updateFilter(setAccion, event.target.value)}
-                            className="w-40 bg-transparent outline-none"
-                        />
-                    </div>
-
                     {/* Filtro por resultado */}
                     <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
                         <select
@@ -338,9 +324,7 @@ export default function AuditoriaPage() {
                                 <th className="py-3.5 px-4">Usuario</th>
                                 <th className="py-3.5 px-4">Acción</th>
                                 <th className="py-3.5 px-4">Recurso/instancia</th>
-                                <th className="py-3.5 px-4">Nodo</th>
                                 <th className="py-3.5 px-4">Resultado</th>
-                                <th className="py-3.5 px-4">IP origen</th>
                                 <th className="py-3.5 px-4 text-right">Detalles</th>
                             </tr>
                         </thead>
@@ -348,7 +332,7 @@ export default function AuditoriaPage() {
                             {isLoading &&
                                 Array.from({ length: 4 }).map((_, index) => (
                                     <tr key={`skeleton-${index}`} className="animate-pulse">
-                                        {Array.from({ length: 8 }).map((__, cell) => (
+                                        {Array.from({ length: 6 }).map((__, cell) => (
                                             <td key={cell} className="py-3 px-4"><div className="h-4 w-24 rounded bg-slate-100" /></td>
                                         ))}
                                     </tr>
@@ -356,7 +340,7 @@ export default function AuditoriaPage() {
 
                             {!isLoading && errorMessage && (
                                 <tr>
-                                    <td colSpan={8} className="py-10 px-4 text-center text-sm text-red-600" role="alert">
+                                    <td colSpan={6} className="py-10 px-4 text-center text-sm text-red-600" role="alert">
                                         {errorMessage}
                                     </td>
                                 </tr>
@@ -364,7 +348,7 @@ export default function AuditoriaPage() {
 
                             {!isLoading && !errorMessage && filteredAuditEvents.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="py-10 px-4 text-center text-sm text-slate-500">
+                                    <td colSpan={6} className="py-10 px-4 text-center text-sm text-slate-500">
                                         {items.length === 0
                                             ? 'Todavía no hay registros de auditoría para mostrar.'
                                             : 'No se encontraron registros que coincidan con la búsqueda.'}
@@ -378,13 +362,7 @@ export default function AuditoriaPage() {
                                     <td className="py-3 px-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</td>
                                     <td className="py-3 px-4">{displayText(event.accion)}</td>
                                     <td className="py-3 px-4 text-secundario">{displayText(event.instanciaNombre)}</td>
-                                    <td className="py-3 px-4">
-                                        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">
-                                            {EMPTY_TEXT}
-                                        </span>
-                                    </td>
                                     <td className="py-3 px-4">{getResultBadge(event.resultado)}</td>
-                                    <td className="py-3 px-4 font-mono text-xs text-secundario">{EMPTY_TEXT}</td>
                                     <td className="py-3 px-4 text-right">
                                         <button aria-label={`Ver detalles de ${displayText(event.accion)}`} title={event.detalles || undefined} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
                                             <Eye className="size-4" />
