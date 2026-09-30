@@ -1,3 +1,5 @@
+import type { UserInstancePermission } from '../../users/services/userInstanceService';
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -14,6 +16,7 @@ export interface UserSession {
   email: string;
   rol: string;
   instanciasPermitidas: number[];
+  permisos?: UserInstancePermission[];
   tiene2FA: boolean;
 }
 
@@ -50,6 +53,7 @@ export interface PerfilResponse {
   totpVinculado: boolean;
   cambioContrasenaRequerido: boolean;
   instanciasPermitidas: number[] | null;
+  permisos?: UserInstancePermission[] | null;
 }
 
 export interface OrganizationRegistrationRequest {
