@@ -1,7 +1,5 @@
 import type { UserInstancePermission } from '../components/features/users/services/userInstanceService';
 
-export const USER_SESSION_CHANGED_EVENT: string;
-
 export class ApiRequestError extends Error {
   status: number;
   errorCode?: string;
@@ -36,3 +34,4 @@ export function storeAuthTokens(tokens?: { accessToken?: string }): void;
 export function storeUserSession(user: StoredSessionUser): void;
 export function getStoredUserSession(): StoredSessionUser | null;
 export function clearAuthTokens(): void;
+export const AUTH_SESSION_CHANGED_EVENT: string;

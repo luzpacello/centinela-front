@@ -5,7 +5,7 @@ export { getAccessToken, storeAuthTokens };
 export { ApiRequestError };
 
 const userSessionKey = 'centinela_user';
-export const USER_SESSION_CHANGED_EVENT = 'centinela:user-session-changed';
+export const AUTH_SESSION_CHANGED_EVENT = 'centinela:auth-session-changed';
 
 function readStorage(key) {
   try {
@@ -34,10 +34,10 @@ function removeStorage(key) {
 }
 
 export function storeUserSession(user) {
-  if (user) {
-    writeStorage(userSessionKey, JSON.stringify(user));
-    window.dispatchEvent(new Event(USER_SESSION_CHANGED_EVENT));
-  }
+  if (!user) return;
+
+  writeStorage(userSessionKey, JSON.stringify(user));
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
 }
 
 export function getStoredUserSession() {
@@ -53,7 +53,7 @@ export function getStoredUserSession() {
 export function clearAuthTokens() {
   clearStoredAuthTokens();
   removeStorage(userSessionKey);
-  window.dispatchEvent(new Event(USER_SESSION_CHANGED_EVENT));
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
 }
 
 async function executeJsonRequest(path, payload, { method = 'POST', signal, auth = false, bearer, skipAuthorization = false, expectedStatus } = {}) {

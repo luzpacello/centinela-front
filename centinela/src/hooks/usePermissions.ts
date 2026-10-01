@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { getStoredUserSession, USER_SESSION_CHANGED_EVENT, type StoredSessionUser } from '@/services/api';
+import { getStoredUserSession, AUTH_SESSION_CHANGED_EVENT, type StoredSessionUser } from '@/services/api';
 
 function subscribeToSessionChanges(onSessionChange: () => void) {
-  window.addEventListener(USER_SESSION_CHANGED_EVENT, onSessionChange);
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionChange);
   window.addEventListener('storage', onSessionChange);
   return () => {
-    window.removeEventListener(USER_SESSION_CHANGED_EVENT, onSessionChange);
+    window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionChange);
     window.removeEventListener('storage', onSessionChange);
   };
 }

@@ -59,13 +59,16 @@ export function validatePasswordComplexity(
 ) : PasswordComplexityResult { 
   const missingConditions: string[] = [];
   if (password.length < 8 || password.length > 12) {
-    missingConditions.push('Debe tener 8 y 12 caracteres.');
+    missingConditions.push('Debe tener entre 8 y 12 caracteres.');
   }
-  if (!/[0-9]/.test(password)) {
+  if (!/[A-Z]/.test(password)) {
     missingConditions.push('Debe contener al menos una letra mayúscula.');
   }
+  if (!/[0-9]/.test(password)) {
+    missingConditions.push('Debe contener al menos un número.');
+  }
   if (!/[!@#$%^&*\-_=+]/.test(password)) {
-    missingConditions.push('Debe contener al menos un símbolo: ! @ # $ % ^ & * - _ = +.',);
+    missingConditions.push('Debe contener al menos un carácter especial(!@#$%^&-_=+).',);
   }
   return {
     isValid: missingConditions.length === 0,
