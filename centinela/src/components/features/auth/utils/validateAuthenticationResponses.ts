@@ -40,12 +40,16 @@ export function isTokenResponse(value: unknown): value is TokenResponse {
 export function isPerfilResponse(value: unknown): value is PerfilResponse {
   if (!isRecord(value)) return false;
   const instancias = value.instanciasPermitidas;
+  const permissions = value.permisos;
   return isNonEmptyString(value.id)
     && isNonEmptyString(value.organizacionId)
     && isNonEmptyString(value.nombreCompleto)
     && isNonEmptyString(value.emailUsuario)
     && isNonEmptyString(value.rol)
     && typeof value.totpVinculado === 'boolean'
+    && (permissions == null || (Array.isArray(permissions) && permissions.every((permission) =>
+      isRecord(permission) && Number.isSafeInteger(permission.vmid) && Number(permission.vmid) > 0
+      && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))))
     && (instancias === null || (Array.isArray(instancias) && instancias.every((v) => typeof v === 'number')));
 }
 
@@ -59,6 +63,7 @@ export function mapPerfilToUserSession(perfil: PerfilResponse): UserSession {
     rol: perfil.rol,
     instanciasPermitidas: perfil.instanciasPermitidas ?? [],
     tiene2FA: perfil.totpVinculado,
+    permisos: perfil.permisos ?? [],
   };
 }
 

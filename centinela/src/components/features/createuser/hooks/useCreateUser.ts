@@ -15,10 +15,15 @@ export function useCreateUser() {
       return true;
     } catch (error) {
       const isDuplicatedUser = error instanceof ApiRequestError && error.status === 409;
+      const isEmailDeliveryFailure = error instanceof ApiRequestError
+        && error.status === 502
+        && error.errorCode === 'EMAIL_DELIVERY_FAILED';
 
       toast.add({
         title: 'No se creó el usuario',
-        description: 'No se pudo completar la creación del usuario.',
+        description: isEmailDeliveryFailure
+          ? error.message
+          : 'No se pudo completar la creación del usuario.',
         type: 'error',
         priority: 'high',
         data: isDuplicatedUser ? { forceExpanded: true } : undefined,

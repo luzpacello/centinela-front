@@ -1,3 +1,7 @@
+import type { UserInstancePermission } from '../components/features/users/services/userInstanceService';
+
+export const USER_SESSION_CHANGED_EVENT: string;
+
 export class ApiRequestError extends Error {
   status: number;
   errorCode?: string;
@@ -11,6 +15,7 @@ export interface StoredSessionUser {
   email: string;
   rol: string;
   instanciasPermitidas: number[];
+  permisos?: UserInstancePermission[];
   tiene2FA: boolean;
 }
 

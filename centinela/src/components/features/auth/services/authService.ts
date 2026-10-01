@@ -72,7 +72,6 @@ export async function persistSessionFromTokens(tokens: TokenResponse, signal?: A
 // POST /auth/logout — responde 204 sin cuerpo.
 export async function logoutSession(): Promise<void> {
   await sendJsonPostRequest('/auth/logout', undefined, {
-    skipAuthorization: true,
     expectedStatus: 204,
   });
 }
