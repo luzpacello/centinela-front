@@ -1,7 +1,5 @@
 import type { UserInstancePermission } from '../components/features/users/services/userInstanceService';
 
-export const USER_SESSION_CHANGED_EVENT: string;
-
 export class ApiRequestError extends Error {
   status: number;
   errorCode?: string;
