@@ -31,3 +31,4 @@ export function storeAuthTokens(tokens?: { accessToken?: string }): void;
 export function storeUserSession(user: StoredSessionUser): void;
 export function getStoredUserSession(): StoredSessionUser | null;
 export function clearAuthTokens(): void;
+export const AUTH_SESSION_CHANGED_EVENT: string;

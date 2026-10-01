@@ -412,17 +412,17 @@ export const RecoverPassword: React.FC = () => {
                                                 /[A-Z]/.test(password)
                                                     ? 'text-green-600'
                                                     : ''
-                                            }>Contener al menos una mayúscula.</li>
+                                            }>Contener al menos una letra mayúscula.</li>
                                         <li className={
                                                 /[0-9]/.test(password)
                                                     ? 'text-green-600'
                                                     : ''
-                                            }>Contener al menos un número;</li>
+                                            }>Contener al menos un número</li>
                                         <li className={
                                                 /[!@#$%^&*\-_=+]/.test(password)
                                                     ? 'text-green-600'
                                                     : ''
-                                            }>Contener al menos un símbolo permitido: {'!@#$%^&*\-_=+'}.</li>
+                                            }>Contener al menos un carácter especial (!@#$%^&-_=+).</li>
                                     </ul>
                                 </>
                             )}

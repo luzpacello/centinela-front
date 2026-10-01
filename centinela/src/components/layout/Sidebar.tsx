@@ -4,13 +4,13 @@ import { ChevronDown, LogOut, Shield, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 import { useLogout } from '@/components/features/auth/hooks/useAuth';
+import PermissionGate from '@/context/PermissionGate';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
     const [isOpen, setIsOpen] = useState(false);
     const { isLoggingOut, logout } = useLogout();
 
     const primerNombre = user?.nombreCompleto?.split(' ')[0] ?? 'Admin';
-    const isAdmin = user?.rol === 'ADMIN';
 
     return (
         <aside className="flex h-full w-64 flex-col justify-between border-r border-slate-200 bg-white">
@@ -34,13 +34,16 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                         <span className="text-lg text-blue-600"></span> Instancias
                     </NavLink>
 
-                    {isAdmin && (
-                        <>
+                    <PermissionGate requiredRole="ADMIN"> 
                             <NavLink to="/users" end className={getNavigationLinkClassName}>
                                 <span className="text-lg text-slate-400"></span> Usuarios
                             </NavLink>
-                        </>
-                    )}
+                    </PermissionGate>
+                    <PermissionGate requiredRole="ADMIN"> 
+                            <NavLink to="/auditoria" end className={getNavigationLinkClassName}>
+                                <span className="text-lg text-slate-400"></span> Auditoria
+                            </NavLink>
+                    </PermissionGate>
                 </nav>
             </div>
 

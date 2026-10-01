@@ -1,6 +1,6 @@
-import { createContext, createElement, useEffect, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useState } from 'react';
 import { API_UNAUTHORIZED_EVENT } from '@/services/apiClient';
-import { clearAuthTokens, getAccessToken, getStoredUserSession } from '@/services/api';
+import { AUTH_SESSION_CHANGED_EVENT, clearAuthTokens, getAccessToken, getStoredUserSession } from '@/services/api';
 import { toast } from '@/components/ui/toast';
 import { applicationRouter } from '@/routes/router';
 
@@ -10,12 +10,15 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUserSession());
 
   useEffect(() => {
+    function handleSessionChanged(){
+      setUser(getStoredUserSession());
+    }
+
     function handleTokenRevoked() {
       const hadActiveSession = Boolean(
         getAccessToken() || getStoredUserSession(),
       );
 
-      setUser(null);
       clearAuthTokens();
 
       if (!hadActiveSession) return;
@@ -29,9 +32,43 @@ export function AuthProvider({ children }) {
       void applicationRouter.navigate('/login', { replace: true });
     }
 
+    window.addEventListener( AUTH_SESSION_CHANGED_EVENT, handleSessionChanged,);
     window.addEventListener(API_UNAUTHORIZED_EVENT, handleTokenRevoked);
-    return () => window.removeEventListener(API_UNAUTHORIZED_EVENT, handleTokenRevoked);
+    return () => {
+      window.removeEventListener(
+        AUTH_SESSION_CHANGED_EVENT,
+        handleSessionChanged,
+      );
+      window.removeEventListener(
+        API_UNAUTHORIZED_EVENT, 
+        handleTokenRevoked,
+      );
+    }
   }, []);
 
-  return createElement(AuthContext.Provider, { value: user }, children);
+  const hasRole = (role) => user?.rol === role;
+  const isAdmin = () => hasRole('ADMIN');
+  const isOperator = () => hasRole('OPERATOR');
+
+  const canAccessInstance = (vmid) =>
+    (user?.instanciasPermitidas ?? []).includes(vmid);
+
+  const value = {
+    user,
+    hasRole,
+    isAdmin,
+    isOperator,
+    canAccessInstance
+  };
+
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe utilizarse dentro de un AuthProvider');
+  }
+
+  return context;
 }
