@@ -1,17 +1,29 @@
-import { createContext, createElement, useContext, useEffect, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
 import { API_UNAUTHORIZED_EVENT } from '@/services/apiClient';
-import { AUTH_SESSION_CHANGED_EVENT, clearAuthTokens, getAccessToken, getStoredUserSession } from '@/services/api';
+import { AUTH_SESSION_CHANGED_EVENT, clearAuthTokens, getAccessToken, getStoredUserSession, type StoredSessionUser } from '@/services/api';
 import { toast } from '@/components/ui/toast';
 import { applicationRouter } from '@/routes/router';
 
-const AuthContext = createContext(null);
+interface AuthContextValue {
+  user: StoredSessionUser | null;
+  hasRole: (role: string) => boolean;
+  isAdmin: () => boolean;
+  isOperator: () => boolean;
+  canAccessInstance: (vmid: number) => boolean;
+}
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => getStoredUserSession());
+interface AuthProviderProps { children: ReactNode; }
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<StoredSessionUser | null>(
+    () => getStoredUserSession() ?? null,
+  );
 
   useEffect(() => {
     function handleSessionChanged(){
-      setUser(getStoredUserSession());
+      setUser(getStoredUserSession() ?? null);
     }
 
     function handleTokenRevoked() {
@@ -46,14 +58,14 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const hasRole = (role) => user?.rol === role;
-  const isAdmin = () => hasRole('ADMIN');
-  const isOperator = () => hasRole('OPERATOR');
+  const hasRole = (role: string): boolean => user?.rol === role;
+  const isAdmin = (): boolean => hasRole('ADMIN');
+  const isOperator = (): boolean => hasRole('OPERATOR');
 
-  const canAccessInstance = (vmid) =>
+  const canAccessInstance = (vmid: number): boolean =>
     (user?.instanciasPermitidas ?? []).includes(vmid);
 
-  const value = {
+  const value: AuthContextValue = {
     user,
     hasRole,
     isAdmin,
