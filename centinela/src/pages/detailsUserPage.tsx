@@ -357,7 +357,6 @@ function SecurityCard({ user }: { user: UserDetails }) {
 function formatRole(role: string): string {
     if (role === 'ADMIN') return 'Administrador';
     if (role === 'OPERATOR') return 'Operador';
-    if (role === 'READ_ONLY') return 'Solo lectura';
     return role;
 }
 
