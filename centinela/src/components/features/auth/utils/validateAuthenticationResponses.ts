@@ -5,7 +5,12 @@ import type {
   TokenResponse,
   TwoFactorQrResponse,
   UserSession,
+  UserRole,
 } from '../types/authentication.ts';
+
+export function isUserRole(value: unknown): value is UserRole {
+  return value === 'ADMIN' || value === 'OPERATOR';
+}
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -45,7 +50,7 @@ export function isPerfilResponse(value: unknown): value is PerfilResponse {
     && isNonEmptyString(value.organizacionId)
     && isNonEmptyString(value.nombreCompleto)
     && isNonEmptyString(value.emailUsuario)
-    && isNonEmptyString(value.rol)
+    && isUserRole(value.rol)
     && typeof value.totpVinculado === 'boolean'
     && (permissions == null || (Array.isArray(permissions) && permissions.every((permission) =>
       isRecord(permission) && Number.isSafeInteger(permission.vmid) && Number(permission.vmid) > 0

@@ -1,3 +1,4 @@
+import { isUserRole } from '@/components/features/auth/utils/validateAuthenticationResponses';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import type { UserDetails } from '../types/user';
 
@@ -27,7 +28,7 @@ function isUserDetailsResponse(value: unknown): value is UserDetailsResponse {
     && typeof value.nombreUsuario === 'string'
     && typeof value.emailUsuario === 'string'
     && typeof value.organizacionId === 'string'
-    && typeof value.rol === 'string'
+    && isUserRole(value.rol)
     && typeof value.activo === 'boolean'
     && typeof value.totpVinculado === 'boolean'
     && typeof value.cambioContrasenaRequerido === 'boolean'
@@ -63,6 +64,9 @@ export async function updateUserDetails(
   userId: string,
   data: Partial<Pick<UserDetails, 'activo' | 'emailUsuario' | 'nombreCompleto' | 'rol'>>,
 ): Promise<UserDetails> {
+  if (data.rol !== undefined && !isUserRole(data.rol)) {
+    throw new ApiRequestError('El rol del usuario debe ser ADMIN u OPERATOR.');
+  }
   const response = await apiClient.request<unknown>(`/admin/users/${encodeURIComponent(userId)}`, {
     method: 'PUT', payload: data, expectedStatus: 200,
   });
@@ -72,7 +76,7 @@ export async function updateUserDetails(
   // El PUT devuelve un resumen: consultar el detalle completo sin inventar los campos faltantes.
   if (!isRecord(response) || response.id !== userId
     || typeof response.nombreCompleto !== 'string' || typeof response.emailUsuario !== 'string'
-    || typeof response.rol !== 'string' || typeof response.activo !== 'boolean') {
+    || !isUserRole(response.rol) || typeof response.activo !== 'boolean') {
     throw new ApiRequestError('No se pudo interpretar la respuesta de actualización del usuario.');
   }
   return fetchUserDetails(userId);

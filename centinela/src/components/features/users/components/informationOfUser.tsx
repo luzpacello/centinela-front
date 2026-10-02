@@ -60,7 +60,6 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                         >
                             <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
                             <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                            <NativeSelectOption value="READ_ONLY">Solo lectura</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 </div>

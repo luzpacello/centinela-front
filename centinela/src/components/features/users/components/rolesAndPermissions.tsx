@@ -71,7 +71,6 @@ export default function RolesAndPermissions({ role, onRoleChange, instanceAccess
                             >
                                 <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
                                 <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                                <NativeSelectOption value="READ_ONLY">Solo lectura</NativeSelectOption>
                             </NativeSelect>
                         </div>
                     </div>
