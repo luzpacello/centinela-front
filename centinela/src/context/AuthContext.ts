@@ -11,6 +11,7 @@ interface AuthContextValue {
   isAdmin: () => boolean;
   isOperator: () => boolean;
   canAccessInstance: (vmid: number) => boolean;
+  canOperateInstance: (vmid: number) => boolean;
 }
 
 interface AuthProviderProps { children: ReactNode; }
@@ -70,12 +71,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))
     ));
 
+  const canOperateInstance = (vmid: number): boolean =>
+    isAdmin() || (isOperator() && (user?.permisos ?? []).some((permission) =>
+      permission.vmid === vmid && permission.nivelAcceso === 'FULL_ACCESS'
+    ));
+
   const value: AuthContextValue = {
     user,
     hasRole,
     isAdmin,
     isOperator,
-    canAccessInstance
+    canAccessInstance,
+    canOperateInstance
   };
 
   return createElement(AuthContext.Provider, { value }, children);
