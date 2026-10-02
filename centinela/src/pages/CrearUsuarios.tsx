@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Check, CheckCircle2, ChevronRight, Eye, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, ChevronRight, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
@@ -18,7 +18,6 @@ interface RoleOption {
 const roles: RoleOption[] = [
     { name: 'Usuario', description: 'Acceso básico para gestionar y visualizar recursos asignados.', icon: UserRound },
     { name: 'Administrador', description: 'Acceso completo para gestionar recursos y usuarios.', icon: Shield },
-    { name: 'Solo lectura', description: 'Puede visualizar recursos pero no realizar cambios.', icon: Eye },
 ];
 
 const EMPTY_FORM = { nombreCompleto: '', nombreUsuario: '', emailUsuario: '', rol: 'OPERATOR' };
