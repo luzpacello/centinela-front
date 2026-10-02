@@ -3,8 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/context/AuthContext';
+import { useInstances } from '@/components/features/intances/hooks/useInstances';
+import InstanceAction from '@/components/features/intances/components/InstanceAction';
 
 export default function Instances() {
+    const { user, isAdmin, canAccessInstance } = useAuth();
+    const { instances, isLoading, errorMessage, reloadInventory } = useInstances();
+    const visibleInstances = instances.filter((instance) => canAccessInstance(instance.id));
+    const runningInstanceCount = visibleInstances.filter((instance) => instance.status === 'running').length;
+    const stoppedInstanceCount = visibleInstances.filter((instance) => instance.status === 'stopped').length;
+
     return (
         <section className={style.page}>
             <header className={style.header}>
@@ -18,7 +28,7 @@ export default function Instances() {
                         <Input className={style.searchInput} placeholder="Buscar instancia..." aria-label="Buscar instancia" readOnly />
                     </div>
                     <Button type="button" variant="outline"><Filter className={style.smallIcon} /> Filtros</Button>
-                    <Button type="button"><Plus className={style.smallIcon} /> Crear instancia</Button>
+                    {isAdmin() && <Button type="button"><Plus className={style.smallIcon} /> Crear instancia</Button>}
                 </div>
             </header>
 
@@ -26,7 +36,7 @@ export default function Instances() {
                 <Card className={style.summaryCard}>
                     <span className={style.greenIcon}><Monitor className={style.icon} /></span>
                     <div className={style.summaryContent}>
-                        <p className="text-metrica">0</p>
+                        <p className="text-metrica">{visibleInstances.length}</p>
                         <h2 className="text-caption">Instancias totales</h2>
                         <p className="text-caption">Todas las instancias en el sistema</p>
                     </div>
@@ -34,7 +44,7 @@ export default function Instances() {
                 <Card className={style.summaryCard}>
                     <span className={style.greenIcon}><CirclePlay className={style.icon} /></span>
                     <div className={style.summaryContent}>
-                        <p className="text-metrica">0</p>
+                        <p className="text-metrica">{runningInstanceCount}</p>
                         <h2 className="text-caption">En ejecución</h2>
                         <p className="text-caption">Instancias activas y funcionando</p>
                     </div>
@@ -43,7 +53,7 @@ export default function Instances() {
                 <Card className={style.summaryCard}>
                     <span className={style.orangeIcon}><Square className={style.icon} /></span>
                     <div className={style.summaryContent}>
-                        <p className="text-metrica">0</p>
+                        <p className="text-metrica">{stoppedInstanceCount}</p>
                         <h2 className="text-caption">Detenidas</h2>
                         <p className="text-caption">Instancias apagadas</p>
                     </div>
@@ -69,7 +79,7 @@ export default function Instances() {
                 </div>
 
                 <div className={style.tableContainer}>
-                    <table className={style.table} aria-label="Inventario de instancias">
+                    <table className={style.table} aria-label="Inventario de instancias" aria-busy={isLoading}>
                         <thead className={style.tableHead}>
                             <tr>
                                 <th className={style.checkboxCell} scope="col"><Checkbox aria-label="Seleccionar todas las instancias" disabled /></th>
@@ -85,13 +95,44 @@ export default function Instances() {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colSpan={10} className={style.emptyState}>Sin instancias</td></tr>
+                            {isLoading ? (
+                                <tr><td colSpan={10} className={style.emptyState} role="status">Cargando instancias…</td></tr>
+                            ) : errorMessage ? (
+                                <tr><td colSpan={10} className={style.emptyState}>
+                                    <p role="alert">{errorMessage}</p>
+                                    <Button type="button" variant="outline" onClick={reloadInventory}>Reintentar</Button>
+                                </td></tr>
+                            ) : visibleInstances.length === 0 ? (
+                                <tr><td colSpan={10} className={style.emptyState}>Sin instancias</td></tr>
+                            ) : visibleInstances.map((instance) => {
+                                const permissionLevel = user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
+                                return (
+                                    <tr key={instance.id}>
+                                        <td className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} disabled /></td>
+                                        <td className="px-4 py-4">
+                                            <p>{instance.name} ({instance.id})</p>
+                                            {!isAdmin() && <Badge variant="outline" data-access-level={permissionLevel}>
+                                                {permissionLevel === 'READ_ONLY' ? 'Solo lectura' : permissionLevel === 'FULL_ACCESS' ? 'Control total' : 'Nivel de acceso no disponible'}
+                                            </Badge>}
+                                        </td>
+                                        <td className="px-4 py-4">{instance.type}</td>
+                                        <td className="px-4 py-4">{instance.status}</td>
+                                        <td className="px-4 py-4">{instance.node}</td>
+                                        {/* El contrato de inventario todavía no devuelve métricas ni IP. */}
+                                        <td className="px-4 py-4">—</td>
+                                        <td className="px-4 py-4">—</td>
+                                        <td className="px-4 py-4">—</td>
+                                        <td className="px-4 py-4">—</td>
+                                        <td className="px-4 py-4"><InstanceAction instance={instance} onActionAccepted={reloadInventory} /></td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
 
                 <footer className={style.inventoryFooter}>
-                    <p className={style.caption}>Mostrando 0 de 0 instancias</p>
+                    <p className={style.caption}>Mostrando {visibleInstances.length} de {visibleInstances.length} instancias</p>
                     <div className={style.pagination}>
                         <Button type="button" variant="outline" size="icon" aria-label="Página anterior" disabled><ChevronLeft className={style.smallIcon} /></Button>
                         <Button type="button" variant="outline" aria-current="page" className={style.currentPage}>1</Button>
