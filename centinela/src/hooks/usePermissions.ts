@@ -23,7 +23,7 @@ export function usePermissions() {
 
   function canAccessInstance(vmid: number): boolean {
     if (isAdmin) return true;
-    if (!user || !['OPERATOR', 'READ_ONLY'].includes(user.rol)) return false;
+    if (user?.rol !== 'OPERATOR') return false;
     return userPermissions.some((permission) => permission?.vmid === vmid
       && ['FULL_ACCESS', 'READ_ONLY'].includes(permission.nivelAcceso))
       || (Array.isArray(user.instanciasPermitidas) && user.instanciasPermitidas.includes(vmid));
