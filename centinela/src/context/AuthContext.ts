@@ -3,10 +3,11 @@ import { API_UNAUTHORIZED_EVENT } from '@/services/apiClient';
 import { AUTH_SESSION_CHANGED_EVENT, clearAuthTokens, getAccessToken, getStoredUserSession, type StoredSessionUser } from '@/services/api';
 import { toast } from '@/components/ui/toast';
 import { applicationRouter } from '@/routes/router';
+import type { UserRole } from '@/components/features/auth/types/authentication';
 
 interface AuthContextValue {
   user: StoredSessionUser | null;
-  hasRole: (role: string) => boolean;
+  hasRole: (role: UserRole) => boolean;
   isAdmin: () => boolean;
   isOperator: () => boolean;
   canAccessInstance: (vmid: number) => boolean;
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const hasRole = (role: string): boolean => user?.rol === role;
+  const hasRole = (role: UserRole): boolean => user?.rol === role;
   const isAdmin = (): boolean => hasRole('ADMIN');
   const isOperator = (): boolean => hasRole('OPERATOR');
 

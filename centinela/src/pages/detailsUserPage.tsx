@@ -221,14 +221,14 @@ function UserInformationTabs({
                 <Tabs value={activeTab} onValueChange={setActiveTab} className={styles.tabsContainer}>
                     <TabsList variant="line" className={styles.tabsList} aria-label="Información del usuario">
                         <TabsTrigger value="general">Información general</TabsTrigger>
-                        <PermissionGate requiredRole="Admin">
+                        <PermissionGate requiredRole="ADMIN">
                             <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
                         </PermissionGate>
                     </TabsList>
                     <TabsContent value="general" className={styles.generalInformationTabContent}>
                         <InformationOfUser values={values} onFieldChange={onFieldChange} emailError={emailError} />
                     </TabsContent>
-                    <PermissionGate requiredRole="Admin">
+                    <PermissionGate requiredRole="ADMIN">
                         <TabsContent value="roles" className={styles.rolesTabContent}>
                             <RolesAndPermissions
                                 instanceAccess={instanceAccess}
@@ -253,7 +253,7 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
                     <h4>Acceso a instancias asignadas</h4>
                     <p className="text-secundario">Definí a qué instancias puede acceder este usuario.</p>
                 </div>
-                <PermissionGate requiredRole="Admin">
+                <PermissionGate requiredRole="ADMIN">
                     <Button type="button" variant="outline">
                         <KeyRound className={styles.actionIcon} aria-hidden="true" />
                         Gestionar acceso
