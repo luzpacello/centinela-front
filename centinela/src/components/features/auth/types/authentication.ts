@@ -1,5 +1,8 @@
 import type { UserInstancePermission } from '../../users/services/userInstanceService';
 
+// Roles canónicos para guards y controles de visibilidad; READ_ONLY es un nivel de acceso por instancia.
+export type UserRole = 'ADMIN' | 'OPERATOR';
+
 export interface LoginCredentials {
   email: string;
   password: string;
