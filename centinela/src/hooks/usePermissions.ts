@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { getStoredUserSession, AUTH_SESSION_CHANGED_EVENT, type StoredSessionUser } from '@/services/api';
+import { canUserAccessInstance } from '@/components/features/auth/utils/instanceAccess';
 
 function subscribeToSessionChanges(onSessionChange: () => void) {
   window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionChange);
@@ -22,11 +23,7 @@ export function usePermissions() {
   const userPermissions = Array.isArray(user?.permisos) ? user.permisos : [];
 
   function canAccessInstance(vmid: number): boolean {
-    if (isAdmin) return true;
-    if (user?.rol !== 'OPERATOR') return false;
-    return userPermissions.some((permission) => permission?.vmid === vmid
-      && ['FULL_ACCESS', 'READ_ONLY'].includes(permission.nivelAcceso))
-      || (Array.isArray(user.instanciasPermitidas) && user.instanciasPermitidas.includes(vmid));
+    return canUserAccessInstance(user, vmid);
   }
 
   function canOperateInstance(vmid: number): boolean {
