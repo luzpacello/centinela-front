@@ -1,7 +1,8 @@
-import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Cpu, Database, MemoryStick, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
+import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { CpuGauge, RamMeter, StorageMeter } from '@/components/features/dashboard/components/ResourceMeter';
 
 export default function Dashboard() {
     return (
@@ -88,36 +89,10 @@ export default function Dashboard() {
                     </Button>
                 </div>
 
-                <div className={style.resources}>
-                    <div className={style.resource}>
-                        <span className={style.roundGreenIcon}><Cpu className={style.icon} /></span>
-                        <div>
-                            <h4>CPU</h4>
-                            <p className="text-metrica">0%</p>
-                            <p className="text-caption">0 de 0 núcleos</p>
-                        </div>
-                        <div className={style.chartPlaceholder}>Gráfica</div>
-                    </div>
-
-                    <div className={style.resource}>
-                        <span className={style.roundBlueIcon}><MemoryStick className={style.icon} /></span>
-                        <div>
-                            <h4>Memoria RAM</h4>
-                            <p className="text-metrica">0%</p>
-                            <p className="text-caption">0 de 0 GB</p>
-                        </div>
-                        <div className={style.chartPlaceholder}>Gráfica</div>
-                    </div>
-
-                    <div className={style.resource}>
-                        <span className={style.roundPurpleIcon}><Database className={style.icon} /></span>
-                        <div>
-                            <h4>Almacenamiento</h4>
-                            <p className="text-metrica">0%</p>
-                            <p className="text-caption">0 de 0 TB</p>
-                        </div>
-                        <div className={style.chartPlaceholder}>Gráfica</div>
-                    </div>
+                <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <CpuGauge percent={69} usedCores={7} totalCores={10} />
+                    <RamMeter usedGb={12.4} totalGb={32} />
+                    <StorageMeter usedGb={510} totalGb={1024} />
                 </div>
             </Card>
 
