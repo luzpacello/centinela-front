@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
 import { Switch } from '@/components/ui/switch';
 import type { EditableUserValues, UpdateEditableUserField } from '../types/user';
+import { useAuth } from '@/context/AuthContext';
 
 interface InformationOfUserProps {
     values: EditableUserValues;
@@ -12,6 +13,9 @@ interface InformationOfUserProps {
 }
 
 export default function InformationOfUser({ values, onFieldChange, emailError }: InformationOfUserProps) {
+    const { isAdmin } = useAuth();
+    const admin = isAdmin();
+
     return (
         <section className={styles.informationSection} aria-labelledby="general-information-title">
             <h4 id="general-information-title">Información general</h4>
@@ -23,6 +27,7 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                     value={values.nombreCompleto}
                     onChange={(value) => onFieldChange('nombreCompleto', value)}
                     icon={UserRound}
+                    readOnly={!admin}
                 />
                 <InputField
                     id="email"
@@ -32,6 +37,7 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                     error={emailError}
                     type="email"
                     icon={Mail}
+                    readOnly={!admin}
                 />
                 <InputField
                     id="organization"
@@ -50,10 +56,10 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                             value={values.rol}
                             onChange={(event) => onFieldChange('rol', event.target.value)}
                             className={styles.roleSelect}
+                            disabled={!admin}
                         >
                             <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
                             <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                            <NativeSelectOption value="READ_ONLY">Solo lectura</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 </div>
@@ -69,6 +75,7 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                         onCheckedChange={(checked) => onFieldChange('activo', checked)}
                         aria-label="Usuario activo"
                         className={styles.activeUserSwitch}
+                        disabled={!admin}
                     />
                 </div>
             </div>

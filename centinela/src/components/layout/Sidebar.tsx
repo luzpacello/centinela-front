@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 import { useLogout } from '@/components/features/auth/hooks/useAuth';
+import PermissionGate from '@/context/PermissionGate';
 import logoCentinela from '@/assets/logo.png';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
@@ -80,20 +81,22 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                         <Server className="size-4.5" aria-hidden="true" />
                         {!isCollapsed && <span>Instancias</span>}
                     </NavLink>
-                    <NavLink to="/auditoria" title={isCollapsed ? 'Auditoría' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
-                        <Activity className="size-4.5" aria-hidden="true" />
-                        {!isCollapsed && <span>Auditoría</span>}
-                    </NavLink>
-
-                    {user?.rol === 'ADMIN' && (
+                    <PermissionGate requiredRole="ADMIN">
+                        <NavLink to="/auditoria" title={isCollapsed ? 'Auditoría' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
+                            <Activity className="size-4.5" aria-hidden="true" />
+                            {!isCollapsed && <span>Auditoría</span>}
+                        </NavLink>
+                    </PermissionGate>
+                    
+                    <PermissionGate requiredRole="ADMIN">
                         <NavLink to="/users" title={isCollapsed ? 'Usuarios' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
                             <Users className="size-4.5" aria-hidden="true" />
                             {!isCollapsed && <span>Usuarios</span>}
                         </NavLink>
-                    )}
+                    </PermissionGate>
                 </div>
             </nav>
-
+                    
             {/* PIE DE PÁGINA (INFRAESTRUCTURA Y USUARIO) */}
             <div className={`${style.footerBase} ${isCollapsed ? 'p-2' : 'p-3'}`}>
 

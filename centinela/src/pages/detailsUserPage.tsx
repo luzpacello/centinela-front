@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PermissionGate from '@/context/PermissionGate';
 
 const additionalSecurityInformation = [
     { label: 'Último cambio de contraseña', value: '02/05/2024, 09:10', icon: CalendarDays, highlighted: false },
@@ -170,14 +171,19 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <ArrowLeft className={styles.actionIcon} aria-hidden="true" />
                         Volver
                     </Button>
-                    <Button type="button" variant="outline" className={styles.deleteButton} disabled={isSaving} onClick={() => setIsDeleteConfirmationOpen(true)}>
-                        <Trash2 className={styles.actionIcon} aria-hidden="true" />
-                        Eliminar usuario
-                    </Button>
-                    <Button type="button" onClick={() => void handleSaveChanges()} disabled={isSaving || (!hasProfileChanges && !hasPermissionChanges) || (hasPermissionChanges && instanceAccess.isLoading)} aria-busy={isSaving}>
-                        <Save className={styles.actionIcon} aria-hidden="true" />
-                        Guardar cambios
-                    </Button>
+                    <PermissionGate requiredRole="ADMIN">
+                        <Button type="button" variant="outline" className={styles.deleteButton} disabled={isSaving} onClick={() => setIsDeleteConfirmationOpen(true)}>
+                            <Trash2 className={styles.actionIcon} aria-hidden="true" />
+                            Eliminar usuario
+                        </Button>
+                    </PermissionGate>
+                    <PermissionGate requiredRole="ADMIN">
+                        <Button type="button" onClick={() => void handleSaveChanges()} disabled={isSaving || (!hasProfileChanges && !hasPermissionChanges) || (hasPermissionChanges && instanceAccess.isLoading)} aria-busy={isSaving}>
+                            <Save className={styles.actionIcon} aria-hidden="true" />
+                            Guardar cambios
+                        </Button>
+                    </PermissionGate>
+                    
                 </div>
             </header>
 
@@ -215,19 +221,23 @@ function UserInformationTabs({
                 <Tabs value={activeTab} onValueChange={setActiveTab} className={styles.tabsContainer}>
                     <TabsList variant="line" className={styles.tabsList} aria-label="Información del usuario">
                         <TabsTrigger value="general">Información general</TabsTrigger>
-                        <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
+                        <PermissionGate requiredRole="ADMIN">
+                            <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
+                        </PermissionGate>
                     </TabsList>
                     <TabsContent value="general" className={styles.generalInformationTabContent}>
                         <InformationOfUser values={values} onFieldChange={onFieldChange} emailError={emailError} />
                     </TabsContent>
-                    <TabsContent value="roles" className={styles.rolesTabContent}>
-                        <RolesAndPermissions
-                            instanceAccess={instanceAccess}
-                            pendingAccess={instanceAccess.pendingAccess}
-                            role={values.rol}
-                            onRoleChange={(role) => onFieldChange('rol', role)}
-                        />
-                    </TabsContent>
+                    <PermissionGate requiredRole="ADMIN">
+                        <TabsContent value="roles" className={styles.rolesTabContent}>
+                            <RolesAndPermissions
+                                instanceAccess={instanceAccess}
+                                pendingAccess={instanceAccess.pendingAccess}
+                                role={values.rol}
+                                onRoleChange={(role) => onFieldChange('rol', role)}
+                            />
+                        </TabsContent>
+                    </PermissionGate>                    
                 </Tabs>
             </Card>
             {activeTab === 'general' && <AssignedInstancesCard instanceIds={instanceAccess.assignedIds} />}
@@ -243,10 +253,12 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
                     <h4>Acceso a instancias asignadas</h4>
                     <p className="text-secundario">Definí a qué instancias puede acceder este usuario.</p>
                 </div>
-                <Button type="button" variant="outline">
-                    <KeyRound className={styles.actionIcon} aria-hidden="true" />
-                    Gestionar acceso
-                </Button>
+                <PermissionGate requiredRole="ADMIN">
+                    <Button type="button" variant="outline">
+                        <KeyRound className={styles.actionIcon} aria-hidden="true" />
+                        Gestionar acceso
+                    </Button>
+                </PermissionGate>
             </div>
 
             <Table className={styles.instancesTable}>
@@ -345,7 +357,6 @@ function SecurityCard({ user }: { user: UserDetails }) {
 function formatRole(role: string): string {
     if (role === 'ADMIN') return 'Administrador';
     if (role === 'OPERATOR') return 'Operador';
-    if (role === 'READ_ONLY') return 'Solo lectura';
     return role;
 }
 

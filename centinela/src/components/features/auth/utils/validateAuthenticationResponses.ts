@@ -5,7 +5,12 @@ import type {
   TokenResponse,
   TwoFactorQrResponse,
   UserSession,
+  UserRole,
 } from '../types/authentication.ts';
+
+export function isUserRole(value: unknown): value is UserRole {
+  return value === 'ADMIN' || value === 'OPERATOR';
+}
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -40,12 +45,16 @@ export function isTokenResponse(value: unknown): value is TokenResponse {
 export function isPerfilResponse(value: unknown): value is PerfilResponse {
   if (!isRecord(value)) return false;
   const instancias = value.instanciasPermitidas;
+  const permissions = value.permisos;
   return isNonEmptyString(value.id)
     && isNonEmptyString(value.organizacionId)
     && isNonEmptyString(value.nombreCompleto)
     && isNonEmptyString(value.emailUsuario)
-    && isNonEmptyString(value.rol)
+    && isUserRole(value.rol)
     && typeof value.totpVinculado === 'boolean'
+    && (permissions == null || (Array.isArray(permissions) && permissions.every((permission) =>
+      isRecord(permission) && Number.isSafeInteger(permission.vmid) && Number(permission.vmid) > 0
+      && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))))
     && (instancias === null || (Array.isArray(instancias) && instancias.every((v) => typeof v === 'number')));
 }
 
@@ -59,6 +68,7 @@ export function mapPerfilToUserSession(perfil: PerfilResponse): UserSession {
     rol: perfil.rol,
     instanciasPermitidas: perfil.instanciasPermitidas ?? [],
     tiene2FA: perfil.totpVinculado,
+    permisos: perfil.permisos ?? [],
   };
 }
 
