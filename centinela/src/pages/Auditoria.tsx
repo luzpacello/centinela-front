@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { getAccessToken } from '@/storage/tokenStorage';
+import { useGuardiaRol } from '@/hooks/useGuardiaRol';
 // import { get } from '@/services/request';
 // import { data } from 'react-router';
 
@@ -61,6 +62,8 @@ function formatFechaHora(value?: string | null): string {
 }
 
 export default function AuditoriaPage() {
+    // Si el usuario tiene rol OPERATOR, el hook lo patea a /dashboard
+    const estaAutorizado = useGuardiaRol(['OPERATOR']);
     const [searchTerm, setSearchTerm] = useState('');
     const [pagina, setPagina] = useState(1);
     const [resultado, setResultado] = useState('');
@@ -84,6 +87,10 @@ export default function AuditoriaPage() {
     // }, [])
 
     useEffect(() => {
+        if (!estaAutorizado) {
+            return;
+        }
+
         const controller = new AbortController();
 
         async function loadAudit() {
@@ -121,7 +128,11 @@ export default function AuditoriaPage() {
 
         loadAudit();
         return () => controller.abort();
-    }, [pagina, resultado, usuarioId, desde, hasta]);
+    }, [estaAutorizado, pagina, resultado, usuarioId, desde, hasta]);
+
+    if (!estaAutorizado) {
+        return null;
+    }
 
     // Todo cambio de filtro vuelve a la primera página.
     function updateFilter(setter: (value: string) => void, value: string) {
