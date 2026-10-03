@@ -10,13 +10,13 @@ export default defineConfig({
     tailwindcss(),
   ],
 
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080'
-      }
-    },
-  },
+  // server: {
+  //   proxy: {
+  //     '/api': {
+  //       target: 'http://localhost:8080'
+  //     }
+  //   },
+  // },
 
   test: {
     environment: 'jsdom',
