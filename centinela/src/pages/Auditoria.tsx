@@ -66,6 +66,7 @@ export default function AuditoriaPage() {
     const estaAutorizado = useGuardiaRol(['OPERATOR']);
     const [searchTerm, setSearchTerm] = useState('');
     const [pagina, setPagina] = useState(1);
+    const [accion, setAccion] = useState('');
     const [resultado, setResultado] = useState('');
     const [usuarioId, setUsuarioId] = useState('');
     const [desde, setDesde] = useState('');
@@ -101,6 +102,7 @@ export default function AuditoriaPage() {
                     pagina: String(pagina),
                     tamano: String(AUDIT_PAGE_SIZE),
                 });
+                if (accion) params.set('accion', accion);
                 if (resultado) params.set('resultado', resultado);
                 if (usuarioId) params.set('usuarioId', usuarioId);
                 if (desde) params.set('desde', desde);
@@ -128,7 +130,7 @@ export default function AuditoriaPage() {
 
         loadAudit();
         return () => controller.abort();
-    }, [estaAutorizado, pagina, resultado, usuarioId, desde, hasta]);
+    }, [estaAutorizado, pagina, accion, resultado, usuarioId, desde, hasta]);
 
     if (!estaAutorizado) {
         return null;
@@ -145,7 +147,14 @@ export default function AuditoriaPage() {
         try {
             const base = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
             const token = getAccessToken();
-            const response = await fetch(`${base}/admin/audit/export?formato=csv`, {
+            const params = new URLSearchParams({ formato: 'csv' });
+            if (accion) params.set('accion', accion);
+            if (resultado) params.set('resultado', resultado);
+            if (usuarioId) params.set('usuarioId', usuarioId);
+            if (desde) params.set('desde', desde);
+            if (hasta) params.set('hasta', hasta);
+
+            const response = await fetch(`${base}/admin/audit/export?${params.toString()}`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 credentials: 'include',
             });
@@ -301,6 +310,26 @@ export default function AuditoriaPage() {
                             {usuarioOptions.map(([id, nombre]) => (
                                 <option key={id} value={id}>{nombre}</option>
                             ))}
+                        </select>
+                    </div>
+
+                    {/* Filtro por acción */}
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
+                        <select
+                            aria-label="Acción"
+                            value={accion}
+                            onChange={(event) => updateFilter(setAccion, event.target.value)}
+                            className="bg-transparent outline-none"
+                        >
+                            <option value="">Todas las acciones</option>
+                            <option value="LOGIN">Login</option>
+                            <option value="LOGOUT">Logout</option>
+                            <option value="CREAR_USUARIO">Crear usuario</option>
+                            <option value="EDITAR_USUARIO">Editar usuario</option>
+                            <option value="ELIMINAR_USUARIO">Eliminar usuario</option>
+                            <option value="CREAR_ROL">Crear rol</option>
+                            <option value="EDITAR_ROL">Editar rol</option>
+                            <option value="EXPORTAR_AUDITORIA">Exportar auditoría</option>
                         </select>
                     </div>
 
