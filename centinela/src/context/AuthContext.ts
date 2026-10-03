@@ -4,6 +4,7 @@ import { AUTH_SESSION_CHANGED_EVENT, clearAuthTokens, getAccessToken, getStoredU
 import { toast } from '@/components/ui/toast';
 import { applicationRouter } from '@/routes/router';
 import type { UserRole } from '@/components/features/auth/types/authentication';
+import { canUserAccessInstance } from '@/components/features/auth/utils/instanceAccess';
 
 interface AuthContextValue {
   user: StoredSessionUser | null;
@@ -65,11 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isOperator = (): boolean => hasRole('OPERATOR');
 
   const canAccessInstance = (vmid: number): boolean =>
-    isAdmin() || (isOperator() && (
-      (user?.instanciasPermitidas ?? []).includes(vmid)
-      || (user?.permisos ?? []).some((permission) => permission.vmid === vmid
-        && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))
-    ));
+    canUserAccessInstance(user, vmid);
 
   const canOperateInstance = (vmid: number): boolean =>
     isAdmin() || (isOperator() && (user?.permisos ?? []).some((permission) =>
