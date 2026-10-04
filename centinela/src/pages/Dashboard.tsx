@@ -1,10 +1,27 @@
 import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CpuGauge, RamMeter, StorageMeter } from '@/components/features/dashboard/components/ResourceMeter';
+import { useEventsContext } from '@/context/EventsContext';
+import type { EventsClientStatus } from '@/services/eventsClient';
+
+// Traducción del estado del canal de eventos a lo que ve el operador.
+const EVENTS_STATUS_PRESENTATION: Record<EventsClientStatus, { label: string; dot: string }> = {
+    idle: { label: 'Sin conectar', dot: 'bg-slate-400' },
+    connecting: { label: 'Conectando…', dot: 'bg-amber-500' },
+    reconnecting: { label: 'Reconectando…', dot: 'bg-amber-500' },
+    open: { label: 'En vivo', dot: 'bg-green-700' },
+    closed: { label: 'Canal cerrado', dot: 'bg-red-600' },
+    failed: { label: 'Canal caído', dot: 'bg-red-600' },
+    unauthorized: { label: 'Sesión finalizada', dot: 'bg-red-600' },
+};
 
 export default function Dashboard() {
+    const { estado, motivoCierre } = useEventsContext();
+    const eventsStatus = EVENTS_STATUS_PRESENTATION[estado];
+
     return (
         <section className={style.page}>
             <header className={style.header}>
@@ -13,6 +30,16 @@ export default function Dashboard() {
                     <p className="text-secundario"> Resumen general de tus instancias y recursos.</p>
                 </div>
                 <div className={style.headerActions}>
+                    <Badge
+                        variant="outline"
+                        role="status"
+                        className={style.eventsBadge}
+                        title={motivoCierre ?? undefined}
+                    >
+                        <span className={`${style.eventsDot} ${eventsStatus.dot}`} aria-hidden="true" />
+                        {eventsStatus.label}
+                    </Badge>
+
                     <div className={style.profile}>
                         <Button type="button">
                             <Plus className={style.smallIcon} /> Crear instancia
@@ -132,7 +159,7 @@ export default function Dashboard() {
             <Card className={style.systemFooter}>
                 <div className={style.systemStatus}>
                     <ShieldCheck className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Conexión del servidor</h2><p className="text-caption">Sin conexión</p></div>
+                    <div><h2 className="text-destacado">Canal de eventos</h2><p className="text-caption">{eventsStatus.label}</p></div>
                 </div>
                 <div className={style.systemStatus}>
                     <Clock3 className={style.systemIcon} />
@@ -153,6 +180,8 @@ const style = {
     pageTitle: 'mb-2 text-[30px] font-semibold tracking-tight text-slate-900',
     description: 'text-sm leading-relaxed text-slate-500',
     headerActions: 'flex flex-col items-end gap-3',
+    eventsBadge: 'gap-2 border-slate-200 px-3 py-1 font-medium text-slate-600',
+    eventsDot: 'size-2 rounded-full',
     profile: 'flex items-center gap-4 text-slate-600',
     avatar: 'flex size-9 items-center justify-center rounded-full bg-green-800 text-base font-medium text-white',
     primaryButton: 'bg-green-700! text-white hover:bg-green-800! hover:border-green-800!',
