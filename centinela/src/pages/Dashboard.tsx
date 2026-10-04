@@ -30,17 +30,17 @@ export default function Dashboard() {
                     <p className="text-secundario"> Resumen general de tus instancias y recursos.</p>
                 </div>
                 <div className={style.headerActions}>
-                    <Badge
-                        variant="outline"
-                        role="status"
-                        className={style.eventsBadge}
-                        title={motivoCierre ?? undefined}
-                    >
-                        <span className={`${style.eventsDot} ${eventsStatus.dot}`} aria-hidden="true" />
-                        {eventsStatus.label}
-                    </Badge>
-
                     <div className={style.profile}>
+                        <Badge
+                            variant="outline"
+                            role="status"
+                            className={style.eventsBadge}
+                            title={motivoCierre ?? undefined}
+                        >
+                            <span className={`${style.eventsDot} ${eventsStatus.dot}`} aria-hidden="true" />
+                            {eventsStatus.label}
+                        </Badge>
+
                         <Button type="button">
                             <Plus className={style.smallIcon} /> Crear instancia
                         </Button>
