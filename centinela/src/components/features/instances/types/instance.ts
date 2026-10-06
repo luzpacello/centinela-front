@@ -7,6 +7,14 @@ export interface InstanceActiveTask {
   status: string;
 }
 
+// Estado de transición de una fila: mientras haya una tarea RUNNING la fila
+// mantiene el spinner y todos sus controles bloqueados hasta el TASK_FINISHED.
+export interface InstanceTransition {
+  isTransitioning: boolean;
+  tareaId: string;
+  action: string;
+}
+
 export interface InventoryInstance {
   id: number;
   name: string;

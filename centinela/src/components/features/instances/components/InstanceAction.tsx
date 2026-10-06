@@ -1,35 +1,64 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Menu } from '@base-ui/react/menu';
-import { CirclePlay, Eye, MoreVertical, Square } from 'lucide-react';
+import { CirclePlay, Eye, Loader2, MoreVertical, Square } from 'lucide-react';
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/toast';
 import { useAuth } from '@/context/AuthContext';
 import { ApiRequestError } from '@/services/apiClient';
 import { requestInstancePowerAction } from '../services/instanceService';
-import type { InventoryInstance, InstancePowerAction } from '../types/instance';
+import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../types/instance';
 
 interface InstanceActionProps {
   instance: InventoryInstance;
+  // Estado de transición resuelto por la página (null = sin transición). Si no
+  // se pasa, se deriva del activeTask del inventario.
+  transition?: InstanceTransition | null;
   isPowerActionPending: boolean;
   onActionAccepted: (action: InstancePowerAction) => void;
 }
 
-export default function InstanceAction({ instance, isPowerActionPending, onActionAccepted }: InstanceActionProps) {
+// Etiqueta del botón en progreso según la acción reportada por el backend
+// (START, STOP, SHUTDOWN, REBOOT, DELETE).
+function describeTransitionAction(action: string): string {
+  switch (action.toUpperCase()) {
+    case 'START':
+      return 'Encendiendo…';
+    case 'STOP':
+    case 'SHUTDOWN':
+      return 'Apagando…';
+    case 'REBOOT':
+      return 'Reiniciando…';
+    case 'DELETE':
+      return 'Eliminando…';
+    default:
+      return 'Operación en progreso…';
+  }
+}
+
+export default function InstanceAction({ instance, transition: transitionProp, isPowerActionPending, onActionAccepted }: InstanceActionProps) {
   const { canOperateInstance } = useAuth();
   const [pendingAction, setPendingAction] = useState<InstancePowerAction | null>(null);
   const [, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const canOperate = canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY';
-  const hasActiveTask = isPowerActionPending || instance.activeTask?.status === 'RUNNING';
+
+  const activeTask = instance.activeTask ?? null;
+  const derivedTransition: InstanceTransition | null = activeTask?.status === 'RUNNING'
+    ? { isTransitioning: true, tareaId: activeTask.tareaId, action: activeTask.action }
+    : null;
+  const transition = transitionProp === undefined ? derivedTransition : transitionProp;
+  // La fila se bloquea tanto por una tarea RUNNING como por una acción de
+  // energía aceptada que todavía no convergió en el inventario.
+  const isTransitioning = transition?.isTransitioning === true || isPowerActionPending;
 
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
     if (!pendingAction || !canOperateInstance(instance.id) || instance.nivelAcceso === 'READ_ONLY') {
       throw new ApiRequestError('No tenés permiso para operar esta instancia.');
     }
-    if (hasActiveTask) throw new ApiRequestError('La instancia ya tiene una tarea en curso.');
+    if (isTransitioning) throw new ApiRequestError('La instancia ya tiene una tarea en curso.');
     if ((pendingAction === 'start' && instance.status !== 'stopped')
       || (pendingAction === 'stop' && instance.status !== 'running')) {
       throw new ApiRequestError('El estado de la instancia cambió. Revisá la acción antes de continuar.');
@@ -41,6 +70,19 @@ export default function InstanceAction({ instance, isPowerActionPending, onActio
       description: `Se solicitó ${pendingAction === 'start' ? 'el encendido' : 'el apagado'} de ${instance.name}.`,
       type: 'success',
     });
+  }
+
+  // Fila en transición: se reemplaza la celda de acciones por el botón en
+  // progreso deshabilitado, bloqueando todos los controles de la máquina.
+  if (isTransitioning) {
+    const actionLabel = transition ? describeTransitionAction(transition.action) : 'Operación en progreso…';
+    return (
+      <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`}
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+        <Loader2 data-testid="instance-transition-spinner" className="size-3.5 animate-spin" aria-hidden="true" />
+        {actionLabel}
+      </button>
+    );
   }
 
   return (
@@ -56,13 +98,13 @@ export default function InstanceAction({ instance, isPowerActionPending, onActio
               className="w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 text-left outline-none">
               {canOperate && <>
                 <Menu.Item render={<button type="button" />} nativeButton
-                  disabled={hasActiveTask || instance.status !== 'stopped'}
+                  disabled={instance.status !== 'stopped'}
                   onClick={() => { setIsMenuOpen(false); setPendingAction('start'); }}
                   className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
                   <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Encender</Badge>
                 </Menu.Item>
                 <Menu.Item render={<button type="button" />} nativeButton
-                  disabled={hasActiveTask || instance.status !== 'running'}
+                  disabled={instance.status !== 'running'}
                   onClick={() => { setIsMenuOpen(false); setPendingAction('stop'); }}
                   className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
                   <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
