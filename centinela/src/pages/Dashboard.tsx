@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Monitor, Plus, Server, ShieldCheck, Square } from 'lucide-react';
+import { ArrowRight, Bell, Box, ChevronDown, CirclePlay, Clock3, Monitor, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
