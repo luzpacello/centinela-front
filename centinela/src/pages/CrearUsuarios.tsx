@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox';
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
 import { useCreateUser } from '@/components/features/createuser/hooks/useCreateUser';
 import { useSafeNavigate } from '@/hooks/useSafeNavigate';
@@ -102,10 +102,15 @@ export default function CrearUsuarios() {
                             <FieldLabel htmlFor="rol">
                                 Rol del usuario <span className="text-red-500">*</span>
                             </FieldLabel>
-                            <NativeSelect id="rol" value={form.rol} onChange={(event) => updateField('rol', event.target.value)}>
-                                <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                                <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
-                            </NativeSelect>
+                            <Combobox value={form.rol} onValueChange={(value) => value && updateField('rol', value)}>
+                                <ComboboxInput id="rol" />
+                                <ComboboxContent>
+                                    <ComboboxList>
+                                        <ComboboxItem value="ADMIN">Administrador</ComboboxItem>
+                                        <ComboboxItem value="OPERATOR">Operador</ComboboxItem>
+                                    </ComboboxList>
+                                </ComboboxContent>
+                            </Combobox>
                             <FieldDescription className="text-caption">Definí el rol que tendrá el usuario dentro de la organización.</FieldDescription>
                         </Field>
 
