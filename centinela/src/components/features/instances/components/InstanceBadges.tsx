@@ -24,7 +24,8 @@ export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
   pendingAction?: InstancePowerAction;
 }) {
   const action = pendingAction ?? (activeTask?.status === 'RUNNING' ? activeTask.action.toLowerCase() : null);
-  if (action === 'start' || action === 'stop') {
+  const targetStatus = action === 'start' ? 'running' : action === 'stop' ? 'stopped' : null;
+  if (targetStatus && status.toLowerCase() !== targetStatus) {
     return (
       <Badge variant="secondary" className={action === 'start'
         ? instanceStatusPresentation.running.className
