@@ -1,7 +1,7 @@
 import { FieldError } from '@/components/ui/field';
 import { Building2, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox';
 import { Switch } from '@/components/ui/switch';
 import type { EditableUserValues, UpdateEditableUserField } from '../types/user';
 import { useAuth } from '@/context/AuthContext';
@@ -51,16 +51,19 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                     <label htmlFor="user-role">Rol</label>
                     <div className={styles.controlWithIcon}>
                         <ShieldCheck className={styles.controlIcon} aria-hidden="true" />
-                        <NativeSelect
-                            id="user-role"
+                        <Combobox
                             value={values.rol}
-                            onChange={(event) => onFieldChange('rol', event.target.value)}
-                            className={styles.roleSelect}
+                            onValueChange={(value) => value && onFieldChange('rol', value)}
                             disabled={!admin}
                         >
-                            <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
-                            <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                        </NativeSelect>
+                            <ComboboxInput id="user-role" className={styles.roleSelect} disabled={!admin} />
+                            <ComboboxContent>
+                                <ComboboxList>
+                                    <ComboboxItem value="OPERATOR">Operador</ComboboxItem>
+                                    <ComboboxItem value="ADMIN">Administrador</ComboboxItem>
+                                </ComboboxList>
+                            </ComboboxContent>
+                        </Combobox>
                     </div>
                 </div>
 
@@ -123,7 +126,7 @@ const styles = {
     controlWithIcon: 'relative',
     controlIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-500',
     textInput: 'pl-10',
-    roleSelect: 'w-full [&_select]:pl-10',
+    roleSelect: 'w-full [&_input]:pl-10',
     activeUserContainer: 'flex min-h-16 items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3 md:col-span-2',
     activeUserTextContainer: 'flex min-w-0 flex-col',
     activeUserDescription: 'bg-background text-foreground antialiased text-sm font-normal',
