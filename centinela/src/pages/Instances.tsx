@@ -5,8 +5,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
-import { useInstances } from '@/components/features/intances/hooks/useInstances';
-import InstanceAction from '@/components/features/intances/components/InstanceAction';
+import { useInstances } from '@/components/features/instances/hooks/useInstances';
+import InstanceAction from '@/components/features/instances/components/InstanceAction';
+import { InstanceTypeBadge, InstanceStatusBadge } from '@/components/features/instances/components/InstanceBadges';
+import { InstanceIpAddress } from '@/components/features/instances/components/InstanceIpAddress';
+import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/utils/formatInstanceTelemetry';
 
 export default function Instances() {
     const { user, isAdmin, canAccessInstance } = useAuth();
@@ -83,6 +86,7 @@ export default function Instances() {
                         <thead className={style.tableHead}>
                             <tr>
                                 <th className={style.checkboxCell} scope="col"><Checkbox aria-label="Seleccionar todas las instancias" disabled /></th>
+                                <th className={style.tableHeading} scope="col">ID</th>
                                 <th className={style.tableHeading} scope="col">Nombre</th>
                                 <th className={style.tableHeading} scope="col">Tipo</th>
                                 <th className={style.tableHeading} scope="col">Estado</th>
@@ -90,40 +94,40 @@ export default function Instances() {
                                 <th className={style.tableHeading} scope="col">CPU</th>
                                 <th className={style.tableHeading} scope="col">RAM</th>
                                 <th className={style.tableHeading} scope="col">Almacenamiento</th>
-                                <th className={style.tableHeading} scope="col">IP</th>
+                                <th className={style.tableHeading} scope="col">Dirección IP</th>
                                 <th className={style.tableHeading} scope="col">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? (
-                                <tr><td colSpan={10} className={style.emptyState} role="status">Cargando instancias…</td></tr>
+                                <tr><td colSpan={11} className={style.emptyState} role="status">Cargando instancias…</td></tr>
                             ) : errorMessage ? (
-                                <tr><td colSpan={10} className={style.emptyState}>
+                                <tr><td colSpan={11} className={style.emptyState}>
                                     <p role="alert">{errorMessage}</p>
                                     <Button type="button" variant="outline" onClick={reloadInventory}>Reintentar</Button>
                                 </td></tr>
                             ) : visibleInstances.length === 0 ? (
-                                <tr><td colSpan={10} className={style.emptyState}>Sin instancias</td></tr>
+                                <tr><td colSpan={11} className={style.emptyState}>Sin instancias</td></tr>
                             ) : visibleInstances.map((instance) => {
-                                const permissionLevel = user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
+                                const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
                                 return (
                                     <tr key={instance.id}>
                                         <td className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} disabled /></td>
+                                        <td className="px-4 py-4">{instance.id}</td>
                                         <td className="px-4 py-4">
-                                            <p>{instance.name} ({instance.id})</p>
+                                            <p>{instance.name}</p>
                                             {!isAdmin() && <Badge variant="outline" data-access-level={permissionLevel}>
                                                 {permissionLevel === 'READ_ONLY' ? 'Solo lectura' : permissionLevel === 'FULL_ACCESS' ? 'Control total' : 'Nivel de acceso no disponible'}
                                             </Badge>}
                                         </td>
-                                        <td className="px-4 py-4">{instance.type}</td>
-                                        <td className="px-4 py-4">{instance.status}</td>
+                                        <td className="px-4 py-4"><InstanceTypeBadge type={instance.type} /></td>
+                                        <td className="px-4 py-4"><InstanceStatusBadge status={instance.status} /></td>
                                         <td className="px-4 py-4">{instance.node}</td>
-                                        {/* El contrato de inventario todavía no devuelve métricas ni IP. */}
+                                        <td className="px-4 py-4">{formatCpuUsage(instance.cpuUsage)}</td>
+                                        <td className="px-4 py-4">{formatRamUsage(instance.ramUsage, instance.maxRam)}</td>
                                         <td className="px-4 py-4">—</td>
-                                        <td className="px-4 py-4">—</td>
-                                        <td className="px-4 py-4">—</td>
-                                        <td className="px-4 py-4">—</td>
-                                        <td className="px-4 py-4"><InstanceAction instance={instance} onActionAccepted={reloadInventory} /></td>
+                                        <td className="px-4 py-4"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></td>
+                                        <td className="px-4 py-4"><div className="flex items-center gap-2"><InstanceAction instance={instance} onActionAccepted={reloadInventory} /></div></td>
                                     </tr>
                                 );
                             })}
