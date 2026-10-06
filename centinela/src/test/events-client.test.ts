@@ -17,6 +17,7 @@ import { useEvents } from '@/hooks/useEvents';
 
 const BACKOFF = { baseDelayMs: 1000, maxDelayMs: 8000, maxAttempts: 5 };
 const VALID_MESSAGE: CentinelaEventsMessage = {
+  id: 'evt-0001',
   tipo: 'RESOURCE_SATURATION',
   severidad: 'CRITICAL',
   recursoId: 'node-1',
@@ -110,30 +111,33 @@ describe('computeEventsBackoffDelay', () => {
 
 describe('buildEventsStreamUrl', () => {
   it('compone la ruta del stream con el ticket codificado', () => {
-    expect(buildEventsStreamUrl('T-1', '/api')).toBe('/api/events/stream?ticket=T-1');
-    expect(buildEventsStreamUrl('a b/c', 'https://host/api/')).toBe('https://host/api/events/stream?ticket=a%20b%2Fc');
+    expect(buildEventsStreamUrl('T-1', '/api')).toBe('/api/events?ticket=T-1');
+    expect(buildEventsStreamUrl('a b/c', 'https://host/api/')).toBe('https://host/api/events?ticket=a%20b%2Fc');
   });
 });
 
 describe('parseCentinelaEventsMessage', () => {
-  it('acepta un mensaje con el contrato { tipo, severidad, recursoId, detalles }', () => {
+  it('acepta un mensaje con el contrato { id, tipo, severidad, recursoId, detalles }', () => {
     expect(parseCentinelaEventsMessage(JSON.stringify(VALID_MESSAGE))).toEqual(VALID_MESSAGE);
   });
 
   it('normaliza detalles ausentes a null', () => {
     const parsed = parseCentinelaEventsMessage(JSON.stringify({
-      tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '110',
+      id: 'evt-0002', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '110',
     }));
-    expect(parsed).toMatchObject({ tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '110', detalles: null });
+    expect(parsed).toMatchObject({ id: 'evt-0002', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '110', detalles: null });
   });
 
   it('rechaza JSON inválido, contratos incompletos y valores fuera del contrato', () => {
     expect(parseCentinelaEventsMessage('{no-es-json')).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ severidad: 'INFO', recursoId: 'x' }))).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ tipo: 'TASK_FINISHED', severidad: 'LOUD', recursoId: 'x' }))).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ tipo: 'TIPO_QUE_NO_EXISTE', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '' }))).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x', detalles: [] }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: '', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 42, tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'LOUD', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TIPO_QUE_NO_EXISTE', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x', detalles: [] }))).toBeNull();
   });
 });
 
@@ -149,7 +153,7 @@ describe('events client', () => {
     expect(postSpy).toHaveBeenCalledWith('/events/ticket', undefined, expect.objectContaining({ expectedStatus: 200 }));
     expect(FakeEventsStream.instances).toHaveLength(1);
     const { url } = FakeEventsStream.instances[0];
-    expect(url).toContain('/events/stream?ticket=T-1');
+    expect(url).toContain('/events?ticket=T-1');
     expect(url).not.toContain('jwt-secreto');
     expect(url).not.toContain('token=');
   });
@@ -164,7 +168,7 @@ describe('events client', () => {
     await settle();
 
     expect(FakeEventsStream.instances).toHaveLength(1);
-    expect(FakeEventsStream.instances[0].url).toBe('/api/events/stream?ticket=T-9');
+    expect(FakeEventsStream.instances[0].url).toBe('/api/events?ticket=T-9');
   });
 
   it('pide un ticket nuevo en cada intento de conexión', async () => {
@@ -296,6 +300,84 @@ describe('events client', () => {
     expect(client.getSnapshot().ultimoMensaje).toEqual(VALID_MESSAGE);
   });
 
+  it('un evento repetido (mismo id) se procesa una sola vez', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const listener = vi.fn();
+    client.subscribe(listener);
+    client.start();
+    await settle();
+
+    const stream = FakeEventsStream.instances[0];
+    stream.emit('open', {});
+    listener.mockClear();
+
+    const evento = { ...VALID_MESSAGE, id: 'evt-repetido' };
+    stream.emitMessage(evento);
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    listener.mockClear();
+    // El reenvío llega con el mismo id aunque cambie el contenido: se descarta entero.
+    stream.emitMessage({ ...evento, severidad: 'WARNING', detalles: { reenviado: true } });
+    expect(listener).not.toHaveBeenCalled();
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+  });
+
+  it('descarta un reenvío del mismo id después de reconectar', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    client.start();
+    await settle();
+
+    const evento = { ...VALID_MESSAGE, id: 'evt-reconexion' };
+    FakeEventsStream.instances[0].emit('open', {});
+    FakeEventsStream.instances[0].emitMessage(evento);
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+
+    FakeEventsStream.instances[0].emit('error', {});
+    await vi.advanceTimersByTimeAsync(1000);
+    await settle();
+    expect(FakeEventsStream.instances).toHaveLength(2);
+
+    const reconectado = FakeEventsStream.instances[1];
+    const listener = vi.fn();
+    client.subscribe(listener);
+    reconectado.emit('open', {});
+    listener.mockClear();
+
+    reconectado.emitMessage(evento);
+    expect(listener).not.toHaveBeenCalled();
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+
+    // Un id nuevo sí se sigue procesando tras la reconexión.
+    const nuevo = { ...VALID_MESSAGE, id: 'evt-nuevo' };
+    reconectado.emitMessage(nuevo);
+    expect(client.getSnapshot().ultimoMensaje).toEqual(nuevo);
+  });
+
+  it('vuelve a procesar un id ya visto cuando el cliente se reinicia', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    client.start();
+    await settle();
+
+    const evento = { ...VALID_MESSAGE, id: 'evt-reinicio' };
+    FakeEventsStream.instances[0].emitMessage(evento);
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+
+    client.stop();
+    client.start();
+    await settle();
+    expect(FakeEventsStream.instances).toHaveLength(2);
+
+    const listener = vi.fn();
+    client.subscribe(listener);
+    FakeEventsStream.instances[1].emitMessage(evento);
+    expect(listener).toHaveBeenCalled();
+    expect(client.getSnapshot().ultimoMensaje).toEqual(evento);
+  });
+
   it('trata el evento SSE "cierre" como terminal', async () => {
     postSpy.mockResolvedValue({ ticket: 'T-1' });
     const client = makeClient();
@@ -322,7 +404,7 @@ describe('events client', () => {
     await settle();
 
     FakeEventsStream.instances[0].emitMessage({
-      tipo: 'cierre', severidad: 'INFO', recursoId: 'sesion', detalles: { motivo: 'DESACTIVADO' },
+      id: 'evt-cierre', tipo: 'cierre', severidad: 'INFO', recursoId: 'sesion', detalles: { motivo: 'DESACTIVADO' },
     });
 
     expect(FakeEventsStream.instances[0].closed).toBe(true);

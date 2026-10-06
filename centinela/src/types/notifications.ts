@@ -1,7 +1,8 @@
 // Contrato del canal de eventos en tiempo real (RF-11).
 // Es el mismo contrato que el struct RealtimeEvent del backend
 // (internal/core/ports/event_port.go): mismos nombres de campo y mismos tipos.
-// El servidor WebSocket todavía no existe; esto es solo el contrato de datos compartido.
+// El canal real es SSE: el front pide un ticket en POST /events/ticket y escucha
+// GET /events?ticket=… (ver eventsClient.ts).
 
 // Tipos de evento que puede transportar el canal.
 export type RealtimeEventType =
