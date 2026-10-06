@@ -110,8 +110,8 @@ describe('computeEventsBackoffDelay', () => {
 
 describe('buildEventsStreamUrl', () => {
   it('compone la ruta del stream con el ticket codificado', () => {
-    expect(buildEventsStreamUrl('T-1', '/api')).toBe('/api/events/stream?ticket=T-1');
-    expect(buildEventsStreamUrl('a b/c', 'https://host/api/')).toBe('https://host/api/events/stream?ticket=a%20b%2Fc');
+    expect(buildEventsStreamUrl('T-1', '/api')).toBe('/api/events?ticket=T-1');
+    expect(buildEventsStreamUrl('a b/c', 'https://host/api/')).toBe('https://host/api/events?ticket=a%20b%2Fc');
   });
 });
 
@@ -149,7 +149,7 @@ describe('events client', () => {
     expect(postSpy).toHaveBeenCalledWith('/events/ticket', undefined, expect.objectContaining({ expectedStatus: 200 }));
     expect(FakeEventsStream.instances).toHaveLength(1);
     const { url } = FakeEventsStream.instances[0];
-    expect(url).toContain('/events/stream?ticket=T-1');
+    expect(url).toContain('/events?ticket=T-1');
     expect(url).not.toContain('jwt-secreto');
     expect(url).not.toContain('token=');
   });
@@ -164,7 +164,7 @@ describe('events client', () => {
     await settle();
 
     expect(FakeEventsStream.instances).toHaveLength(1);
-    expect(FakeEventsStream.instances[0].url).toBe('/api/events/stream?ticket=T-9');
+    expect(FakeEventsStream.instances[0].url).toBe('/api/events?ticket=T-9');
   });
 
   it('pide un ticket nuevo en cada intento de conexión', async () => {

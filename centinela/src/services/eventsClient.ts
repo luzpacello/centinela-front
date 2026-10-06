@@ -16,7 +16,7 @@ import {
 // "cierre" (terminal) o responde 401 si el ticket/sesión no es válido.
 
 export const EVENTS_TICKET_PATH = '/events/ticket';
-export const EVENTS_STREAM_PATH = '/events/stream';
+export const EVENTS_STREAM_PATH = '/events';
 
 // El backend emite tickets de un solo uso con 30 segundos de vida; por eso no
 // se reutiliza un ticket entre intentos: cada conexión pide uno nuevo.
