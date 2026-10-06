@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { InfoCard } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/nativeSelected';
+import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface InstanceAccess {
@@ -62,16 +62,19 @@ export default function RolesAndPermissions({ role, onRoleChange, instanceAccess
                         <label htmlFor="assigned-role">Rol asignado</label>
                         <div className={styles.roleSelectContainer}>
                             <ShieldCheck className={styles.roleSelectIcon} aria-hidden="true" />
-                            <NativeSelect
-                                id="assigned-role"
+                            <Combobox
                                 value={role}
                                 defaultValue={role === undefined ? 'OPERATOR' : undefined}
-                                onChange={(event) => onRoleChange?.(event.target.value)}
-                                className={styles.roleSelect}
+                                onValueChange={(value) => value && onRoleChange?.(value)}
                             >
-                                <NativeSelectOption value="OPERATOR">Operador</NativeSelectOption>
-                                <NativeSelectOption value="ADMIN">Administrador</NativeSelectOption>
-                            </NativeSelect>
+                                <ComboboxInput id="assigned-role" className={styles.roleSelect} />
+                                <ComboboxContent>
+                                    <ComboboxList>
+                                        <ComboboxItem value="OPERATOR">Operador</ComboboxItem>
+                                        <ComboboxItem value="ADMIN">Administrador</ComboboxItem>
+                                    </ComboboxList>
+                                </ComboboxContent>
+                            </Combobox>
                         </div>
                     </div>
 
@@ -171,17 +174,24 @@ function InstanceAccessRow({ instance, disabled, onAccessChange }: {
                 <div className={styles.accessSelectContainer}>
                     {instance.access === 'Solo lectura' && <Eye className={styles.readOnlySelectIcon} aria-hidden="true" />}
                     {instance.access === 'Sin acceso' && <LockKeyhole className={styles.noAccessSelectIcon} aria-hidden="true" />}
-                    <NativeSelect
+                    <Combobox
                         value={instance.access}
                         disabled={disabled}
-                        onChange={(event) => onAccessChange(event.target.value as AccessLevel)}
-                        aria-label={`Acceso para ${instance.name}`}
-                        className={instance.access === 'Acceso completo' ? styles.accessSelect : styles.accessSelectWithIcon}
+                        onValueChange={(value) => value && onAccessChange(value as AccessLevel)}
                     >
-                        {accessOptions.map((option) => (
-                            <NativeSelectOption key={option} value={option}>{option}</NativeSelectOption>
-                        ))}
-                    </NativeSelect>
+                        <ComboboxInput
+                            disabled={disabled}
+                            aria-label={`Acceso para ${instance.name}`}
+                            className={instance.access === 'Acceso completo' ? styles.accessSelect : styles.accessSelectWithIcon}
+                        />
+                        <ComboboxContent>
+                            <ComboboxList>
+                                {accessOptions.map((option) => (
+                                    <ComboboxItem key={option} value={option}>{option}</ComboboxItem>
+                                ))}
+                            </ComboboxList>
+                        </ComboboxContent>
+                    </Combobox>
                 </div>
             </TableCell>
         </TableRow>
@@ -215,7 +225,7 @@ const styles = {
     roleContentGrid: 'grid grid-cols-1 items-end gap-5 lg:grid-cols-2',
     roleSelectContainer: 'relative',
     roleSelectIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-blue-600',
-    roleSelect: 'w-full [&_select]:pl-10',
+    roleSelect: 'w-full [&_input]:pl-10',
     searchContainer: 'relative',
     searchIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-400',
     searchInput: 'pl-10',
@@ -234,7 +244,7 @@ const styles = {
     accessCell: 'pr-4',
     accessSelectContainer: 'relative',
     accessSelect: 'w-full',
-    accessSelectWithIcon: 'w-full [&_select]:pl-9',
+    accessSelectWithIcon: 'w-full [&_input]:pl-9',
     readOnlySelectIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-3.5 -translate-y-1/2 text-amber-500',
     noAccessSelectIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-3.5 -translate-y-1/2 text-slate-500',
     accessLegend: 'grid grid-cols-1 divide-y divide-slate-200 border-y border-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0',
