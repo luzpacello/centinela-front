@@ -52,6 +52,16 @@ export interface EventsClientState {
   motivoCierre: string | null;
 }
 
+// Callback que recibe un evento ya deduplicado del canal raíz.
+export type EventCallback = (event: CentinelaEventsMessage) => void;
+
+// Filtro de suscripción selectiva: un campo ausente actúa como comodín, así que
+// `{}` recibe todos los eventos y `{ recursoId }` solo los de ese recurso.
+export interface SubscriptionFilter {
+  tipo?: string;
+  recursoId?: string | number;
+}
+
 // Contrato mínimo del transporte, para poder inyectar un doble en los tests.
 export interface EventsStreamConnection {
   addEventListener(type: string, listener: (event: MessageEvent) => void): void;
@@ -81,7 +91,10 @@ export interface EventsClient {
   stop(): void;
   getStatus(): EventsClientStatus;
   getSnapshot(): EventsClientState;
+  // Suscripción al estado (store de React).
   subscribe(listener: () => void): () => void;
+  // Suscripción selectiva a los eventos del canal, con filtro por tipo o recurso.
+  subscribe(filter: SubscriptionFilter, callback: EventCallback): () => void;
 }
 
 export const DEFAULT_EVENTS_BACKOFF: EventsBackoffOptions = {
@@ -184,6 +197,10 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
   };
   const listeners = new Set<() => void>();
 
+  // Registro de suscriptores selectivos (Observer/PubSub). Cada entrada vive
+  // hasta que su dueño invoca el unsubscribe que devuelve subscribe().
+  const subscribers = new Set<{ filter: SubscriptionFilter; callback: EventCallback }>();
+
   // Ids de eventos ya procesados. El broker puede reenviar el mismo evento tras
   // una reconexión transitoria; el Set sobrevive esos reintentos y solo se
   // vacía cuando el cliente se detiene o termina (teardown).
@@ -196,6 +213,23 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
 
   function notify(): void {
     for (const listener of [...listeners]) listener();
+  }
+
+  // Un filtro casa cuando todos sus campos declarados coinciden con el evento.
+  // Un campo ausente (undefined) es comodín. El recursoId del contrato siempre
+  // llega como string, así que se compara con su forma textual.
+  function matchesFilter(filter: SubscriptionFilter, message: CentinelaEventsMessage): boolean {
+    if (filter.tipo !== undefined && filter.tipo !== message.tipo) return false;
+    if (filter.recursoId !== undefined && String(filter.recursoId) !== message.recursoId) return false;
+    return true;
+  }
+
+  // Derivación a los suscriptores: se llama recién después de la deduplicación
+  // raíz, así un evento repetido nunca vuelve a repartirse.
+  function dispatchToSubscribers(message: CentinelaEventsMessage): void {
+    for (const subscriber of [...subscribers]) {
+      if (matchesFilter(subscriber.filter, message)) subscriber.callback(message);
+    }
   }
 
   function patch(partial: Partial<EventsClientState>): void {
@@ -340,6 +374,8 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
       if (seenEventIds.has(message.id)) return;
       seenEventIds.add(message.id);
       patch({ ultimoMensaje: message });
+      // Ya deduplicado en el canal raíz: se derivaba a los filtros individuales.
+      dispatchToSubscribers(message);
       if (message.tipo === 'cierre') {
         const motivo = message.detalles && typeof message.detalles.motivo === 'string'
           ? message.detalles.motivo
@@ -377,16 +413,34 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
     setStatus('closed');
   }
 
+  // Sobrecarga: `subscribe(listener)` observa cambios de estado; `subscribe(
+  // filter, callback)` recibe únicamente los eventos que casan con el filtro.
+  function subscribe(listener: () => void): () => void;
+  function subscribe(filter: SubscriptionFilter, callback: EventCallback): () => void;
+  function subscribe(
+    filterOrListener: SubscriptionFilter | (() => void),
+    callback?: EventCallback,
+  ): () => void {
+    if (typeof filterOrListener === 'function') {
+      const listener = filterOrListener;
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    }
+
+    const subscriber = { filter: filterOrListener, callback: callback as EventCallback };
+    subscribers.add(subscriber);
+    return () => {
+      subscribers.delete(subscriber);
+    };
+  }
+
   return {
     start,
     stop,
     getStatus: () => state.estado,
     getSnapshot: () => state,
-    subscribe(listener: () => void): () => void {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe,
   };
 }
