@@ -12,8 +12,6 @@ const INVENTORY_POLL_INTERVAL_MS = 2_500;
 
 interface PendingPowerAction {
   action: InstancePowerAction;
-  observedRunningTask: boolean;
-  eventIdAtAcceptance: string | null;
 }
 
 export function useInstances() {
@@ -41,9 +39,9 @@ export function useInstances() {
   const markPowerActionAccepted = useCallback((vmid: number, action: InstancePowerAction) => {
     setPendingPowerActions((previous) => ({
       ...previous,
-      [vmid]: { action, observedRunningTask: false, eventIdAtAcceptance: inventoryChangingEvent?.id ?? null },
+      [vmid]: { action },
     }));
-  }, [inventoryChangingEvent]);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,19 +57,12 @@ export function useInstances() {
           for (const [vmid, pending] of Object.entries(pendingPowerActions)) {
             const instance = inventory.find((item) => item.id === Number(vmid));
             if (!instance) continue;
-            const hasRunningTask = instance.activeTask?.status === 'RUNNING';
             const targetStatus = pending.action === 'start' ? 'running' : 'stopped';
-            const taskFinished = inventoryChangingEvent?.tipo === 'TASK_FINISHED'
-              && inventoryChangingEvent.recursoId === vmid
-              && inventoryChangingEvent.id !== pending.eventIdAtAcceptance;
-            if (instance.status === targetStatus || (!hasRunningTask && (pending.observedRunningTask || taskFinished))) {
+            if (instance.status === targetStatus) {
               delete nextPending[Number(vmid)];
-            } else if (hasRunningTask && !pending.observedRunningTask) {
-              nextPending[Number(vmid)] = { ...pending, observedRunningTask: true };
             }
           }
-          if (Object.keys(nextPending).length !== Object.keys(pendingPowerActions).length
-            || Object.entries(nextPending).some(([vmid, pending]) => pending !== pendingPowerActions[Number(vmid)])) {
+          if (Object.keys(nextPending).length !== Object.keys(pendingPowerActions).length) {
             setPendingPowerActions(nextPending);
           }
           if (Object.keys(nextPending).length > 0 || hadRunningTask.current) {
