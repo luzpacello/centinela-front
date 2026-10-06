@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { useAuth } from '@/context/AuthContext';
 import { ApiRequestError } from '@/services/apiClient';
-import { requestInstancePowerAction, type InventoryInstance, type InstancePowerAction } from '../services/instanceService';
+import { requestInstancePowerAction } from '../services/instanceService';
+import type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
 interface InstanceActionProps {
   instance: InventoryInstance;
@@ -15,14 +16,16 @@ interface InstanceActionProps {
 export default function InstanceAction({ instance, onActionAccepted }: InstanceActionProps) {
   const { canOperateInstance } = useAuth();
   const [pendingAction, setPendingAction] = useState<InstancePowerAction | null>(null);
-  const canOperate = canOperateInstance(instance.id);
+  const canOperate = canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY';
+  const hasActiveTask = instance.activeTask?.status === 'RUNNING';
   const action = instance.status === 'running' ? 'stop' : instance.status === 'stopped' ? 'start' : null;
 
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
-    if (!pendingAction || !canOperateInstance(instance.id)) {
+    if (!pendingAction || !canOperateInstance(instance.id) || instance.nivelAcceso === 'READ_ONLY') {
       throw new ApiRequestError('No tenés permiso para operar esta instancia.');
     }
+    if (hasActiveTask) throw new ApiRequestError('La instancia ya tiene una tarea en curso.');
     await requestInstancePowerAction(instance.id, pendingAction);
     toast.add({
       title: 'Orden enviada',
@@ -36,6 +39,7 @@ export default function InstanceAction({ instance, onActionAccepted }: InstanceA
       {canOperate && action && (
         <Button type="button" variant="outline" size="icon"
           aria-label={`${action === 'start' ? 'Encender' : 'Apagar'} ${instance.name}`}
+          disabled={hasActiveTask}
           onClick={() => setPendingAction(action)}>
           {action === 'start' ? <CirclePlay className="size-4!" /> : <Square className="size-4!" />}
         </Button>
