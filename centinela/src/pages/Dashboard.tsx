@@ -41,10 +41,6 @@ export default function Dashboard() {
                             {eventsStatus.label}
                         </Badge>
 
-                        <Button type="button">
-                            <Plus className={style.smallIcon} /> Crear instancia
-                        </Button>
-
                         <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
                             <Bell className={style.smallIcon} />
                         </Button>
