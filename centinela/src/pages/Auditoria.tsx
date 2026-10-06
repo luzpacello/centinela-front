@@ -3,8 +3,6 @@ import {
     Calendar,
     Filter,
     Download,
-    ChevronLeft,
-    ChevronRight,
     CheckCircle2,
     AlertTriangle,
     XCircle,
@@ -17,6 +15,15 @@ import { Input } from '@/components/ui/input';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { getAccessToken } from '@/storage/tokenStorage';
 import { useGuardiaRol } from '@/hooks/useGuardiaRol';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 // import { get } from '@/services/request';
 // import { data } from 'react-router';
 
@@ -420,48 +427,60 @@ export default function AuditoriaPage() {
                         Mostrando <strong>{firstVisible} a {lastVisible}</strong> de <strong>{total}</strong> eventos
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-3">
                             <span>{AUDIT_PAGE_SIZE} por página</span>
+                            <Pagination className="mx-0 w-auto justify-end">
+                                <PaginationContent>
+                                    <PaginationItem>
+                                        <PaginationPrevious
+                                            href="#"
+                                            aria-disabled={pagina <= 1}
+                                            tabIndex={pagina <= 1 ? -1 : 0}
+                                            className={pagina <= 1 ? 'pointer-events-none opacity-50' : undefined}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                setPagina((previous) => Math.max(1, previous - 1));
+                                            }}
+                                        />
+                                    </PaginationItem>
+                                    {pageNumbers.map((page, index) => (
+                                        <Fragment key={page}>
+                                            {index > 0 && page - pageNumbers[index - 1] > 1 && (
+                                                <PaginationItem>
+                                                    <PaginationEllipsis />
+                                                </PaginationItem>
+                                            )}
+                                            <PaginationItem>
+                                                <PaginationLink
+                                                    href="#"
+                                                    size="icon"
+                                                    isActive={page === pagina}
+                                                    aria-label={`Página ${page}`}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        setPagina(page);
+                                                    }}
+                                                >
+                                                    {page}
+                                                </PaginationLink>
+                                            </PaginationItem>
+                                        </Fragment>
+                                    ))}
+                                    <PaginationItem>
+                                        <PaginationNext
+                                            href="#"
+                                            aria-disabled={pagina >= totalPages}
+                                            tabIndex={pagina >= totalPages ? -1 : 0}
+                                            className={pagina >= totalPages ? 'pointer-events-none opacity-50' : undefined}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                setPagina((previous) => Math.min(totalPages, previous + 1));
+                                            }}
+                                        />
+                                    </PaginationItem>
+                                </PaginationContent>
+                            </Pagination>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                type="button"
-                                aria-label="Página anterior"
-                                disabled={pagina <= 1}
-                                onClick={() => setPagina((previous) => Math.max(1, previous - 1))}
-                                className="p-1.5 rounded border border-border bg-card hover:bg-muted text-foreground transition-colors disabled:text-muted-foreground/50 disabled:cursor-not-allowed"
-                            >
-                                <ChevronLeft className="size-4" />
-                            </button>
-                            {pageNumbers.map((page, index) => (
-                                <Fragment key={page}>
-                                    {index > 0 && page - pageNumbers[index - 1] > 1 && (
-                                        <span className="px-1 text-muted-foreground">...</span>
-                                    )}
-                                    <button
-                                        type="button"
-                                        aria-current={page === pagina ? 'page' : undefined}
-                                        onClick={() => setPagina(page)}
-                                        className={page === pagina
-                                            ? 'rounded border border-blue-600 bg-blue-600 px-3 py-1 font-medium text-white'
-                                            : 'rounded px-3 py-1 text-slate-700 hover:bg-slate-100'}
-                                    >
-                                        {page}
-                                    </button>
-                                </Fragment>
-                            ))}
-                            <button
-                                type="button"
-                                aria-label="Página siguiente"
-                                disabled={pagina >= totalPages}
-                                onClick={() => setPagina((previous) => Math.min(totalPages, previous + 1))}
-                                className="p-1.5 rounded border border-border bg-card hover:bg-muted text-foreground transition-colors disabled:text-muted-foreground/50 disabled:cursor-not-allowed"
-                            >
-                                <ChevronRight className="size-4" />
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </Card>
 
