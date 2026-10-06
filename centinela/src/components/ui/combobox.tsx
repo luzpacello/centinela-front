@@ -150,7 +150,7 @@ function ComboboxItem({
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex h-[25px] w-full cursor-default items-center gap-2 rounded-md pr-8 pl-1.5 font-['JetBrains_Mono'] text-[14px] leading-[1.2] font-normal text-[#0f172a] outline-hidden select-none data-highlighted:bg-[#eff6ff] data-highlighted:text-[#0f172a] data-selected:bg-[#eff6ff] data-selected:text-[#0f172a] data-disabled:pointer-events-none data-disabled:text-[#94a3b8] data-disabled:opacity-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-[#2563eb] [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-[25px] w-full cursor-default items-center gap-2 rounded-md p-[10px] pr-8 font-['JetBrains_Mono'] text-[14px] leading-[1.2] font-normal text-[#0f172a] outline-hidden select-none data-highlighted:bg-[#eff6ff] data-highlighted:text-[#0f172a] data-selected:bg-[#eff6ff] data-selected:text-[#0f172a] data-disabled:pointer-events-none data-disabled:text-[#94a3b8] data-disabled:opacity-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-[#2563eb] [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
