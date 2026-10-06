@@ -27,7 +27,7 @@ function ComboboxTrigger({
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
-      className={cn("[&_svg:not([class*='size-'])]:size-4", className)}
+      className={cn("[&_svg:not([class*='size-'])]:size-4 focus-visible:border-[#2563eb] focus-visible:ring-0", className)}
       {...props}
     >
       {children}
@@ -63,7 +63,7 @@ function ComboboxInput({
   return (
     <InputGroup
       className={cn(
-        "h-[40px] w-auto rounded-[8px] border-[#cbd5e1] bg-white transition-colors hover:border-[#94a3b8] focus-within:border-[#2563eb] focus-within:ring-0 focus-within:[&_svg]:text-[#2563eb] has-data-[popup-open]:border-[#2563eb] has-data-[popup-open]:ring-0 has-data-[popup-open]:[&_svg]:text-[#2563eb] has-disabled:border-[#cbd5e1] has-disabled:bg-white has-disabled:opacity-100 has-[[data-slot][aria-invalid=true]]:border-[#ef4444] has-[[data-slot][aria-invalid=true]]:ring-0 has-[[data-slot][aria-invalid=true]]:[&_svg]:text-[#ef4444] has-data-[invalid]:border-[#ef4444] has-data-[invalid]:ring-0 has-data-[invalid]:[&_svg]:text-[#ef4444]",
+        "h-[40px] w-auto rounded-[8px] border-[#cbd5e1] bg-white transition-colors hover:border-[#94a3b8] focus-within:border-[#2563eb] focus-within:ring-0 focus-within:[&_svg]:text-[#2563eb] has-[[data-slot=input-group-control]:focus-visible]:border-[#2563eb] has-[[data-slot=input-group-control]:focus-visible]:ring-0 has-data-[popup-open]:border-[#2563eb] has-data-[popup-open]:ring-0 has-data-[popup-open]:[&_svg]:text-[#2563eb] has-[[data-slot=input-group-control][data-state=success]]:border-[#10b981] has-[[data-slot=input-group-control][data-state=success]]:hover:border-[#10b981] has-[[data-slot=input-group-control][data-state=success]]:focus-within:border-[#10b981] has-[[data-slot=input-group-control][data-state=success]]:[&_svg]:text-[#10b981] has-[[data-slot=input-group-control][aria-invalid=true]]:border-[#ef4444] has-[[data-slot=input-group-control][aria-invalid=true]]:hover:border-[#ef4444] has-[[data-slot=input-group-control][aria-invalid=true]]:focus-within:border-[#ef4444] has-[[data-slot=input-group-control][aria-invalid=true]]:ring-0 has-[[data-slot=input-group-control][aria-invalid=true]]:[&_svg]:text-[#ef4444] has-data-[invalid]:border-[#ef4444] has-data-[invalid]:ring-0 has-data-[invalid]:[&_svg]:text-[#ef4444] has-[[data-slot=input-group-control]:read-only]:border-[#e2e8f0] has-[[data-slot=input-group-control]:read-only]:bg-[#f8fafc] has-[[data-slot=input-group-control]:read-only]:hover:border-[#e2e8f0] has-[[data-slot=input-group-control]:read-only]:focus-within:border-[#e2e8f0] has-[[data-slot=input-group-control]:disabled]:border-[#e2e8f0] has-[[data-slot=input-group-control]:disabled]:bg-[#f1f5f9] has-disabled:border-[#e2e8f0] has-disabled:bg-[#f1f5f9] has-disabled:opacity-100",
         className
       )}
     >
