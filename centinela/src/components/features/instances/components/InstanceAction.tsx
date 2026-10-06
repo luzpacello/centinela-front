@@ -12,16 +12,17 @@ import type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
 interface InstanceActionProps {
   instance: InventoryInstance;
-  onActionAccepted: () => void;
+  isPowerActionPending: boolean;
+  onActionAccepted: (action: InstancePowerAction) => void;
 }
 
-export default function InstanceAction({ instance, onActionAccepted }: InstanceActionProps) {
+export default function InstanceAction({ instance, isPowerActionPending, onActionAccepted }: InstanceActionProps) {
   const { canOperateInstance } = useAuth();
   const [pendingAction, setPendingAction] = useState<InstancePowerAction | null>(null);
   const [, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const canOperate = canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY';
-  const hasActiveTask = instance.activeTask?.status === 'RUNNING';
+  const hasActiveTask = isPowerActionPending || instance.activeTask?.status === 'RUNNING';
 
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
@@ -34,6 +35,7 @@ export default function InstanceAction({ instance, onActionAccepted }: InstanceA
       throw new ApiRequestError('El estado de la instancia cambió. Revisá la acción antes de continuar.');
     }
     await requestInstancePowerAction(instance.id, pendingAction);
+    onActionAccepted(pendingAction);
     toast.add({
       title: 'Orden enviada',
       description: `Se solicitó ${pendingAction === 'start' ? 'el encendido' : 'el apagado'} de ${instance.name}.`,
@@ -82,7 +84,7 @@ export default function InstanceAction({ instance, onActionAccepted }: InstanceA
           description={`¿Querés ${pendingAction === 'start' ? 'encender' : 'apagar'} ${instance.name} (${instance.id})?${pendingAction === 'stop' ? ' El apagado es forzado y puede interrumpir procesos activos.' : ''}`}
           onConfirm={confirmPowerAction}
           onCancel={() => setPendingAction(null)}
-          onCompleted={() => { setPendingAction(null); onActionAccepted(); }}
+          onCompleted={() => setPendingAction(null)}
         />,
         document.body,
       )}
