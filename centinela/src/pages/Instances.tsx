@@ -35,7 +35,7 @@ const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
     const { user, isAdmin, canAccessInstance } = useAuth();
-    const { instances, isLoading, errorMessage, reloadInventory } = useInstances();
+    const { instances, isLoading, errorMessage, reloadInventory, pendingPowerActions, markPowerActionAccepted } = useInstances();
     const visibleInstances = instances.filter((instance) => canAccessInstance(instance.id));
     const runningInstanceCount = visibleInstances.filter((instance) => instance.status === 'running').length;
     const stoppedInstanceCount = visibleInstances.filter((instance) => instance.status === 'stopped').length;
@@ -163,14 +163,14 @@ export default function Instances() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="p-4"><InstanceTypeBadge type={instance.type} /></TableCell>
-                                            <TableCell className="p-4"><InstanceStatusBadge status={instance.status} /></TableCell>
+                                            <TableCell className="p-4"><InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} pendingAction={pendingPowerActions[instance.id]?.action} /></TableCell>
                                             <TableCell className="p-4 text-secundario">{instance.node}</TableCell>
                                             <TableCell className="p-4 table-text-secondary">{formatCpuUsage(instance.cpuUsage)}</TableCell>
                                             <TableCell className="p-4 table-text-secondary">{formatRamUsage(instance.ramUsage, instance.maxRam)}</TableCell>
                                             <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
                                             <TableCell className="relative p-4 text-right">
                                                 <div role="group" aria-label="Acciones">
-                                                    <InstanceAction instance={instance} onActionAccepted={reloadInventory} />
+                                                    <InstanceAction instance={instance} isPowerActionPending={Boolean(pendingPowerActions[instance.id])} onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)} />
                                                 </div>
                                             </TableCell>
                                         </TableRow>

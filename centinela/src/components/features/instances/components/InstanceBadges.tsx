@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import type { InstanceType } from '../types/instance';
+import { Loader2 } from 'lucide-react';
+import type { InstanceActiveTask, InstancePowerAction, InstanceType } from '../types/instance';
 
 export function InstanceTypeBadge({ type }: { type: InstanceType }) {
   return (
@@ -17,7 +18,22 @@ const instanceStatusPresentation: Record<string, { label: string; className: str
   paused: { label: 'Paused', className: 'border-0 bg-amber-50 text-amber-700' },
 };
 
-export function InstanceStatusBadge({ status }: { status: string }) {
+export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
+  status: string;
+  activeTask?: InstanceActiveTask | null;
+  pendingAction?: InstancePowerAction;
+}) {
+  const action = pendingAction ?? (activeTask?.status === 'RUNNING' ? activeTask.action.toLowerCase() : null);
+  if (action === 'start' || action === 'stop') {
+    return (
+      <Badge variant="secondary" className={action === 'start'
+        ? instanceStatusPresentation.running.className
+        : instanceStatusPresentation.paused.className}>
+        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+        {action === 'start' ? 'Encendiendo…' : 'Apagando…'}
+      </Badge>
+    );
+  }
   const presentation = instanceStatusPresentation[status.toLowerCase()];
   return <Badge variant="secondary" className={presentation?.className}>{presentation?.label ?? status}</Badge>;
 }
