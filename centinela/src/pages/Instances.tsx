@@ -124,7 +124,11 @@ export default function Instances() {
                                             <TableCell className="p-4 table-text-secondary">{formatCpuUsage(instance.cpuUsage)}</TableCell>
                                             <TableCell className="p-4 table-text-secondary">{formatRamUsage(instance.ramUsage, instance.maxRam)}</TableCell>
                                             <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
-                                            <TableCell className="relative p-4 text-right"><InstanceAction instance={instance} onActionAccepted={reloadInventory} /></TableCell>
+                                            <TableCell className="relative p-4 text-right">
+                                                <div role="group" aria-label="Acciones">
+                                                    <InstanceAction instance={instance} onActionAccepted={reloadInventory} />
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     );
                                 })}
