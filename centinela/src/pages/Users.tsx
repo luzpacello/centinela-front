@@ -10,8 +10,6 @@ import {
     CheckCircle2,
     XCircle,
     MoreVertical,
-    ChevronLeft,
-    ChevronRight,
     Key,
     UserX,
     Trash2,
@@ -25,6 +23,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { useNavigate } from 'react-router';
 import type { UserDetailsNavigationState } from '@/components/features/users/types/user';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 
 // Contrato real de GET /api/admin/users (UsuarioResumenDTO y su resumen).
 interface UsuarioResumenDTO {
@@ -458,42 +464,51 @@ export default function UsersPage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                    <span>10 por página</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        type="button"
-                                        aria-label="Página anterior"
-                                        disabled={currentPage === 1}
-                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                                        className="rounded border border-slate-200 bg-white p-1.5 text-slate-700 transition-colors hover:bg-slate-100 disabled:text-slate-400/50"
-                                    >
-                                        <ChevronLeft className="size-4" />
-                                    </button>
-                                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                                        <button
-                                            key={page}
-                                            type="button"
-                                            aria-current={currentPage === page ? 'page' : undefined}
-                                            onClick={() => setCurrentPage(page)}
-                                            className={currentPage === page
-                                                ? 'rounded border border-blue-600 bg-blue-600 px-3 py-1 font-medium text-white'
-                                                : 'rounded px-3 py-1 text-slate-700 hover:bg-slate-100'}
-                                        >
-                                            {page}
-                                        </button>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        aria-label="Página siguiente"
-                                        disabled={currentPage === totalPages}
-                                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                                        className="rounded border border-slate-200 bg-white p-1.5 text-slate-700 transition-colors hover:bg-slate-100 disabled:text-slate-400/50"
-                                    >
-                                        <ChevronRight className="size-4" />
-                                    </button>
-                                </div>
+                                <span>10 por página</span>
+                                <Pagination className="mx-0 w-auto justify-end">
+                                    <PaginationContent>
+                                        <PaginationItem>
+                                            <PaginationPrevious
+                                                href="#"
+                                                aria-disabled={currentPage === 1}
+                                                tabIndex={currentPage === 1 ? -1 : 0}
+                                                className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    setCurrentPage((page) => Math.max(1, page - 1));
+                                                }}
+                                            />
+                                        </PaginationItem>
+                                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                                            <PaginationItem key={page}>
+                                                <PaginationLink
+                                                    href="#"
+                                                    size="icon"
+                                                    isActive={currentPage === page}
+                                                    aria-label={`Página ${page}`}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        setCurrentPage(page);
+                                                    }}
+                                                >
+                                                    {page}
+                                                </PaginationLink>
+                                            </PaginationItem>
+                                        ))}
+                                        <PaginationItem>
+                                            <PaginationNext
+                                                href="#"
+                                                aria-disabled={currentPage === totalPages}
+                                                tabIndex={currentPage === totalPages ? -1 : 0}
+                                                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    setCurrentPage((page) => Math.min(totalPages, page + 1));
+                                                }}
+                                            />
+                                        </PaginationItem>
+                                    </PaginationContent>
+                                </Pagination>
                             </div>
                         </div>
                     </Card>
