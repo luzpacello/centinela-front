@@ -13,6 +13,15 @@ import { InstanceIpAddress } from '@/components/features/instances/components/In
 import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/utils/formatInstanceTelemetry';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropDownMenu';
+import type { InstanceType } from '@/components/features/instances/types/instance';
 
 const INSTANCES_PER_PAGE = 10;
 
@@ -24,10 +33,12 @@ export default function Instances() {
     const stoppedInstanceCount = visibleInstances.filter((instance) => instance.status === 'stopped').length;
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | InstanceType>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const normalizedSearch = search.trim().toLocaleLowerCase('es');
     const filteredInstances = visibleInstances.filter((instance) =>
         (statusFilter === 'all' || instance.status === statusFilter)
+        && (typeFilter === 'all' || instance.type === typeFilter)
         && [instance.id, instance.name, instance.type, instance.node, instance.ip ?? '']
             .some((value) => String(value).toLocaleLowerCase('es').includes(normalizedSearch)));
     const totalPages = Math.max(1, Math.ceil(filteredInstances.length / INSTANCES_PER_PAGE));
@@ -52,7 +63,32 @@ export default function Instances() {
                                 setCurrentPage(1);
                             }} />
                     </div>
-                    <Button type="button" variant="outline"><Filter className={style.smallIcon} /> Filtros</Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger aria-label="Filtrar por tipo de instancia">
+                            <Filter className={style.smallIcon} /> {typeFilter === 'all' ? 'Filtros' : `Filtros: ${typeFilter}`}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                            <DropdownMenuRadioGroup value={typeFilter} onValueChange={(value) => {
+                                if (value === 'all' || value === 'VM' || value === 'LXC') {
+                                    setTypeFilter(value);
+                                    setCurrentPage(1);
+                                }
+                            }}>
+                                <DropdownMenuLabel>Seleccionar tipo de instancia:</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="VM">
+                                    <Monitor aria-hidden="true" /> VM (Máquina virtual)
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="LXC">
+                                    <Container aria-hidden="true" /> LXC (Contenedor)
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all">
+                                    Ver todas las instancias
+                                </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     {isAdmin() && <Button type="button"><Plus className={style.smallIcon} /> Crear instancia</Button>}
                 </div>
             </header>
