@@ -27,6 +27,8 @@ export const EVENTS_TICKET_TTL_MS = 30_000;
 export type CentinelaEventsMessageType = RealtimeEventType | 'cierre';
 
 export interface CentinelaEventsMessage {
+  // Identificador único del evento: el contrato lo usa para deduplicar.
+  id: string;
   tipo: CentinelaEventsMessageType;
   severidad: RealtimeSeverity;
   recursoId: string;
@@ -119,8 +121,9 @@ export function parseCentinelaEventsMessage(raw: unknown): CentinelaEventsMessag
   if (typeof parsed !== 'object' || parsed === null) return null;
 
   const record = parsed as Record<string, unknown>;
-  const { tipo, severidad, recursoId, detalles } = record;
+  const { id, tipo, severidad, recursoId, detalles } = record;
 
+  if (typeof id !== 'string' || !id.trim()) return null;
   if (typeof tipo !== 'string' || !tipo.trim()) return null;
   if (tipo !== 'cierre' && !REALTIME_EVENT_TYPES.includes(tipo as RealtimeEventType)) return null;
   if (typeof severidad !== 'string' || !REALTIME_SEVERITIES.includes(severidad as RealtimeSeverity)) return null;
@@ -130,6 +133,7 @@ export function parseCentinelaEventsMessage(raw: unknown): CentinelaEventsMessag
   }
 
   return {
+    id,
     tipo: tipo as CentinelaEventsMessageType,
     severidad: severidad as RealtimeSeverity,
     recursoId,
@@ -179,6 +183,11 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
     motivoCierre: null,
   };
   const listeners = new Set<() => void>();
+
+  // Ids de eventos ya procesados. El broker puede reenviar el mismo evento tras
+  // una reconexión transitoria; el Set sobrevive esos reintentos y solo se
+  // vacía cuando el cliente se detiene o termina (teardown).
+  const seenEventIds = new Set<string>();
 
   let active = false;
   let attempt = 0;
@@ -242,6 +251,7 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
     clearReconnectTimer();
     closeStream();
     detachSessionListeners();
+    seenEventIds.clear();
   }
 
   function terminate(estado: EventsClientStatus, error?: Error): void {
@@ -325,6 +335,10 @@ export function createEventsClient(options: EventsClientOptions = {}): EventsCli
         patch({ error: new Error('Se recibió un evento del canal que no se pudo interpretar.') });
         return;
       }
+      // Un evento repetido (mismo id) se ignora por completo: no muta el estado
+      // ni notifica a los suscriptores.
+      if (seenEventIds.has(message.id)) return;
+      seenEventIds.add(message.id);
       patch({ ultimoMensaje: message });
       if (message.tipo === 'cierre') {
         const motivo = message.detalles && typeof message.detalles.motivo === 'string'
