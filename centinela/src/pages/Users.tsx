@@ -14,12 +14,28 @@ import {
     UserX,
     Trash2,
     Edit3,
-    QrCode
+    QrCode,
+    UserRound,
+    UsersRound,
+    Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropDownMenu';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { useNavigate } from 'react-router';
 import type { UserDetailsNavigationState } from '@/components/features/users/types/user';
@@ -59,6 +75,7 @@ interface UserRow {
     roleType: string;
     status: string;
     lastAccess: string;
+    lastAccessRaw: string | null;
     twoFactor: string;
     avatarBg: string;
     isCurrentUser: boolean;
@@ -95,6 +112,7 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
         roleType: esAdmin ? 'Admin' : 'US',
         status: dto.activo ? 'Activo' : 'Inactivo',
         lastAccess: formatLastAccess(dto.fechaUltimoAcceso),
+        lastAccessRaw: dto.fechaUltimoAcceso ?? null,
         twoFactor: dto.totpVinculado ? 'Activado' : 'Desactivado',
         avatarBg: esAdmin ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800',
         isCurrentUser: dto.esUsuarioActual === true,
@@ -103,7 +121,11 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
 
 export default function UsersPage() {
     const navigate = useNavigate();
-    const [activeTab] = useState('users'); // 'users' o 'roles'
+    const [userFilter, setUserFilter] = useState<'all' | 'ADMIN' | 'OPERATOR'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+    const [twoFactorFilter, setTwoFactorFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+    const [lastAccessFrom, setLastAccessFrom] = useState('');
+    const [lastAccessTo, setLastAccessTo] = useState('');
     const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -194,19 +216,26 @@ export default function UsersPage() {
         return () => controller.abort();
     }, [listRefreshVersion]);
 
-    const filteredUsers = users.filter((user) =>
-        Object.values(user).some((value) =>
-            String(value).toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    );
+    const lastAccessFromTimestamp = lastAccessFrom ? new Date(`${lastAccessFrom}T00:00:00`).getTime() : null;
+    const lastAccessToTimestamp = lastAccessTo ? new Date(`${lastAccessTo}T23:59:59.999`).getTime() : null;
+    const filteredUsers = users.filter((user) => {
+        const lastAccessTimestamp = user.lastAccessRaw ? Date.parse(user.lastAccessRaw) : NaN;
+        return (userFilter === 'all' || user.role === userFilter)
+            && (statusFilter === 'all' || user.status === (statusFilter === 'active' ? 'Activo' : 'Inactivo'))
+            && (twoFactorFilter === 'all' || user.twoFactor === (twoFactorFilter === 'enabled' ? 'Activado' : 'Desactivado'))
+            && ((lastAccessFromTimestamp === null && lastAccessToTimestamp === null)
+                || (Number.isFinite(lastAccessTimestamp)
+                    && (lastAccessFromTimestamp === null || lastAccessTimestamp >= lastAccessFromTimestamp)
+                    && (lastAccessToTimestamp === null || lastAccessTimestamp <= lastAccessToTimestamp)))
+            && Object.entries(user).some(([key, value]) =>
+                key !== 'lastAccessRaw' && String(value).toLowerCase().includes(searchTerm.toLowerCase())
+            );
+    });
     const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
     const firstUserIndex = (currentPage - 1) * USERS_PER_PAGE;
     const paginatedUsers = filteredUsers.slice(firstUserIndex, firstUserIndex + USERS_PER_PAGE);
     const firstVisibleUser = filteredUsers.length === 0 ? 0 : firstUserIndex + 1;
     const lastVisibleUser = Math.min(firstUserIndex + USERS_PER_PAGE, filteredUsers.length);
-
-    const adminsPercentage = summary.total > 0 ? ((summary.admins / summary.total) * 100).toFixed(1) : '0.0';
-    const operatorsPercentage = summary.total > 0 ? ((summary.operators / summary.total) * 100).toFixed(1) : '0.0';
 
     return (
         <section className="flex min-w-0 self-start flex-col gap-6 text-slate-900">
@@ -253,62 +282,92 @@ export default function UsersPage() {
                             }}
                         />
                     </div>
-                    <Button type="button" variant="outline">
-                        <Filter className="size-4!" /> Filtros
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger>
+                            <Filter className="size-4!" /> Filtros
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[240px] max-w-[calc(100vw-2rem)]">
+                            <DropdownMenuRadioGroup value={statusFilter === 'all' ? '' : statusFilter} onValueChange={(value) => {
+                                if (value === 'active' || value === 'inactive') {
+                                    setStatusFilter(value);
+                                    setCurrentPage(1);
+                                }
+                            }}>
+                                <DropdownMenuLabel>Estado</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="inactive">Usuarios inactivos</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="active">Usuarios activos</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={twoFactorFilter === 'all' ? '' : twoFactorFilter} onValueChange={(value) => {
+                                if (value === 'enabled' || value === 'disabled') {
+                                    setTwoFactorFilter(value);
+                                    setCurrentPage(1);
+                                }
+                            }}>
+                                <DropdownMenuLabel>2FA</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="enabled">2FA habilitado</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="disabled">2FA deshabilitado</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>Último acceso</DropdownMenuLabel>
+                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
+                                    <Calendar className="size-4 text-slate-500" aria-hidden="true" />
+                                    <input
+                                        type="date"
+                                        aria-label="Desde"
+                                        value={lastAccessFrom}
+                                        onChange={(event) => {
+                                            setLastAccessFrom(event.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="bg-transparent outline-none"
+                                    />
+                                    <span>-</span>
+                                    <input
+                                        type="date"
+                                        aria-label="Hasta"
+                                        value={lastAccessTo}
+                                        onChange={(event) => {
+                                            setLastAccessTo(event.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="bg-transparent outline-none"
+                                    />
+                                </div>
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem checked={statusFilter === 'all' && twoFactorFilter === 'all' && !lastAccessFrom && !lastAccessTo} onCheckedChange={() => {
+                                setStatusFilter('all');
+                                setTwoFactorFilter('all');
+                                setLastAccessFrom('');
+                                setLastAccessTo('');
+                                setCurrentPage(1);
+                            }}>
+                                Limpiar filtros
+                            </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button type="button" onClick={() => navigate('/users/new')}>
                         <UserPlus className="size-4!" /> Nuevo usuario
                     </Button>
                 </div>
             </div>
 
-            {/* Tarjetas de Métricas Superiores */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Usuarios totales</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">{summary.total}</span>
-                        <span className="text-caption">En el sistema</span>
-                    </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Administradores</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-blue-600">{summary.admins}</span>
-                        <span className="text-caption text-blue-600">{adminsPercentage}% del total</span>
-                    </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Operadores</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">{summary.operators}</span>
-                        <span className="text-caption text-slate-600">{operatorsPercentage}% del total</span>
-                    </div>
-                </Card>
-
-                {/*
-                    Tarjeta "Solo lectura" retirada: el contrato de Swagger de GET /api/admin/users
-                    solo expone las métricas total, admins y operators. READ_ONLY es un nivel de acceso
-                    de instancia, no un rol de usuario, así que no hay un contador que la respalde.
-                    Se conserva el markup original comentado para recuperarlo si el backend lo expone.
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Solo lectura</span>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">2</span>
-                        <span className="text-xs font-medium text-slate-600">16.7% del total</span>
-                    </div>
-                </Card>
-                */}
-            </div>
-
-
-
-            {/* Tabla de Usuarios */}
-            {activeTab === 'users' && (
-                <div className="min-w-0">
+            <Tabs value={userFilter} onValueChange={(value) => {
+                if (value === 'all' || value === 'ADMIN' || value === 'OPERATOR') {
+                    setUserFilter(value);
+                    setCurrentPage(1);
+                }
+            }} className="min-w-0 gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <TabsList variant="line" aria-label="Filtrar usuarios" className="max-w-full">
+                        <TabsTrigger value="all" className="px-4"><UsersRound /> Usuarios totales <Badge variant="secondary">{summary.total}</Badge></TabsTrigger>
+                        <TabsTrigger value="ADMIN" className="px-4"><Shield /> Administradores <Badge variant="secondary">{summary.admins}</Badge></TabsTrigger>
+                        <TabsTrigger value="OPERATOR" className="px-4"><UserRound /> Operadores <Badge variant="secondary">{summary.operators}</Badge></TabsTrigger>
+                    </TabsList>
+                </div>
+                <TabsContent value={userFilter} className="min-w-0">
                     <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
                         <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isLoading}>
                                 <TableHeader>
@@ -347,7 +406,9 @@ export default function UsersPage() {
                                             <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
                                                 {users.length === 0
                                                     ? 'Todavía no hay usuarios para mostrar.'
-                                                    : 'No se encontraron usuarios que coincidan con la búsqueda.'}
+                                                    : searchTerm.trim()
+                                                        ? 'No se encontraron usuarios que coincidan con la búsqueda.'
+                                                        : 'No hay usuarios en esta categoría.'}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -512,8 +573,8 @@ export default function UsersPage() {
                             </div>
                         </div>
                     </Card>
-                </div>
-            )}
+                </TabsContent>
+            </Tabs>
         </section>
     );
 }
