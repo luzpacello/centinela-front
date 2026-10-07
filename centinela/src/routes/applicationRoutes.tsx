@@ -19,7 +19,9 @@ import ChangePasswordPage from '@/pages/ChangePassword';
 import CreateNewInstancesPage from '@/pages/createNewInstances';
 
 const styles = {
-  centraForm: "flex min-h-full items-center justify-center",
+  // items-start + my-auto: centra cuando hay espacio y permite scrollear la
+  // tarjeta completa cuando es más alta que la ventana (sin recortar el tope).
+  centraForm: "flex min-h-full items-start justify-center [&>*]:my-auto",
 };
 export const applicationRoutes: RouteObject[] = [
   {
