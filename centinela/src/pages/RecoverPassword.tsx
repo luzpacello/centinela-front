@@ -525,7 +525,7 @@ export const RecoverPassword: React.FC = () => {
                 </div>
                 <div className="flex w-full justify-center gap-4 mt-4">
                     <MoveLeft className="size-5 text-[#2563eb]" />
-                    <Link to="/login" replace className="text-[#2563eb]"> Volver al login</Link>
+                    <Link to="/login" replace className="text-info"> Volver al login</Link>
                 </div>
             </ContainerCard>
         </>

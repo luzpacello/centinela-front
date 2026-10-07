@@ -18,7 +18,7 @@ export default function OrganizationRegistrationForm() {
           <p>Se creó {organization.name} con {organization.adminUser.fullName} como administrador inicial.</p>
           <p>Iniciá sesión con {organization.adminUser.email} para continuar.</p>
         </div>
-        <Link to="/login" state={{ email: organization.adminUser.email }} className="text-[#2563eb] underline">Ir al inicio de sesión</Link>
+        <Link to="/login" state={{ email: organization.adminUser.email }} className="text-info underline">Ir al inicio de sesión</Link>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function OrganizationRegistrationForm() {
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Creando organización…' : 'Crear organización y continuar'}
       </Button>
-      <p className="text-secundario">¿Ya tenés una cuenta? <Link to="/login" className="text-[#2563eb]">Iniciá sesión</Link></p>
+      <p className="text-secundario">¿Ya tenés una cuenta? <Link to="/login" className="text-info">Iniciá sesión</Link></p>
     </form>
   );
 }

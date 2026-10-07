@@ -59,7 +59,7 @@ export const TwoFactorPage: React.FC = () => {
         <section className="w-full max-w-xl space-y-5 rounded-xl border bg-white p-8 text-center shadow-sm">
           <h1>No se pudo iniciar la configuración</h1>
           <p role="alert" className="text-destructive">{setupError}</p>
-          <Link to="/login" replace onClick={clearPendingLoginSession} className="text-[#2563eb] underline">Volver al inicio de sesión</Link>
+          <Link to="/login" replace onClick={clearPendingLoginSession} className="text-info underline">Volver al inicio de sesión</Link>
         </section>
       </ContainerCard>
     );
