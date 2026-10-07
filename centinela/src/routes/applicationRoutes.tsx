@@ -16,6 +16,7 @@ import DetailsUserPage from '@/pages/detailsUserPage';
 import AuditoriaPage from '@/pages/Auditoria';
 import RecoverPasswordPage from '@/pages/RecoverPassword';
 import ChangePasswordPage from '@/pages/ChangePassword';
+import CreateNewInstancesPage from '@/pages/createNewInstances';
 
 const styles = {
   centraForm: "flex min-h-full items-center justify-center",
@@ -56,6 +57,7 @@ export const applicationRoutes: RouteObject[] = [
             loader: loadAdminSession,
             children: [
               { path: '/auditoria', Component: AuditoriaPage },
+              { path: '/instances/new', Component: CreateNewInstancesPage },
               { path: '/users', Component: UsersPage },
               { path: '/users/new', Component: CrearUsuariosPage },
               { path: '/users/:userId', Component: DetailsUserPage },
@@ -67,4 +69,3 @@ export const applicationRoutes: RouteObject[] = [
     ],
   },
 ];
-

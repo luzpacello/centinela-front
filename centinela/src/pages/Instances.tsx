@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CirclePlay, Container, Filter, Monitor, Plus, Search, Square } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,6 +35,7 @@ import {
 const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
+    const navigate = useNavigate();
     const { user, isAdmin, canAccessInstance } = useAuth();
     const { instances, isLoading, errorMessage, reloadInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = instances.filter((instance) => canAccessInstance(instance.id));
@@ -97,7 +99,7 @@ export default function Instances() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {isAdmin() && <Button type="button"><Plus className={style.smallIcon} /> Crear instancia</Button>}
+                    {isAdmin() && <Button type="button" onClick={() => navigate('/instances/new')}><Plus className={style.smallIcon} /> Crear instancia</Button>}
                 </div>
             </header>
 

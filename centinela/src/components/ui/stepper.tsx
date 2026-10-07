@@ -11,11 +11,17 @@ interface StepperProps {
    */
   steps: string[];
 
+  /** Texto secundario opcional para cada paso. */
+  descriptions?: string[];
+
   /**
    * Índice (basado en 1) que indica cuál es el paso activo o actual en la interfaz.
    * Por ejemplo: `1` representa el primer paso, `2` el segundo, etc.
    */
   currentStep: number;
+
+  /** Paleta visual del indicador. */
+  tone?: 'default' | 'success';
 }
 
 /**
@@ -27,7 +33,7 @@ interface StepperProps {
  * @param {StepperProps} props - Propiedades del componente.
  * @returns {JSX.Element} Elemento JSX que representa el indicador de pasos.
  */
-export const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
+export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentStep, tone = 'default' }) => {
   return (
     <div className="w-full py-4">
       {/* Contenedor principal horizontal para alinear los ítems y las líneas conectoras */}
@@ -73,6 +79,11 @@ export const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
                 >
                   {stepTitle}
                 </span>
+                {descriptions?.[index] && (
+                  <span className="mt-1 max-w-[120px] text-center text-xs text-slate-500">
+                    {descriptions[index]}
+                  </span>
+                )}
               </div>
 
               {/* 
