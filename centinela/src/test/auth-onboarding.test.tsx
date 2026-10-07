@@ -1,12 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-
-// El bloque de diagnostico temporal se mockea para aislar el copy de onboarding
-// y comprobar que el layout sigue montandolo al pie de la columna lateral.
-vi.mock('@/components/InfraDeployCheck', () => ({
-    default: () => <div data-testid="infra-deploy-check" />,
-}));
+import { describe, expect, it } from 'vitest';
 
 import MainLayoutAuth from '@/components/layout_auth/MainLayoutAuth';
 
@@ -26,12 +20,6 @@ describe('Onboarding de la columna lateral de autenticación (86e3kz4du)', () =>
         expect(screen.getByText(BLOCK_1_DESC)).toBeInTheDocument();
         expect(screen.getByText(BLOCK_2_TITLE)).toBeInTheDocument();
         expect(screen.getByText(BLOCK_2_DESC)).toBeInTheDocument();
-    });
-
-    it('mantiene el bloque de diagnostico temporal al pie de la columna lateral', () => {
-        render(<MainLayoutAuth>formulario</MainLayoutAuth>);
-
-        expect(screen.getByTestId('infra-deploy-check')).toBeInTheDocument();
     });
 
     it('oculta la columna lateral en móvil y la muestra en escritorio', () => {
