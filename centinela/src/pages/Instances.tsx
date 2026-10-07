@@ -35,7 +35,7 @@ const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
     const { user, isAdmin, canAccessInstance } = useAuth();
-    const { instances, isLoading, errorMessage, reloadInventory, pendingPowerActions, markPowerActionAccepted } = useInstances();
+    const { instances, isLoading, errorMessage, reloadInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = instances.filter((instance) => canAccessInstance(instance.id));
     const runningInstanceCount = visibleInstances.filter((instance) => instance.status === 'running').length;
     const stoppedInstanceCount = visibleInstances.filter((instance) => instance.status === 'stopped').length;
@@ -170,7 +170,7 @@ export default function Instances() {
                                             <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
                                             <TableCell className="relative p-4 text-right">
                                                 <div role="group" aria-label="Acciones">
-                                                    <InstanceAction instance={instance} isPowerActionPending={Boolean(pendingPowerActions[instance.id])} onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)} />
+                                                    <InstanceAction instance={instance} transition={transitioningTasks[instance.id] ?? null} isPowerActionPending={Boolean(pendingPowerActions[instance.id])} onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)} />
                                                 </div>
                                             </TableCell>
                                         </TableRow>

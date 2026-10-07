@@ -490,6 +490,102 @@ describe('events client', () => {
   });
 });
 
+describe('suscripción selectiva del cliente de eventos', () => {
+  it('entrega el evento solo a los suscriptores cuyo filtro coincide', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const porTipo = vi.fn();
+    const porRecurso = vi.fn();
+    const comodin = vi.fn();
+    client.subscribe({ tipo: 'TASK_FINISHED' }, porTipo);
+    client.subscribe({ recursoId: 'node-1' }, porRecurso);
+    client.subscribe({}, comodin);
+
+    client.start();
+    await settle();
+    const stream = FakeEventsStream.instances[0];
+
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'sel-1', tipo: 'TASK_FINISHED', recursoId: 'node-1' });
+    expect(porTipo).toHaveBeenCalledTimes(1);
+    expect(porRecurso).toHaveBeenCalledTimes(1);
+    expect(comodin).toHaveBeenCalledTimes(1);
+
+    // Un evento que no casa con el tipo ni con el recurso solo llega al comodín.
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'sel-2', tipo: 'RESOURCE_SATURATION', recursoId: 'node-2' });
+    expect(porTipo).toHaveBeenCalledTimes(1);
+    expect(porRecurso).toHaveBeenCalledTimes(1);
+    expect(comodin).toHaveBeenCalledTimes(2);
+  });
+
+  it('compara un recursoId numérico con el string del contrato', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const porRecurso = vi.fn();
+    client.subscribe({ recursoId: 110 }, porRecurso);
+
+    client.start();
+    await settle();
+    FakeEventsStream.instances[0].emitMessage({ ...VALID_MESSAGE, id: 'num-1', recursoId: '110' });
+
+    expect(porRecurso).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplica por id en el canal raíz antes de despachar a los suscriptores', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const suscriptor = vi.fn();
+    client.subscribe({}, suscriptor);
+
+    client.start();
+    await settle();
+    const stream = FakeEventsStream.instances[0];
+
+    const evento = { ...VALID_MESSAGE, id: 'dedupe-1' };
+    stream.emitMessage(evento);
+    stream.emitMessage(evento);
+    stream.emitMessage({ ...evento, severidad: 'WARNING' });
+
+    expect(suscriptor).toHaveBeenCalledTimes(1);
+    expect(suscriptor).toHaveBeenCalledWith(evento);
+  });
+
+  it('exige que todos los campos del filtro coincidan (semántica AND)', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const filtro = vi.fn();
+    client.subscribe({ tipo: 'TASK_FINISHED', recursoId: 'node-1' }, filtro);
+
+    client.start();
+    await settle();
+    const stream = FakeEventsStream.instances[0];
+
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'and-1', tipo: 'TASK_FINISHED', recursoId: 'node-2' });
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'and-2', tipo: 'RESOURCE_SATURATION', recursoId: 'node-1' });
+    expect(filtro).not.toHaveBeenCalled();
+
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'and-3', tipo: 'TASK_FINISHED', recursoId: 'node-1' });
+    expect(filtro).toHaveBeenCalledTimes(1);
+  });
+
+  it('deja de entregar eventos tras desuscribirse', async () => {
+    postSpy.mockResolvedValue({ ticket: 'T-1' });
+    const client = makeClient();
+    const suscriptor = vi.fn();
+    const unsubscribe = client.subscribe({}, suscriptor);
+
+    client.start();
+    await settle();
+    const stream = FakeEventsStream.instances[0];
+
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'unsub-1' });
+    expect(suscriptor).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    stream.emitMessage({ ...VALID_MESSAGE, id: 'unsub-2' });
+    expect(suscriptor).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('useEvents', () => {
   it('conecta al montar y limpia el cliente al desmontar', async () => {
     postSpy.mockResolvedValue({ ticket: 'T-1' });
