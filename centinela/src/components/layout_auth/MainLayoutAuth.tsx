@@ -29,13 +29,13 @@ const features = [
 const asideStyle: React.CSSProperties = {
     backgroundColor: '#f6f8fb',
     backgroundImage:
-        'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%), radial-gradient(rgba(148, 163, 184, 0.28) 1px, transparent 1px)',
+        'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%), radial-gradient(rgba(148, 163, 184, 0.4) 1px, transparent 1px)',
     backgroundSize: 'auto, 18px 18px',
 };
 
 // Continuación del fondo de puntitos sobre el panel del login, difuminándose hacia la derecha.
 const mainDotsStyle: React.CSSProperties = {
-    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.28) 1px, transparent 1px)',
+    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.4) 1px, transparent 1px)',
     backgroundSize: '18px 18px',
     WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
     maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
