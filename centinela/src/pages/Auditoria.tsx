@@ -7,11 +7,24 @@ import {
     AlertTriangle,
     XCircle,
     Eye,
-    Search
+    Search,
+    ListFilter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropDownMenu';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { getAccessToken } from '@/storage/tokenStorage';
 import { useGuardiaRol } from '@/hooks/useGuardiaRol';
@@ -250,117 +263,53 @@ export default function AuditoriaPage() {
                         />
                     </div>
                     <Button type="button" variant="outline" onClick={handleExport}><Download className="size-4!" /> Exportar</Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger><Filter className="size-4!" /> Filtros</DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)]">
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>Rango de fechas</DropdownMenuLabel>
+                                <div className="flex flex-wrap items-center gap-2 px-1.5 py-2 text-sm text-slate-700">
+                                    <Calendar className="size-4 text-slate-500" aria-hidden="true" />
+                                    <input type="date" aria-label="Desde" value={desde} onChange={(event) => updateFilter(setDesde, event.target.value)} className="min-w-0 bg-transparent outline-none" />
+                                    <span>-</span>
+                                    <input type="date" aria-label="Hasta" value={hasta} onChange={(event) => updateFilter(setHasta, event.target.value)} className="min-w-0 bg-transparent outline-none" />
+                                </div>
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={usuarioId || 'all'} onValueChange={(value) => updateFilter(setUsuarioId, value === 'all' ? '' : value)}>
+                                <DropdownMenuLabel>Usuario</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="all">Todos los usuarios</DropdownMenuRadioItem>
+                                {usuarioOptions.map(([id, nombre]) => (
+                                    <DropdownMenuRadioItem key={id} value={id}>{nombre}</DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={accion || 'all'} onValueChange={(value) => updateFilter(setAccion, value === 'all' ? '' : value)}>
+                                <DropdownMenuLabel>Acción</DropdownMenuLabel>
+                                <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="LOGIN">Login</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="LOGOUT">Logout</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="CREAR_USUARIO">Crear usuario</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="EDITAR_USUARIO">Editar usuario</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="ELIMINAR_USUARIO">Eliminar usuario</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="CREAR_ROL">Crear rol</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="EDITAR_ROL">Editar rol</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="EXPORTAR_AUDITORIA">Exportar auditoría</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
             {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
-            {/* Tarjetas de Métricas Superiores */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Eventos totales</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica">{total}</span>
-                        <span className="text-caption">En el período seleccionado</span>
-                    </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Exitosos</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-blue-600">{exitososEnPagina}</span>
-                        <span className="text-caption">En esta página</span>
-                    </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between rounded-xl border-slate-100 p-5 shadow-sm ring-0">
-                    <h4>Fallidos</h4>
-                    <div className="flex items-baseline justify-between mt-2">
-                        <span className="text-metrica text-rose-600">{fallidosEnPagina}</span>
-                        <span className="text-caption">En esta página</span>
-                    </div>
-                </Card>
-            </div>
-
-            {/* Barra de Filtros y Acciones */}
-            <Card className="flex flex-col items-center justify-between gap-4 rounded-xl border-slate-100 p-4 shadow-sm ring-0 md:flex-row">
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    {/* Rango de fechas (desde / hasta) */}
-                    <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                        <Calendar className="size-4 text-slate-500" />
-                        <input
-                            type="date"
-                            aria-label="Desde"
-                            value={desde}
-                            onChange={(event) => updateFilter(setDesde, event.target.value)}
-                            className="bg-transparent outline-none"
-                        />
-                        <span>-</span>
-                        <input
-                            type="date"
-                            aria-label="Hasta"
-                            value={hasta}
-                            onChange={(event) => updateFilter(setHasta, event.target.value)}
-                            className="bg-transparent outline-none"
-                        />
-                    </div>
-
-                    {/* Selector de usuarios */}
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                        <select
-                            aria-label="Usuario"
-                            value={usuarioId}
-                            onChange={(event) => updateFilter(setUsuarioId, event.target.value)}
-                            className="bg-transparent outline-none"
-                        >
-                            <option value="">Todos los usuarios</option>
-                            {usuarioOptions.map(([id, nombre]) => (
-                                <option key={id} value={id}>{nombre}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Filtro por acción */}
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                        <select
-                            aria-label="Acción"
-                            value={accion}
-                            onChange={(event) => updateFilter(setAccion, event.target.value)}
-                            className="bg-transparent outline-none"
-                        >
-                            <option value="">Todas las acciones</option>
-                            <option value="LOGIN">Login</option>
-                            <option value="LOGOUT">Logout</option>
-                            <option value="CREAR_USUARIO">Crear usuario</option>
-                            <option value="EDITAR_USUARIO">Editar usuario</option>
-                            <option value="ELIMINAR_USUARIO">Eliminar usuario</option>
-                            <option value="CREAR_ROL">Crear rol</option>
-                            <option value="EDITAR_ROL">Editar rol</option>
-                            <option value="EXPORTAR_AUDITORIA">Exportar auditoría</option>
-                        </select>
-                    </div>
-
-                    {/* Filtro por resultado */}
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                        <select
-                            aria-label="Resultado"
-                            value={resultado}
-                            onChange={(event) => updateFilter(setResultado, event.target.value)}
-                            className="bg-transparent outline-none"
-                        >
-                            <option value="">Todos los resultados</option>
-                            <option value="EXITO">Éxito</option>
-                            <option value="FALLA">Falla</option>
-                        </select>
-                    </div>
-
-                    {/* Botón de filtros avanzados (solo visual) */}
-                    <Button type="button" variant="outline"><Filter className="size-4!" /> Filtros</Button>
-                </div>
-
-                {/* Botón Exportar */}
-            </Card>
-
+            <Tabs value={resultado || 'all'} onValueChange={(value) => updateFilter(setResultado, value === 'all' ? '' : value)} className="min-w-0 gap-4">
+                <TabsList variant="line" aria-label="Filtrar eventos de auditoría" className="max-w-full">
+                    <TabsTrigger value="all" className="px-4"><ListFilter /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
+                    <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{exitososEnPagina}</Badge></TabsTrigger>
+                    <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{fallidosEnPagina}</Badge></TabsTrigger>
+                </TabsList>
+                <TabsContent value={resultado || 'all'} className="min-w-0">
             {/* Tabla de Registros */}
             <Card className="overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
                 <div className="overflow-x-auto">
@@ -483,6 +432,8 @@ export default function AuditoriaPage() {
                         </div>
                 </div>
             </Card>
+                </TabsContent>
+            </Tabs>
 
             {/* Nota informativa inferior */}
             <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900">
