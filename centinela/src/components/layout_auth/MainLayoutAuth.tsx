@@ -1,6 +1,5 @@
 import React from 'react';
 import { Server, ShieldCheck } from 'lucide-react';
-import InfraDeployCheck from '@/components/InfraDeployCheck';
 
 export default function MainLayoutAuth({ children }: { children?: React.ReactNode }) {
     return (
@@ -38,13 +37,6 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                         </p>
                     </section>
                 </div>
-                <footer className="px-4 pb-4">
-                    {/* TEMPORAL: verificacion de integridad de infra. Se elimina
-                        junto con src/components/InfraDeployCheck.tsx. */}
-                    <div className="text-xs opacity-60">
-                        <InfraDeployCheck />
-                    </div>
-                </footer>
             </aside>
             <main className="min-w-0 flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 p-4 overflow-auto">
