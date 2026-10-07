@@ -72,7 +72,7 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                     <div className="mt-6 flex flex-col gap-5">
                         {features.map(({ icon: Icon, title, description }) => (
                             <div key={title} className="flex items-start gap-4">
-                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#eff6ff] text-[#2563eb]">
+                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-[#eff6ff] text-[#2563eb] shadow-sm">
                                     <Icon className="size-6" aria-hidden="true" strokeWidth={1.9} />
                                 </div>
                                 <div className="min-w-0 flex-1">
