@@ -33,7 +33,7 @@ interface StepperProps {
  * @param {StepperProps} props - Propiedades del componente.
  * @returns {JSX.Element} Elemento JSX que representa el indicador de pasos.
  */
-export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentStep, tone = 'default' }) => {
+export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentStep }) => {
   return (
     <div className="w-full py-4">
       {/* Contenedor principal horizontal para alinear los ítems y las líneas conectoras */}
