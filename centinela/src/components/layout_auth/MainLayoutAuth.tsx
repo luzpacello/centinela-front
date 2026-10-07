@@ -1,45 +1,100 @@
 import React from 'react';
-import { Server, ShieldCheck } from 'lucide-react';
+import { Activity, Monitor, ShieldCheck } from 'lucide-react';
+import logoCentinela from '@/assets/logo.png';
+import AuthIllustration from './AuthIllustration';
+import { TypewriterText } from './TypewriterText';
+
+// La app usa JetBrains Mono por defecto; el diseño de auth pide una sans geométrica.
+const INTER = "font-[family-name:'Inter',ui-sans-serif,system-ui,sans-serif]";
+const HEADLINE = 'Gestioná tus entornos virtuales de forma simple';
+
+const features = [
+    {
+        icon: Monitor,
+        title: 'Control centralizado',
+        description: 'Administrá todas tus instancias desde un solo lugar.',
+    },
+    {
+        icon: Activity,
+        title: 'Monitoreo en tiempo real',
+        description: 'Visualizá el uso de recursos y el estado de tus instancias al instante.',
+    },
+    {
+        icon: ShieldCheck,
+        title: 'Seguro y confiable',
+        description: 'Conexión segura con tu servidor Proxmox y protección con doble factor (2FA).',
+    },
+];
+
+const asideStyle: React.CSSProperties = {
+    backgroundColor: '#f6f8fb',
+    backgroundImage:
+        'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%), radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px)',
+    backgroundSize: 'auto, 18px 18px',
+};
+
+// Continuación del fondo de puntitos sobre el panel del login, difuminándose hacia la derecha.
+const mainDotsStyle: React.CSSProperties = {
+    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px)',
+    backgroundSize: '18px 18px',
+    WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
+    maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
+};
 
 export default function MainLayoutAuth({ children }: { children?: React.ReactNode }) {
     return (
-        <div className="flex h-screen bg-gray-50 font-sans">
+        <div className={`flex h-screen bg-[#f5f6f9] ${INTER}`}>
             {/* La columna lateral solo se muestra en escritorio para no restar
                 espacio al formulario en móvil. */}
-            <aside className="hidden w-120 shrink-0 bg-white border-r border-gray-200 lg:flex flex-col justify-between h-full">
-                <div className="h-25 flex gap-2 px-4 pt-6 justify-center">
-                    <span className="text-green-600 text-3xl">logo</span>
-                    <h1 className="text-4xl font-bold text-gray-900"> Centinela </h1>
+            <aside
+                className="hidden w-full shrink-0 flex-col justify-between overflow-hidden lg:flex lg:w-[37%] lg:min-w-[440px] lg:max-w-[565px]"
+                style={asideStyle}
+            >
+                <div className="flex flex-1 flex-col px-10 pt-9 xl:px-14 xl:pt-10">
+                    {/* Marca */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
+                            <img src={logoCentinela} alt="Centinela" className="h-full w-full object-cover" />
+                        </div>
+                        <p className="text-4xl font-bold text-[#0f172a]">Centinela</p>
+                    </div>
+
+                    <TypewriterText
+                        text={HEADLINE}
+                        className="mt-5 mb-0 font-['JetBrains_Mono',monospace] text-[26px] leading-[1.2] font-bold text-[#0f172a]"
+                    />
+                    <p className="mt-3 text-[15px] leading-relaxed text-[#64748b]">
+                        Centinela te permite administrar, monitorear y operar tus máquinas virtuales y contenedores Proxmox VE
+                        en tiempo real desde una interfaz moderna, segura y fácil de usar.
+                    </p>
+
+                    {/* Beneficios */}
+                    <div className="mt-6 flex flex-col gap-5">
+                        {features.map(({ icon: Icon, title, description }) => (
+                            <div key={title} className="flex items-start gap-4">
+                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#eff6ff] text-[#2563eb]">
+                                    <Icon className="size-6" aria-hidden="true" strokeWidth={1.9} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[15px] leading-snug font-semibold text-[#0f172a]">{title}</p>
+                                    <p className="mt-1 text-[14px] leading-relaxed text-[#64748b]">{description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex flex-1 flex-col justify-center gap-8 overflow-y-auto px-8 py-6">
-                    {/* Bloque 1 — Propósito de la plataforma */}
-                    <section className="flex flex-col gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                            <Server className="h-6 w-6" aria-hidden="true" />
-                        </div>
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            Tu infraestructura virtual, simplificada y bajo control
-                        </h2>
-                        <p className="text-sm leading-relaxed text-gray-600">
-                            Centinela te permite administrar, monitorear y operar tus máquinas virtuales y contenedores Proxmox VE en tiempo real desde un entorno ágil, intuitivo y seguro.
-                        </p>
-                    </section>
-                    {/* Bloque 2 — Requisito de seguridad (2FA) */}
-                    <section className="flex flex-col gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                            <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-                        </div>
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            Protección de infraestructura con doble factor
-                        </h2>
-                        <p className="text-sm leading-relaxed text-gray-600">
-                            Gestionar servidores requiere la máxima seguridad. El 2FA añade una capa de protección indispensable para salvaguardar tus servicios críticos ante cualquier acceso no autorizado.
-                        </p>
-                    </section>
+
+                {/* Ilustración adaptativa por altura: recortada contra el borde inferior. Crece por
+                    tramos para ocupar el alto disponible y se oculta en viewports bajos. */}
+                <div className="mt-4 w-[92%] max-w-[540px] shrink-0 translate-y-3 self-center overflow-hidden [@media(max-height:820px)]:hidden [@media(min-height:821px)_and_(max-height:900px)]:h-[200px] [@media(min-height:901px)_and_(max-height:980px)]:h-[280px] [@media(min-height:981px)_and_(max-height:1019px)]:h-[380px] [@media(min-height:1020px)_and_(max-height:1059px)]:h-[420px] [@media(min-height:1060px)]:h-[460px]">
+                    <AuthIllustration />
                 </div>
             </aside>
-            <main className="min-w-0 flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 p-4 overflow-auto">
+
+            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+                {/* Los puntitos del aside se continúan sobre el panel del login y se difuminan hacia la derecha. */}
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block" style={mainDotsStyle} />
+                <div className="relative flex flex-1 flex-col overflow-auto p-4">
                     {children ? (
                         children
                     ) : (

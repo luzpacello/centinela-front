@@ -1,6 +1,8 @@
 /* 1. Importamos JetBrains Mono directamente desde Google Fonts para no ensuciar el código con Base64 */
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Sans geométrica usada por el diseño de login; se aplica por clase en la capa de auth. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -309,5 +311,30 @@
   .modal-content {
     /* #0f172a es el equivalente a rgb(15,23,42) y 1f es el 12% de opacidad */
     @apply bg-white rounded-xl shadow-[0_20px_40px_#0f172a1f] z-50;
+  }
+}
+
+/* Cursor de bloque del efecto máquina de escribir del login. */
+@keyframes auth-cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .auth-cursor {
+    animation: auth-cursor-blink 1s steps(1, end) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-cursor {
+      animation: none;
+    }
   }
 }
