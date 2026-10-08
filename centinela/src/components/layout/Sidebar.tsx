@@ -17,7 +17,9 @@ import { Button } from '@/components/ui/button';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 import { useLogout } from '@/components/features/auth/hooks/useAuth';
 import PermissionGate from '@/context/PermissionGate';
-import logoCentinela from '@/assets/logo.png';
+import logoCentinela from '@/assets/logo-mascota.png';
+import avatarAdmin from '@/assets/logo-pulpo-visor.png';
+import avatarOperador from '@/assets/logo-pulpo-auriculares.png';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -26,13 +28,8 @@ export default function Sidebar({ user }: { user?: UserSession }) {
 
     const displayName = user?.nombreCompleto ?? 'Administrador';
     const roleName = user?.rol ?? 'Admin';
-    const initials = displayName
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part.charAt(0))
-        .join('')
-        .toUpperCase();
+    // Avatar por defecto según el rol: visor para ADMIN, auriculares para OPERATOR.
+    const avatarPorRol = user?.rol === 'OPERATOR' ? avatarOperador : avatarAdmin;
 
     return (
         <aside className={`${style.asideBase} ${isCollapsed ? 'w-16' : 'w-64'}`}>
@@ -192,7 +189,7 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                         className={`${style.triggerBtnBase} ${isCollapsed ? 'justify-center px-0' : 'px-2'}`}
                     >
                         <span className={style.triggerAvatar}>
-                            {initials || 'AD'}
+                            <img src={avatarPorRol} alt="" className="h-full w-full rounded-full object-cover" />
                         </span>
                         {!isCollapsed && (
                             <span className={style.triggerInfoContainer}>
