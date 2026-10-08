@@ -172,7 +172,13 @@ export default function Instances() {
                                             <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
                                             <TableCell className="relative p-4 text-right">
                                                 <div role="group" aria-label="Acciones">
-                                                    <InstanceAction instance={instance} transition={transitioningTasks[instance.id] ?? null} isPowerActionPending={Boolean(pendingPowerActions[instance.id])} onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)} />
+                                                    <InstanceAction 
+                                                        instance={instance} 
+                                                        transition={transitioningTasks[instance.id] ?? null} 
+                                                        isPowerActionPending={Boolean(pendingPowerActions[instance.id])} 
+                                                        onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)} 
+                                                        onDeleteAccepted={reloadInventory}
+                                                    />
                                                 </div>
                                             </TableCell>
                                         </TableRow>

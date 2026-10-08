@@ -47,6 +47,17 @@ function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsM
   });
 }
 
+function getTargetStatus(action: InstancePowerAction): InventoryInstance['status']{
+  switch (action) {
+    case 'start':
+    case 'reboot':
+      return 'running';
+    case 'shutdown':
+    case 'stop':
+      return 'stopped';
+  }
+}
+
 // Una acción de energía deja de estar pendiente cuando la instancia alcanzó su
 // estado objetivo. Devuelve el mismo mapa si nada convergió, para no forzar
 // renders ni re-ejecutar el efecto de polling sin necesidad.
@@ -59,7 +70,7 @@ function convergePendingPowerActions(
   for (const [vmid, pending] of Object.entries(previous)) {
     const instance = inventory.find((item) => item.id === Number(vmid));
     if (!instance) continue;
-    const targetStatus = pending.action === 'start' ? 'running' : 'stopped';
+    const targetStatus = getTargetStatus(pending.action);
     if (instance.status === targetStatus) {
       delete next[Number(vmid)];
       changed = true;
