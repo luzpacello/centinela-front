@@ -2,6 +2,7 @@ import React from 'react';
 import { Activity, Monitor, ShieldCheck } from 'lucide-react';
 import logoCentinela from '@/assets/logo.png';
 import AuthIllustration from './AuthIllustration';
+import IntroVideo from './IntroVideo';
 import { TypewriterText } from './TypewriterText';
 
 // La app usa JetBrains Mono por defecto; el diseño de auth pide una sans geométrica.
@@ -105,6 +106,10 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                     )}
                 </div>
             </main>
+
+            {/* Intro de bienvenida: una vez por sesión, se desvanece al terminar.
+                Para quitarla: borrar esta línea, IntroVideo.tsx y public/intro.mp4. */}
+            <IntroVideo />
         </div>
     );
 }
