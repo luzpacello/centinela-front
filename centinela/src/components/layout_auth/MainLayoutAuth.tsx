@@ -1,7 +1,8 @@
 import React from 'react';
 import { Activity, Monitor, ShieldCheck } from 'lucide-react';
-import logoCentinela from '@/assets/logo.png';
+import logoCentinela from '@/assets/logo-pulpo.png';
 import AuthIllustration from './AuthIllustration';
+import DotsHover from './DotsHover';
 import IntroVideo from './IntroVideo';
 import { TypewriterText } from './TypewriterText';
 
@@ -27,34 +28,33 @@ const features = [
     },
 ];
 
-const asideStyle: React.CSSProperties = {
-    backgroundColor: '#f6f8fb',
-    backgroundImage:
-        'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%), radial-gradient(rgba(148, 163, 184, 0.55) 1px, transparent 1px)',
-    backgroundSize: 'auto, 18px 18px',
-};
-
-// Continuación del fondo de puntitos sobre el panel del login, difuminándose hacia la derecha.
-const mainDotsStyle: React.CSSProperties = {
+// Fondo general: una única capa de puntos grises que cubre todo el login.
+const rootDotsStyle: React.CSSProperties = {
     backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.55) 1px, transparent 1px)',
     backgroundSize: '18px 18px',
-    WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
-    maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 35%)',
+};
+
+// Resplandor azul del panel lateral, por encima de los puntos del fondo.
+const asideGlowStyle: React.CSSProperties = {
+    backgroundImage: 'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%)',
 };
 
 export default function MainLayoutAuth({ children }: { children?: React.ReactNode }) {
     return (
-        <div className={`flex h-screen bg-[#f5f6f9] ${INTER}`}>
+        <div className={`relative flex h-screen bg-[#f5f6f9] ${INTER}`} style={rootDotsStyle}>
+            {/* Puntos azules que siguen al mouse, sobre el fondo y debajo del contenido. */}
+            <DotsHover />
+
             {/* La columna lateral solo se muestra en escritorio para no restar
                 espacio al formulario en móvil. */}
             <aside
-                className="hidden w-full shrink-0 flex-col justify-between overflow-hidden lg:flex lg:w-[37%] lg:min-w-[440px] lg:max-w-[565px]"
-                style={asideStyle}
+                className="relative z-10 hidden w-full shrink-0 flex-col justify-between overflow-hidden lg:flex lg:w-[37%] lg:min-w-[440px] lg:max-w-[565px]"
+                style={asideGlowStyle}
             >
                 <div className="flex flex-1 flex-col px-10 pt-9 xl:px-14 xl:pt-10">
                     {/* Marca */}
                     <div className="flex items-center gap-3">
-                        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
+                        <div className="flex size-24 shrink-0 items-center justify-center">
                             <img src={logoCentinela} alt="Centinela" className="h-full w-full object-cover" />
                         </div>
                         <p className="text-4xl font-bold text-[#0f172a]">Centinela</p>
@@ -92,9 +92,7 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                 </div>
             </aside>
 
-            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-                {/* Los puntitos del aside se continúan sobre el panel del login y se difuminan hacia la derecha. */}
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block" style={mainDotsStyle} />
+            <main className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
                 <div className="relative flex flex-1 flex-col overflow-auto p-4">
                     {children ? (
                         children
