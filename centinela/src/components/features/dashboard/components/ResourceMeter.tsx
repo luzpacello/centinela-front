@@ -4,8 +4,8 @@ import { Cpu, MemoryStick, HardDrive } from 'lucide-react';
 const getThresholdClasses = (percent: number) => {
     if (percent >= 70) {
         return {
-            bar: 'bg-rose-500',
-            text: 'text-rose-600',
+            bar: 'bg-amber-500',
+            text: 'text-amber-700',
         };
     }
     return {
@@ -19,15 +19,21 @@ interface BaseMeterProps {
     icon: React.ElementType;
     percent: number;
     details: string;
+    testId: string;
     iconTheme: string; // Nueva propiedad para recuperar los colores originales
 }
 
-function BaseMeter({ title, icon: Icon, percent, details, iconTheme }: BaseMeterProps) {
+function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme }: BaseMeterProps) {
     const safePercent = Math.max(0, Math.min(100, percent));
     const theme = getThresholdClasses(safePercent);
+    const displayedPercent = Number(safePercent.toFixed(2));
 
     return (
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-colors">
+        <div
+            className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-colors"
+            data-testid={testId}
+            data-state={safePercent >= 70 ? 'warning' : 'normal'}
+        >
             {/* Cabecera del medidor */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -57,42 +63,48 @@ function BaseMeter({ title, icon: Icon, percent, details, iconTheme }: BaseMeter
                     />
                 </div>
                 {/* Porcentaje numérico */}
-                <span className={`w-11 text-right text-base font-bold tracking-tight ${theme.text}`}>
-                    {Math.round(safePercent)}%
+                <span className={`w-16 text-right text-base font-bold tracking-tight ${theme.text}`}>
+                    {displayedPercent}%
                 </span>
             </div>
         </div>
     );
 }
 
-export function CpuGauge({ percent, usedCores, totalCores }: { percent: number; usedCores: number; totalCores: number }) {
+export function CpuGauge({ percent, cores }: { percent: number; cores: number }) {
     return (
         <BaseMeter
             title="CPU"
             icon={Cpu}
             percent={percent}
-            details={`${usedCores} / ${totalCores} núcleos`}
+            details={`${cores} hilos lógicos`}
+            testId="cpu-meter"
             iconTheme="bg-emerald-50 text-emerald-700" // Verde original
         />
     );
 }
 
-export function RamMeter({ usedGb, totalGb }: { usedGb: number; totalGb: number }) {
-    const percent = totalGb > 0 ? (usedGb / totalGb) * 100 : 0;
+function formatGb(value: number): string {
+    return `${Number(value.toFixed(2))} GB`;
+}
+
+export function RamMeter({ usedGb, totalGb, usagePercent }: { usedGb: number; totalGb: number; usagePercent?: number }) {
+    const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     return (
         <BaseMeter
             title="Memoria RAM"
             icon={MemoryStick}
             percent={percent}
-            details={`${usedGb.toFixed(1)} / ${totalGb.toFixed(1)} GB`}
+            details={`${formatGb(usedGb)} / ${formatGb(totalGb)}`}
+            testId="ram-meter"
             iconTheme="bg-blue-50 text-blue-600" // Azul original
         />
     );
 }
 
-export function StorageMeter({ usedGb, totalGb }: { usedGb: number; totalGb: number }) {
-    const percent = totalGb > 0 ? (usedGb / totalGb) * 100 : 0;
-    const formatStorage = (gb: number) => gb >= 1000 ? `${(gb / 1024).toFixed(1)} TB` : `${Math.round(gb)} GB`;
+export function StorageMeter({ usedGb, totalGb, usagePercent }: { usedGb: number; totalGb: number; usagePercent?: number }) {
+    const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
+    const formatStorage = (gb: number) => gb >= 1000 ? `${Number((gb / 1024).toFixed(2))} TB` : formatGb(gb);
 
     return (
         <BaseMeter
@@ -100,6 +112,7 @@ export function StorageMeter({ usedGb, totalGb }: { usedGb: number; totalGb: num
             icon={HardDrive}
             percent={percent}
             details={`${formatStorage(usedGb)} / ${formatStorage(totalGb)}`}
+            testId="storage-meter"
             iconTheme="bg-purple-50 text-purple-600" // Morado original
         />
     );

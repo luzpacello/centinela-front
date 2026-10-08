@@ -8,23 +8,21 @@ describe('ResourceMeters', () => {
         render(
             <CpuGauge
                 percent={69}
-                usedCores={7}
-                totalCores={10}
+                cores={10}
             />
         );
 
         const meter = screen.getByTestId('cpu-meter');
         expect(meter).toHaveAttribute('data-state', 'normal');
         expect(screen.getByText('69%')).toBeInTheDocument();
-        expect(screen.getByText('7 de 10 núcleos')).toBeInTheDocument();
+        expect(screen.getByText('10 hilos lógicos')).toBeInTheDocument();
     });
 
     it('conmuta a advertencia al alcanzar 70%', () => {
         render(
             <CpuGauge
                 percent={70}
-                usedCores={8}
-                totalCores={10}
+                cores={10}
             />
         );
 
@@ -42,8 +40,8 @@ describe('ResourceMeters', () => {
         );
 
         expect(screen.getByText('12.4 GB / 32 GB')).toBeInTheDocument();
-        expect(screen.getByText('39%')).toBeInTheDocument();
-        expect(screen.getByText('510 GB / 1.0 TB')).toBeInTheDocument();
+        expect(screen.getByText('38.75%')).toBeInTheDocument();
+        expect(screen.getByText('510 GB / 1 TB')).toBeInTheDocument();
 
         rerender(
             <StorageMeter usedGb={750} totalGb={1000} />
