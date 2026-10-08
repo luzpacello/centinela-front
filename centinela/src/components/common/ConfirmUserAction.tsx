@@ -9,12 +9,13 @@ interface ConfirmUserActionProps {
   title: string;
   description: string;
   variant?: 'confirmation' | 'destructive';
+  confirmLabel?: string;
   onCompleted: () => void;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 }
 
-export function ConfirmUserAction({ title, description, variant = 'confirmation', onCompleted, onConfirm, onCancel }: ConfirmUserActionProps) {
+export function ConfirmUserAction({ title, description, variant = 'confirmation', confirmLabel = 'Aceptar', onCompleted, onConfirm, onCancel }: ConfirmUserActionProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const submissionInProgress = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +63,7 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
         {errorMessage && <FieldError role="alert">{errorMessage}</FieldError>}
         <ModalFooter className="py-[30px]">
           <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>Cancelar</Button>
-          <Button type="button" disabled={isSubmitting} onClick={() => void confirmAction()}>{isSubmitting ? 'Procesando…' : 'Aceptar'}</Button>
+          <Button type="button" variant={variant === 'destructive' ? 'destructive' : 'default'} disabled={isSubmitting} onClick={() => void confirmAction()}>{isSubmitting ? 'Procesando…' : confirmLabel ?? 'aceptar'}</Button>
         </ModalFooter>
       </Modal>
     </dialog>

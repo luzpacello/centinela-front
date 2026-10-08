@@ -53,12 +53,43 @@ export async function fetchInstanceInventory(signal?: AbortSignal): Promise<Inve
 }
 
 export async function requestInstancePowerAction(vmid: number, action: InstancePowerAction): Promise<InstancePowerActionResponse> {
-  if (action !== 'start' && action !== 'stop') throw new ApiRequestError('La acción de instancia no es válida.');
-  const response = await apiClient.request<InstancePowerActionResponse>(`/instances/${validateInstanceVmid(vmid)}/${action}`, {
+  const validVmid = validateInstanceVmid(vmid)
+  
+  let endpoint: string;
+  
+  switch (action) {
+    case 'start':
+    case 'stop':
+      endpoint = `/instances/${validVmid}/${action}`;
+      break;
+    case 'shutdown':
+    case 'reboot':
+      endpoint = `/instances/${validVmid}/status/${action}`;
+      break;
+    default:
+      throw new ApiRequestError('La acción de instancia no es válida.');
+  }
+
+  const response = await apiClient.request<InstancePowerActionResponse>(endpoint, {
     method: 'POST', expectedStatus: 202,
   });
+
   if (!response || typeof response.upid !== 'string' || !response.upid.trim()) {
     throw new ApiRequestError('La orden fue aceptada, pero no se pudo interpretar su seguimiento. Verificá el estado de la instancia antes de repetirla.');
   }
+
+  return response;
+}
+
+export async function deleteInstance( vmid: number ): Promise<InstancePowerActionResponse> {
+  const response = await apiClient.request<InstancePowerActionResponse>(
+    `/instances/${validateInstanceVmid(vmid)}`,
+    { method: 'DELETE', expectedStatus: 202,},
+  );
+
+  if (!response || typeof response.upid !== 'string' || !response.upid.trim()) {
+    throw new ApiRequestError('La eliminación fue aceptada, peno no se pudo interpretar su seguimiento.');
+  }
+
   return response;
 }

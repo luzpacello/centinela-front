@@ -29,7 +29,7 @@ export interface InventoryInstance {
   nivelAcceso?: InstancePermissionLevel | null;
 }
 
-export type InstancePowerAction = 'start' | 'stop';
+export type InstancePowerAction = 'start' | 'shutdown' | 'reboot' | 'stop';
 
 export interface InstancePowerActionResponse {
   upid: string;
