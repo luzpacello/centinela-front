@@ -25,11 +25,12 @@ export function useUserInstanceAccess(user: UserDetails) {
   const [assignedPermissions, setAssignedPermissions] = useState<UserInstancePermission[]>([]);
   const assignedIds = assignedPermissions.map((permission) => permission.vmid);
   const [pendingAccess, setPendingAccess] = useState<Record<string, AccessLevel>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(user.eliminadoEn == null);
   const [isSaving, setIsSaving] = useState(false);
   const saving = useRef(false);
 
   useEffect(() => {
+    if (user.eliminadoEn != null) return;
     const controller = new AbortController();
     Promise.all([
       fetchUserInstanceInventory(controller.signal),
@@ -48,10 +49,10 @@ export function useUserInstanceAccess(user: UserDetails) {
         if (!controller.signal.aborted) setIsLoading(false);
       });
     return () => controller.abort();
-  }, [user.id]);
+  }, [user.id, user.eliminadoEn]);
 
   async function changeAccess(instance: UserInstance, access: AccessLevel) {
-    if (saving.current || isLoading) return;
+    if (user.eliminadoEn != null || saving.current || isLoading) return;
     setPendingAccess((previousAccess) => {
       const updatedAccess = { ...previousAccess };
       // Si no estaba asignada, Sin acceso solo cancela una selección pendiente.
@@ -63,7 +64,7 @@ export function useUserInstanceAccess(user: UserDetails) {
 
   async function saveAssignments({ notify = true }: { notify?: boolean } = {}) {
     const pendingInstanceIds = Object.keys(pendingAccess);
-    if (saving.current || isLoading || pendingInstanceIds.length === 0) return;
+    if (user.eliminadoEn != null || saving.current || isLoading || pendingInstanceIds.length === 0) return;
     saving.current = true;
     setIsSaving(true);
     let assignmentWasSaved = false;
