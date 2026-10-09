@@ -1,7 +1,7 @@
 import { apiClient } from '@/services/apiClient';
 
-// La baja es lógica: desactiva la cuenta y revoca todas sus sesiones.
-export async function deactivateUserAccount(userId: string): Promise<void> {
+// La eliminación es irreversible: conserva el historial, libera el correo y revoca las sesiones.
+export async function deleteUserAccount(userId: string): Promise<void> {
   await apiClient.request(`/admin/users/${encodeURIComponent(userId)}`, {
     method: 'DELETE', expectedStatus: 204,
   });

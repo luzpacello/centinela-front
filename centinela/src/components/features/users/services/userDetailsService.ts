@@ -30,6 +30,7 @@ function isUserDetailsResponse(value: unknown): value is UserDetailsResponse {
     && typeof value.organizacionId === 'string'
     && isUserRole(value.rol)
     && typeof value.activo === 'boolean'
+    && (value.eliminadoEn === undefined || isStringOrNull(value.eliminadoEn))
     && typeof value.totpVinculado === 'boolean'
     && typeof value.cambioContrasenaRequerido === 'boolean'
     && typeof value.fechaCreacion === 'string'

@@ -1,5 +1,8 @@
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
-import { deactivateUserAccount } from '@/components/features/users/services/userDeactivationService';
+import { useDeletedUsers } from '@/components/features/users/hooks/useDeletedUsers';
+import { deleteUserAccount } from '@/components/features/users/services/userDeactivationService';
+import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
+import { userDeletionMessage, userSuspensionMessage, userReactivationMessage } from '@/components/features/users/utils/userAccountMessages';
 import { toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
 import {
@@ -17,7 +20,8 @@ import {
     QrCode,
     UserRound,
     UsersRound,
-    Calendar
+    Calendar,
+    UserKey
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +60,7 @@ interface UsuarioResumenDTO {
     emailUsuario?: string | null;
     rol?: string | null;
     activo?: boolean;
+    eliminadoEn?: string | null;
     totpVinculado?: boolean;
     fechaUltimoAcceso?: string | null;
     fechaCreacion?: string | null;
@@ -74,6 +79,7 @@ interface UserRow {
     role: string;
     roleType: string;
     status: string;
+    eliminadoEn: string | null;
     lastAccess: string;
     lastAccessRaw: string | null;
     twoFactor: string;
@@ -110,7 +116,8 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
         email: displayText(dto.emailUsuario),
         role: displayText(dto.rol),
         roleType: esAdmin ? 'Admin' : 'US',
-        status: dto.activo ? 'Activo' : 'Inactivo',
+        status: dto.eliminadoEn != null ? 'Eliminado' : dto.activo ? 'Activo' : 'Inactivo',
+        eliminadoEn: dto.eliminadoEn ?? null,
         lastAccess: formatLastAccess(dto.fechaUltimoAcceso),
         lastAccessRaw: dto.fechaUltimoAcceso ?? null,
         twoFactor: dto.totpVinculado ? 'Activado' : 'Desactivado',
@@ -121,7 +128,7 @@ function toUserRow(dto: UsuarioResumenDTO): UserRow {
 
 export default function UsersPage() {
     const navigate = useNavigate();
-    const [userFilter, setUserFilter] = useState<'all' | 'ADMIN' | 'OPERATOR'>('all');
+    const [userFilter, setUserFilter] = useState<'all' | 'ADMIN' | 'OPERATOR' | 'deleted'>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [twoFactorFilter, setTwoFactorFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
     const [lastAccessFrom, setLastAccessFrom] = useState('');
@@ -134,21 +141,29 @@ export default function UsersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const [pendingAccountAction, setPendingAccountAction] = useState<{ user: UserRow; action: 'delete' | 'deactivate' } | null>(null);
+    const [pendingAccountAction, setPendingAccountAction] = useState<{ user: UserRow; action: 'delete' | 'deactivate' | 'reactivate' } | null>(null);
     const [pendingAdminAction, setPendingAdminAction] = useState<{
         user: UserRow;
         action: 'reset-password' | 'reset-2fa';
     } | null>(null);
     const [listRefreshVersion, setListRefreshVersion] = useState(0);
+    const deletedUsersState = useDeletedUsers(true, listRefreshVersion);
     async function confirmAccountAction() {
-        if (!pendingAccountAction) return;
-        await deactivateUserAccount(String(pendingAccountAction.user.id));
-        toast.add({ title: pendingAccountAction.action === 'delete' ? 'Usuario eliminado' : 'Usuario desactivado', description: 'La cuenta fue desactivada y sus sesiones fueron invalidadas.', type: 'success' });
+        if (!pendingAccountAction || pendingAccountAction.user.eliminadoEn != null) return;
+        const { user, action } = pendingAccountAction;
+        if (action === 'delete') await deleteUserAccount(String(user.id));
+        else await updateUserDetails(String(user.id), { activo: action === 'reactivate' });
+        toast.add({
+            title: action === 'delete' ? 'Usuario eliminado' : action === 'reactivate' ? 'Usuario reactivado' : 'Usuario desactivado',
+            description: action === 'delete' ? 'La cuenta fue dada de baja y su correo quedó liberado.' : action === 'reactivate' ? 'La cuenta vuelve a estar activa.' : 'La cuenta fue suspendida. Su correo sigue reservado.',
+            type: 'success',
+        });
+        setCurrentPage(1);
         setListRefreshVersion((version) => version + 1);
     }
 
     async function confirmAdminAction() {
-        if (!pendingAdminAction) return;
+        if (!pendingAdminAction || pendingAdminAction.user.eliminadoEn != null) return;
         const {user, action} = pendingAdminAction;
         if (action === 'reset-password') {
             await apiClient.post(
@@ -218,10 +233,14 @@ export default function UsersPage() {
 
     const lastAccessFromTimestamp = lastAccessFrom ? new Date(`${lastAccessFrom}T00:00:00`).getTime() : null;
     const lastAccessToTimestamp = lastAccessTo ? new Date(`${lastAccessTo}T23:59:59.999`).getTime() : null;
-    const filteredUsers = users.filter((user) => {
+    const displayedUsers = userFilter === 'deleted' ? (deletedUsersState.deletedUsers ?? []).map(toUserRow) : users;
+    const isListLoading = userFilter === 'deleted' ? deletedUsersState.isLoading : isLoading;
+    const listErrorMessage = userFilter === 'deleted' ? deletedUsersState.errorMessage : errorMessage;
+    const filteredUsers = displayedUsers.filter((user) => {
         const lastAccessTimestamp = user.lastAccessRaw ? Date.parse(user.lastAccessRaw) : NaN;
-        return (userFilter === 'all' || user.role === userFilter)
-            && (statusFilter === 'all' || user.status === (statusFilter === 'active' ? 'Activo' : 'Inactivo'))
+        return (userFilter === 'deleted' ? user.eliminadoEn != null : user.eliminadoEn == null)
+            && (userFilter === 'all' || userFilter === 'deleted' || user.role === userFilter)
+            && (userFilter === 'deleted' || statusFilter === 'all' || user.status === (statusFilter === 'active' ? 'Activo' : 'Inactivo'))
             && (twoFactorFilter === 'all' || user.twoFactor === (twoFactorFilter === 'enabled' ? 'Activado' : 'Desactivado'))
             && ((lastAccessFromTimestamp === null && lastAccessToTimestamp === null)
                 || (Number.isFinite(lastAccessTimestamp)
@@ -239,7 +258,13 @@ export default function UsersPage() {
 
     return (
         <section className="flex min-w-0 self-start flex-col gap-6 text-slate-900">
-            {pendingAccountAction && <ConfirmUserAction variant="destructive" onCompleted={() => setPendingAccountAction(null)} title={pendingAccountAction.action === 'delete' ? 'Eliminar usuario' : 'Desactivar usuario'} description={`Se desactivará la cuenta de ${pendingAccountAction.user.name} y se invalidarán sus sesiones. La cuenta no se borrará físicamente.`} onConfirm={confirmAccountAction} onCancel={() => setPendingAccountAction(null)} />}
+            {pendingAccountAction && <ConfirmUserAction
+                variant={pendingAccountAction.action === 'reactivate' ? 'confirmation' : 'destructive'}
+                onCompleted={() => setPendingAccountAction(null)}
+                title={pendingAccountAction.action === 'delete' ? 'Eliminar usuario' : pendingAccountAction.action === 'reactivate' ? 'Reactivar usuario' : 'Desactivar usuario'}
+                description={pendingAccountAction.action === 'delete' ? userDeletionMessage : pendingAccountAction.action === 'reactivate' ? userReactivationMessage : userSuspensionMessage}
+                onConfirm={confirmAccountAction} onCancel={() => setPendingAccountAction(null)}
+            />}
                         {pendingAdminAction && (
                 <ConfirmUserAction
                     variant={
@@ -355,9 +380,10 @@ export default function UsersPage() {
             </div>
 
             <Tabs value={userFilter} onValueChange={(value) => {
-                if (value === 'all' || value === 'ADMIN' || value === 'OPERATOR') {
+                if (value === 'all' || value === 'ADMIN' || value === 'OPERATOR' || value === 'deleted') {
                     setUserFilter(value);
                     setCurrentPage(1);
+                    setOpenDropdownId(null);
                 }
             }} className="min-w-0 gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -365,11 +391,12 @@ export default function UsersPage() {
                         <TabsTrigger value="all" className="px-4"><UsersRound /> Usuarios totales <Badge variant="secondary">{summary.total}</Badge></TabsTrigger>
                         <TabsTrigger value="ADMIN" className="px-4"><Shield /> Administradores <Badge variant="secondary">{summary.admins}</Badge></TabsTrigger>
                         <TabsTrigger value="OPERATOR" className="px-4"><UserRound /> Operadores <Badge variant="secondary">{summary.operators}</Badge></TabsTrigger>
+                        <TabsTrigger value="deleted" className="px-4"><UserX /> Eliminados <Badge variant="secondary">{deletedUsersState.deletedUsers?.length ?? EMPTY_TEXT}</Badge></TabsTrigger>
                     </TabsList>
                 </div>
                 <TabsContent value={userFilter} className="min-w-0">
                     <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
-                        <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isLoading}>
+                        <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isListLoading}>
                                 <TableHeader>
                                     <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                                         <TableHead className="header-of-table px-4">Usuario</TableHead>
@@ -381,7 +408,7 @@ export default function UsersPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoading &&
+                                    {isListLoading &&
                                         Array.from({ length: 4 }).map((_, index) => (
                                             <TableRow key={`skeleton-${index}`} className="animate-pulse">
                                                 <TableCell className="p-4"><div className="h-9 w-48 rounded bg-slate-100" /></TableCell>
@@ -393,18 +420,18 @@ export default function UsersPage() {
                                             </TableRow>
                                         ))}
 
-                                    {!isLoading && errorMessage && (
+                                    {!isListLoading && listErrorMessage && (
                                         <TableRow>
                                             <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-red-600" role="alert">
-                                                {errorMessage}
+                                                {listErrorMessage}
                                             </TableCell>
                                         </TableRow>
                                     )}
 
-                                    {!isLoading && !errorMessage && filteredUsers.length === 0 && (
+                                    {!isListLoading && !listErrorMessage && filteredUsers.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
-                                                {users.length === 0
+                                                {displayedUsers.length === 0
                                                     ? 'Todavía no hay usuarios para mostrar.'
                                                     : searchTerm.trim()
                                                         ? 'No se encontraron usuarios que coincidan con la búsqueda.'
@@ -413,7 +440,7 @@ export default function UsersPage() {
                                         </TableRow>
                                     )}
 
-                                    {!isLoading && !errorMessage && paginatedUsers.map((user) => (
+                                    {!isListLoading && !listErrorMessage && paginatedUsers.map((user) => (
                                         <TableRow
                                             key={user.id}
                                             className="hover:bg-slate-50/70"
@@ -435,7 +462,7 @@ export default function UsersPage() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="p-4">
-                                                {user.status === 'Activo' ? (
+                                                {user.eliminadoEn != null ? <Badge variant="destructive">Eliminado</Badge> : user.status === 'Activo' ? (
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                         <CheckCircle2 className="size-3" /> Activo
                                                     </span>
@@ -453,6 +480,7 @@ export default function UsersPage() {
                                             </TableCell>
                                             <TableCell className="relative p-4 text-right">
                                                 <button
+                                                    disabled={user.eliminadoEn != null}
                                                     onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
                                                     className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors inline-flex items-center justify-center"
                                                     aria-label={`Acciones para ${user.name}`}
@@ -460,7 +488,7 @@ export default function UsersPage() {
                                                     <MoreVertical className="size-4" />
                                                 </button>
 
-                                                {openDropdownId === user.id && (
+                                                {user.eliminadoEn == null && openDropdownId === user.id && (
                                                     <div className="absolute right-8 top-10 w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 text-left">
                                                         <button
                                                             type="button"
@@ -504,8 +532,8 @@ export default function UsersPage() {
                                                             <QrCode className="size-3.5 text-slate-500" /> 
                                                             Restablecer 2FA
                                                         </button>
-                                                        <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: 'deactivate' }); }} className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                                            <UserX className="size-3.5 text-amber-500" /> Desactivar usuario
+                                                        <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: user.status === 'Activo' ? 'deactivate' : 'reactivate' }); }} className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                            <UserKey className="size-3.5 text-amber-500" /> {user.status === 'Activo' ? 'Desactivar usuario' : 'Reactivar usuario'}
                                                         </button>
                                                         <button onClick={() => { setOpenDropdownId(null); setPendingAccountAction({ user, action: 'delete' }); }} className="w-full px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100">
                                                             <Trash2 className="size-3.5" /> Eliminar usuario

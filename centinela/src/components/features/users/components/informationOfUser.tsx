@@ -1,3 +1,4 @@
+import { useEffect, useRef, type Ref } from 'react';
 import { FieldError } from '@/components/ui/field';
 import { Building2, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -10,11 +11,16 @@ interface InformationOfUserProps {
     values: EditableUserValues;
     onFieldChange: UpdateEditableUserField;
     emailError?: string;
+    readOnly?: boolean;
 }
 
-export default function InformationOfUser({ values, onFieldChange, emailError }: InformationOfUserProps) {
+export default function InformationOfUser({ values, onFieldChange, emailError, readOnly = false }: InformationOfUserProps) {
     const { isAdmin } = useAuth();
-    const admin = isAdmin();
+    const admin = isAdmin() && !readOnly;
+    const emailInputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (emailError) emailInputRef.current?.focus();
+    }, [emailError]);
 
     return (
         <section className={styles.informationSection} aria-labelledby="general-information-title">
@@ -31,6 +37,7 @@ export default function InformationOfUser({ values, onFieldChange, emailError }:
                 />
                 <InputField
                     id="email"
+                    inputRef={emailInputRef}
                     label="Correo electrónico"
                     value={values.emailUsuario}
                     onChange={(value) => onFieldChange('emailUsuario', value)}
@@ -94,10 +101,11 @@ interface InputFieldProps {
     type?: string;
     readOnly?: boolean;
     error?: string;
+    inputRef?: Ref<HTMLInputElement>;
     onChange?: (value: string) => void;
 }
 
-function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false, onChange, error }: InputFieldProps) {
+function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = false, onChange, error, inputRef }: InputFieldProps) {
     return (
         <div className={styles.fieldContainer}>
             <label htmlFor={id}>{label}</label>
@@ -105,6 +113,7 @@ function InputField({ id, label, value, icon: Icon, type = 'text', readOnly = fa
                 <Icon className={styles.controlIcon} aria-hidden="true" />
                 <Input
                     id={id}
+                    ref={inputRef}
                     type={type}
                     value={value}
                     readOnly={readOnly}

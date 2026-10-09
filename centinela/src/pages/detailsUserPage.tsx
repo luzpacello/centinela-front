@@ -1,9 +1,10 @@
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
-import { deactivateUserAccount } from '@/components/features/users/services/userDeactivationService';
+import { deleteUserAccount } from '@/components/features/users/services/userDeactivationService';
 import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
 import { useRef, useState } from 'react';
 import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
 import { ApiRequestError } from '@/services/apiClient';
+import { isUserEmailConflict, userEmailConflictMessage, userDeletionMessage, userSuspensionMessage, userReactivationMessage } from '@/components/features/users/utils/userAccountMessages';
 import { toast } from '@/components/ui/toast';
 import {
     ArrowLeft,
@@ -92,9 +93,13 @@ export default function DetailsUserPage() {
 function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
     const navigate = useNavigate();
     const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
+    const [pendingActiveStatus, setPendingActiveStatus] = useState<boolean | null>(null);
+    const [activeTab, setActiveTab] = useState('general');
+    const isDeleted = user.eliminadoEn != null;
     async function confirmUserDeletion() {
-        await deactivateUserAccount(user.id);
-        toast.add({ title: 'Usuario eliminado', description: 'La cuenta fue desactivada y sus sesiones fueron invalidadas.', type: 'success' });
+        if (isDeleted) return;
+        await deleteUserAccount(user.id);
+        toast.add({ title: 'Usuario eliminado', description: 'La cuenta fue dada de baja, sus sesiones fueron invalidadas y su correo quedó liberado.', type: 'success' });
 
     }
     const [confirmedUser, setConfirmedUser] = useState(user);
@@ -112,13 +117,17 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
     const hasPermissionChanges = Object.keys(instanceAccess.pendingAccess).length > 0;
 
     const handleFieldChange: UpdateEditableUserField = (field, value) => {
-        if (saveInProgress.current) return;
+        if (isDeleted || saveInProgress.current) return;
+        if (field === 'activo') {
+            setPendingActiveStatus(value as boolean);
+            return;
+        }
         if (field === 'emailUsuario') setEmailError(undefined);
         updateField(field, value);
     };
 
     async function handleSaveChanges() {
-        if (saveInProgress.current || (!hasProfileChanges && !hasPermissionChanges)) return;
+        if (isDeleted || saveInProgress.current || (!hasProfileChanges && !hasPermissionChanges)) return;
         saveInProgress.current = true;
         setIsSaving(true);
         setEmailError(undefined);
@@ -133,14 +142,15 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
             if (hasPermissionChanges) await instanceAccess.saveAssignments({ notify: false });
             toast.add({ title: 'Cambios guardados', description: 'Los cambios del usuario se guardaron correctamente.', type: 'success' });
         } catch (error) {
-            if (error instanceof ApiRequestError && error.status === 409 && !profileWasSaved) {
-                setEmailError('El correo ingresado ya pertenece a otro usuario.');
+            if (isUserEmailConflict(error) && !profileWasSaved) {
+                setActiveTab('general');
+                setEmailError(userEmailConflictMessage);
             }
             // Los errores 401/403 ya se muestran en ApiResponseNotifier.
             if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
                 toast.add({
                     title: profileWasSaved ? 'Perfil guardado; permisos pendientes' : 'No se pudieron guardar todos los cambios',
-                    description: error instanceof Error ? error.message : 'Intentá nuevamente.',
+                    description: isUserEmailConflict(error) ? userEmailConflictMessage : error instanceof Error ? error.message : 'Intentá nuevamente.',
                     type: 'error',
                 });
             }
@@ -152,7 +162,14 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 
     return (
         <section className={styles.pageContainer}>
-            {isDeleteConfirmationOpen && <ConfirmUserAction variant="destructive" onCompleted={() => { setIsDeleteConfirmationOpen(false); navigate('/users', { replace: true }); }} title="Eliminar usuario" description={`Se dará de baja la cuenta de ${confirmedUser.nombreUsuario} y se invalidarán todas sus sesiones activas. La cuenta no se borrará físicamente.`} onConfirm={confirmUserDeletion} onCancel={() => setIsDeleteConfirmationOpen(false)} />}
+            {isDeleteConfirmationOpen && <ConfirmUserAction variant="destructive" onCompleted={() => { setIsDeleteConfirmationOpen(false); navigate('/users', { replace: true }); }} title="Eliminar usuario" description={userDeletionMessage} onConfirm={confirmUserDeletion} onCancel={() => setIsDeleteConfirmationOpen(false)} />}
+            {pendingActiveStatus !== null && <ConfirmUserAction
+                variant={pendingActiveStatus ? 'confirmation' : 'destructive'}
+                title={pendingActiveStatus ? 'Reactivar usuario' : 'Desactivar usuario'}
+                description={pendingActiveStatus ? userReactivationMessage : userSuspensionMessage}
+                onConfirm={async () => { if (!isDeleted) updateField('activo', pendingActiveStatus); }}
+                onCompleted={() => setPendingActiveStatus(null)} onCancel={() => setPendingActiveStatus(null)}
+            />}
             <header className={styles.pageHeader}>
                 <div className={styles.headingContainer}>
                     <nav className={styles.breadcrumb} aria-label="Navegación secundaria">
@@ -162,8 +179,8 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <ChevronRight className={styles.breadcrumbIcon} aria-hidden="true" />
                         <span className={styles.currentUserName}>{user.nombreUsuario}</span>
                     </nav>
-                    <h1>Edición de usuario</h1>
-                    <p className="text-secundario">Gestioná la información, roles y permisos del usuario.</p>
+                    <h1>{isDeleted ? 'Detalle de usuario eliminado' : 'Edición de usuario'}</h1>
+                    <p className="text-secundario">{isDeleted ? 'Cuenta eliminada. Consulta de solo lectura.' : 'Gestioná la información, roles y permisos del usuario.'}</p>
                 </div>
 
                 <div className={styles.headerActions}>
@@ -171,31 +188,31 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                         <ArrowLeft className={styles.actionIcon} aria-hidden="true" />
                         Volver
                     </Button>
-                    <PermissionGate requiredRole="ADMIN">
+                    {!isDeleted && <PermissionGate requiredRole="ADMIN">
                         <Button type="button" variant="outline" className={styles.deleteButton} disabled={isSaving} onClick={() => setIsDeleteConfirmationOpen(true)}>
                             <Trash2 className={styles.actionIcon} aria-hidden="true" />
                             Eliminar usuario
                         </Button>
-                    </PermissionGate>
-                    <PermissionGate requiredRole="ADMIN">
+                    </PermissionGate>}
+                    {!isDeleted && <PermissionGate requiredRole="ADMIN">
                         <Button type="button" onClick={() => void handleSaveChanges()} disabled={isSaving || (!hasProfileChanges && !hasPermissionChanges) || (hasPermissionChanges && instanceAccess.isLoading)} aria-busy={isSaving}>
                             <Save className={styles.actionIcon} aria-hidden="true" />
                             Guardar cambios
                         </Button>
-                    </PermissionGate>
+                    </PermissionGate>}
                     
                 </div>
             </header>
 
             <div className={styles.contentGrid}>
                 <main className={styles.mainColumn} inert={isSaving} aria-busy={isSaving}>
-                    <UserInformationTabs instanceAccess={instanceAccess} values={values} onFieldChange={handleFieldChange} emailError={emailError} />
+                    <UserInformationTabs instanceAccess={instanceAccess} values={values} onFieldChange={handleFieldChange} emailError={emailError} readOnly={isDeleted} activeTab={activeTab} onTabChange={setActiveTab} />
                 </main>
 
                 <aside className={styles.sidebarColumn}>
                     <UserSummaryCard user={confirmedUser} values={confirmedUser} />
-                    <SecurityCard user={user} />
-                    <RecentActivityCard />
+                    {!isDeleted && <SecurityCard user={user} />}
+                    {!isDeleted && <RecentActivityCard />}
                 </aside>
             </div>
         </section>
@@ -207,28 +224,33 @@ function UserInformationTabs({
     values,
     onFieldChange,
     emailError,
+    readOnly,
+    activeTab,
+    onTabChange,
 }: {
     instanceAccess: ReturnType<typeof useUserInstanceAccess>;
     values: EditableUserValues;
     onFieldChange: UpdateEditableUserField;
     emailError?: string;
+    readOnly: boolean;
+    activeTab: string;
+    onTabChange: (tab: string) => void;
 }) {
-    const [activeTab, setActiveTab] = useState('general');
 
     return (
         <>
             <Card className={styles.tabsCard}>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className={styles.tabsContainer}>
+                <Tabs value={activeTab} onValueChange={onTabChange} className={styles.tabsContainer}>
                     <TabsList variant="line" className={styles.tabsList} aria-label="Información del usuario">
                         <TabsTrigger value="general">Información general</TabsTrigger>
-                        <PermissionGate requiredRole="ADMIN">
+                        {!readOnly && <PermissionGate requiredRole="ADMIN">
                             <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
-                        </PermissionGate>
+                        </PermissionGate>}
                     </TabsList>
                     <TabsContent value="general" className={styles.generalInformationTabContent}>
-                        <InformationOfUser values={values} onFieldChange={onFieldChange} emailError={emailError} />
+                        <InformationOfUser values={values} onFieldChange={onFieldChange} emailError={emailError} readOnly={readOnly} />
                     </TabsContent>
-                    <PermissionGate requiredRole="ADMIN">
+                    {!readOnly && <PermissionGate requiredRole="ADMIN">
                         <TabsContent value="roles" className={styles.rolesTabContent}>
                             <RolesAndPermissions
                                 instanceAccess={instanceAccess}
@@ -237,10 +259,10 @@ function UserInformationTabs({
                                 onRoleChange={(role) => onFieldChange('rol', role)}
                             />
                         </TabsContent>
-                    </PermissionGate>                    
+                    </PermissionGate>}
                 </Tabs>
             </Card>
-            {activeTab === 'general' && <AssignedInstancesCard instanceIds={instanceAccess.assignedIds} />}
+            {activeTab === 'general' && !readOnly && <AssignedInstancesCard instanceIds={instanceAccess.assignedIds} />}
         </>
     );
 }
@@ -308,14 +330,15 @@ function UserSummaryCard({ user, values }: { user: UserDetails; values: Editable
                 <div className={styles.userSummaryDetails}>
                     <div className={styles.userNameRow}>
                         <strong className="body">{user.nombreUsuario}</strong>
-                        <Badge className={isActive ? styles.activeUserBadge : styles.inactiveUserBadge}>
-                            <span className={isActive ? styles.activeUserBadgeDot : styles.inactiveUserBadgeDot} />
-                            {isActive ? 'Activo' : 'Inactivo'}
+                        <Badge variant={user.eliminadoEn != null ? 'destructive' : 'default'} className={user.eliminadoEn != null ? undefined : isActive ? styles.activeUserBadge : styles.inactiveUserBadge}>
+                            {user.eliminadoEn == null && <span className={isActive ? styles.activeUserBadgeDot : styles.inactiveUserBadgeDot} />}
+                            {user.eliminadoEn != null ? 'Eliminado' : isActive ? 'Activo' : 'Inactivo'}
                         </Badge>
                     </div>
                     <Badge className={styles.standardUserBadge}>{formatRole(values.rol)}</Badge>
                     <p className="text-secundario">{values.emailUsuario}</p>
                     <p className="text-secundario">Creado el <strong>{formatDateTime(user.fechaCreacion)}</strong></p>
+                    {user.eliminadoEn != null && <p className="text-secundario">Eliminado el <strong>{formatDateTime(user.eliminadoEn)}</strong></p>}
                 </div>
             </div>
         </Card>
