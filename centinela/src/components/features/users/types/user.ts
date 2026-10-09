@@ -6,6 +6,7 @@ export interface UserDetails {
   organizacionId: string;
   rol: string;
   activo: boolean;
+  eliminadoEn?: string | null;
   totpVinculado: boolean;
   cambioContrasenaRequerido: boolean;
   fechaCreacion: string;
