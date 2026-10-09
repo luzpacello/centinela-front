@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import { ArrowLeft, Check, CheckCircle2, ChevronRight, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,9 +29,14 @@ export default function CrearUsuarios() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
     const [emailConfirmation, setEmailConfirmation] = useState('');
-    const { submitNewUser } = useCreateUser();
+    const { submitNewUser, emailError, clearEmailError } = useCreateUser();
+    const emailInputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (emailError) emailInputRef.current?.focus();
+    }, [emailError]);
 
     function updateField(field: keyof typeof EMPTY_FORM, value: string) {
+        if (field === 'emailUsuario') clearEmailError();
         setForm((previous) => ({ ...previous, [field]: value }));
     }
 
@@ -46,6 +51,7 @@ export default function CrearUsuarios() {
     }
 
     function cancelCreation() {
+        clearEmailError();
         setIsConfirmationOpen(false);
         setForm(EMPTY_FORM);
         setEmailConfirmation('');
@@ -93,7 +99,7 @@ export default function CrearUsuarios() {
                         <div className={style.formFieldsGrid}>
                             <FormField id="nombre" label="Nombre completo" required placeholder="Ej: Juan Pérez" value={form.nombreCompleto} onChange={(value) => updateField('nombreCompleto', value)} />
                             <FormField id="usuario" label="Nombre de usuario" required placeholder="Ej: juanperez"  value={form.nombreUsuario} onChange={(value) => updateField('nombreUsuario', value)} />
-                            <FormField id="correo" label="Correo electrónico" required type="email" placeholder="Ej: juan.perez@propex.local" hint="El usuario recibirá un correo con sus credenciales." value={form.emailUsuario} onChange={(value) => updateField('emailUsuario', value)} />
+                            <FormField inputRef={emailInputRef} error={emailError} id="correo" label="Correo electrónico" required type="email" placeholder="Ej: juan.perez@propex.local" hint="El usuario recibirá un correo con sus credenciales." value={form.emailUsuario} onChange={(value) => updateField('emailUsuario', value)} />
                             <FormField id="confirmar-correo" label="Confirmar correo electrónico" required type="email" placeholder="Repetí el correo electrónico" value={emailConfirmation} onChange={setEmailConfirmation} />
 
                         </div>
@@ -181,13 +187,15 @@ interface FormFieldProps {
     label: string;
     placeholder: string;
     hint?: string;
+    error?: string;
+    inputRef?: Ref<HTMLInputElement>;
     type?: string;
     required?: boolean;
     value?: string;
     onChange?: (value: string) => void;
 }
 
-function FormField({ id, label, placeholder, hint, type = 'text', required = false, value, onChange }: FormFieldProps) {
+function FormField({ id, label, placeholder, hint, type = 'text', required = false, value, onChange, error, inputRef }: FormFieldProps) {
     return (
         <Field>
             <FieldLabel htmlFor={id}>
@@ -196,12 +204,16 @@ function FormField({ id, label, placeholder, hint, type = 'text', required = fal
             </FieldLabel>
             <Input
                 id={id}
+                ref={inputRef}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `${id}-error` : undefined}
                 type={type}
                 required={required}
                 placeholder={placeholder}
                 value={value}
                 onChange={onChange ? (event) => onChange(event.target.value) : undefined}
             />
+            {error && <FieldError id={`${id}-error`} role="alert">{error}</FieldError>}
             {hint && <FieldDescription className="text-caption">{hint}</FieldDescription>}
         </Field>
     );
