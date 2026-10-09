@@ -1,10 +1,14 @@
+import { useState } from 'react';
+import { isUserEmailConflict, userEmailConflictMessage } from '../../users/utils/userAccountMessages';
 import { createUser } from '../services/createUserService';
 import { toast } from '@/components/ui/toast';
 import { ApiRequestError } from '@/services/apiClient';
 import type { CreateUserPayload } from '../types/createUser';
 
 export function useCreateUser() {
+  const [emailError, setEmailError] = useState<string | undefined>();
   async function submitNewUser(data: CreateUserPayload): Promise<boolean> {
+    setEmailError(undefined);
     try {
       await createUser(data);
       toast.add({
@@ -19,35 +23,30 @@ export function useCreateUser() {
         && error.status === 502
         && error.errorCode === 'EMAIL_DELIVERY_FAILED';
 
-      toast.add({
-        title: 'No se creó el usuario',
-        description: isEmailDeliveryFailure
-          ? error.message
-          : 'No se pudo completar la creación del usuario.',
-        type: 'error',
-        priority: 'high',
-        data: isDuplicatedUser ? { forceExpanded: true } : undefined,
-      });
-
-      if (isDuplicatedUser) {
-        const errorMessage = error.message.toLocaleLowerCase();
-        const duplicatedFieldMessage = errorMessage.includes('mail') || errorMessage.includes('correo')
-          ? 'El correo electrónico ya existe o está siendo utilizado.'
-          : errorMessage.includes('username') || errorMessage.includes('usuario')
-            ? 'El nombre de usuario ya existe o está siendo utilizado.'
-            : 'El correo electrónico o el nombre de usuario ya está siendo utilizado.';
-
+      if (isUserEmailConflict(error)) {
+        setEmailError(userEmailConflictMessage);
+        toast.add({ title: 'Correo en uso', description: userEmailConflictMessage, type: 'warning' });
+      } else if (isDuplicatedUser) {
         toast.add({
           title: 'Datos ya registrados',
-          description: duplicatedFieldMessage,
+          description: error.errorCode === 'USER_USERNAME_ALREADY_EXISTS'
+            ? 'El nombre de usuario ya se encuentra en uso.'
+            : error.message,
           type: 'warning',
           priority: 'high',
           data: { forceExpanded: true },
+        });
+      } else if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
+        toast.add({
+          title: 'No se creó el usuario',
+          description: isEmailDeliveryFailure ? error.message : 'No se pudo completar la creación del usuario.',
+          type: 'error',
+          priority: 'high',
         });
       }
 
       return false;
     }
   }
-  return { submitNewUser };
+  return { submitNewUser, emailError, clearEmailError: () => setEmailError(undefined) };
 }
