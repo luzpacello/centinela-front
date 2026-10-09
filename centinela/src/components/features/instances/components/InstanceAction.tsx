@@ -308,7 +308,19 @@ export default function InstanceAction({ instance, transition: transitionProp, i
       )}
       {isDeleteOpen && createPortal(
         <dialog
-          open
+          ref={(node) => {
+            if (node && !node.open) {
+              node.showModal();
+            }
+          }}
+          onCancel={(event) => {
+            event.preventDefault();
+            if (!isDeleting) {
+              setIsDeleteOpen(false);
+              setDeleteVerification('');
+              setDeleteError(null);
+            }
+          }}
           className="m-auto w-full max-w-[520px] border-0 bg-transparent p-0 outline-none"
         >
           <Modal variant="destructive" aria-busy={isDeleting}>
