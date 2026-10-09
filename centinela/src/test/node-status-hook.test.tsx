@@ -7,6 +7,7 @@ vi.mock('@/components/features/dashboard/services/nodeStatusService', () => ({
 
 import { getNodeStatus, type NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
 import { useNodeStatus } from '@/components/features/dashboard/hooks/useNodeStatus';
+import { ApiRequestError } from '@/services/apiClient';
 
 const status: NodeStatusResponse = {
     cpu: { usagePercent: 69, cores: 16 },
@@ -88,5 +89,16 @@ describe('useNodeStatus', () => {
         await act(async () => { await Promise.resolve(); });
         expect(result.current.health).toBe('healthy');
         expect(getNodeStatus).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([502, 504])('marca el nodo inaccesible cuando el servicio responde %s', async (httpStatus) => {
+        vi.useFakeTimers();
+        vi.mocked(getNodeStatus).mockRejectedValueOnce(new ApiRequestError('Error de gateway', httpStatus));
+
+        const { result } = renderHook(() => useNodeStatus());
+        await act(async () => { await Promise.resolve(); });
+
+        expect(result.current.health).toBe('inaccessible');
+        expect(result.current.error).toMatchObject({ status: httpStatus });
     });
 });
