@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Modal, ModalHeader, ModalTitle, ModalDescription, ModalFooter, ModalIcon } from '@/components/ui/modals';
 import { FieldError } from '@/components/ui/field';
 import { ApiRequestError } from '@/services/apiClient';
+import { getErrorMessage } from '@/utils/errorMapper';
 
 interface ConfirmUserActionProps {
   title: string;
@@ -40,7 +41,7 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
     } catch (error) {
       // Las respuestas 401/403 ya se notifican globalmente.
       if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
-        setErrorMessage(error instanceof Error ? error.message : 'Intentá nuevamente.');
+        setErrorMessage(getErrorMessage(error));
       }
     } finally {
       submissionInProgress.current = false;
