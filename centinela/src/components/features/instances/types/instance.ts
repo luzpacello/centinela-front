@@ -1,4 +1,5 @@
 export type InstanceType = 'VM' | 'LXC';
+export type InstanceStatusFilter = 'all' | 'running' | 'stopped';
 export type InstancePermissionLevel = 'FULL_ACCESS' | 'READ_ONLY';
 
 export interface InstanceActiveTask {

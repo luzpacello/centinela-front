@@ -228,6 +228,21 @@ describe('events client', () => {
     expect(postSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('no reintenta cuando el ticket responde 401 por sesión expirada', async () => {
+    postSpy.mockRejectedValue(new ApiRequestError('sesión expirada', 401));
+
+    const client = makeClient();
+    client.start();
+    await settle();
+
+    expect(client.getStatus()).toBe('unauthorized');
+    expect(postSpy).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    await settle();
+    expect(postSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('reintenta un fallo no autorizado al pedir el ticket', async () => {
     postSpy
       .mockRejectedValueOnce(new ApiRequestError('servicio caído', 503))
