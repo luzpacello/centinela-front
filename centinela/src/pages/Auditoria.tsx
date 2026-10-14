@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
+import { format, startOfDay, subMonths } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import {
-    Calendar,
     Filter,
     Download,
     CheckCircle2,
@@ -14,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     DropdownMenu,
@@ -89,8 +91,12 @@ export default function AuditoriaPage() {
     const [accion, setAccion] = useState('');
     const [resultado, setResultado] = useState('');
     const [usuarioId, setUsuarioId] = useState('');
-    const [desde, setDesde] = useState('');
-    const [hasta, setHasta] = useState('');
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        const today = startOfDay(new Date());
+        return { from: subMonths(today, 1), to: today };
+    });
+    const desde = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
+    const hasta = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
     const [items, setItems] = useState<AuditoriaItemDTO[]>([]);
     const [total, setTotal] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +138,7 @@ export default function AuditoriaPage() {
                     `/admin/audit?${params.toString()}`,
                     { signal: controller.signal },
                 );
+                if (controller.signal.aborted) return;
                 setItems(data.items ?? []);
                 setTotal(data.total ?? 0);
             } catch (error) {
@@ -265,18 +272,22 @@ export default function AuditoriaPage() {
                     <Button type="button" variant="outline" onClick={handleExport}><Download className="size-4!" /> Exportar</Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger><Filter className="size-4!" /> Filtros</DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-2rem)]">
-                            <DropdownMenuGroup>
-                                <DropdownMenuLabel>Rango de fechas</DropdownMenuLabel>
-                                <div className="flex flex-wrap items-center gap-2 px-1.5 py-2 text-sm text-slate-700">
-                                    <Calendar className="size-4 text-slate-500" aria-hidden="true" />
-                                    <input type="date" aria-label="Desde" value={desde} onChange={(event) => updateFilter(setDesde, event.target.value)} className="min-w-0 bg-transparent outline-none" />
-                                    <span>-</span>
-                                    <input type="date" aria-label="Hasta" value={hasta} onChange={(event) => updateFilter(setHasta, event.target.value)} className="min-w-0 bg-transparent outline-none" />
-                                </div>
+                        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-1rem)]">
+                            <DropdownMenuGroup className="[&_[data-slot=field]]:mx-0 [&_[data-slot=field]]:w-full">
+                                <DropdownMenuLabel>Rango de fecha</DropdownMenuLabel>
+                                <DatePickerWithRange
+                                    value={dateRange}
+                                    onValueChange={(range) => {
+                                        setDateRange(range);
+                                        setPagina(1);
+                                    }}
+                                    aria-label="Desde / Hasta"
+                                    maxDate={startOfDay(new Date())}
+                                    showLabel={false}
+                                />
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={usuarioId || 'all'} onValueChange={(value) => updateFilter(setUsuarioId, value === 'all' ? '' : value)}>
+                            <DropdownMenuRadioGroup aria-label="Usuario" value={usuarioId || 'all'} onValueChange={(value) => updateFilter(setUsuarioId, value === 'all' ? '' : value)}>
                                 <DropdownMenuLabel>Usuario</DropdownMenuLabel>
                                 <DropdownMenuRadioItem value="all">Todos los usuarios</DropdownMenuRadioItem>
                                 {usuarioOptions.map(([id, nombre]) => (
@@ -284,13 +295,13 @@ export default function AuditoriaPage() {
                                 ))}
                             </DropdownMenuRadioGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={accion || 'all'} onValueChange={(value) => updateFilter(setAccion, value === 'all' ? '' : value)}>
+                            <DropdownMenuRadioGroup aria-label="Acción" value={accion || 'all'} onValueChange={(value) => updateFilter(setAccion, value === 'all' ? '' : value)}>
                                 <DropdownMenuLabel>Acción</DropdownMenuLabel>
                                 <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="LOGIN">Login</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="LOGOUT">Logout</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="CREAR_USUARIO">Crear usuario</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="EDITAR_USUARIO">Editar usuario</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="ACTUALIZAR_USUARIO">Editar usuario</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="ELIMINAR_USUARIO">Eliminar usuario</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="CREAR_ROL">Crear rol</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="EDITAR_ROL">Editar rol</DropdownMenuRadioItem>
@@ -304,7 +315,7 @@ export default function AuditoriaPage() {
             {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
             <Tabs value={resultado || 'all'} onValueChange={(value) => updateFilter(setResultado, value === 'all' ? '' : value)} className="min-w-0 gap-4">
-                <TabsList variant="line" aria-label="Filtrar eventos de auditoría" className="max-w-full">
+                <TabsList variant="line" aria-label="Resultado" className="max-w-full">
                     <TabsTrigger value="all" className="px-4"><ListFilter /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
                     <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{exitososEnPagina}</Badge></TabsTrigger>
                     <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{fallidosEnPagina}</Badge></TabsTrigger>
