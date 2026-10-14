@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Container, Monitor, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,6 +10,7 @@ import InstanceAction from '@/components/features/instances/components/InstanceA
 import { InstanceTypeBadge, InstanceStatusBadge } from '@/components/features/instances/components/InstanceBadges';
 import { InstanceIpAddress } from '@/components/features/instances/components/InstanceIpAddress';
 import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/utils/formatInstanceTelemetry';
+import { toast } from '@/components/ui/toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import InstanceFiltersBar, { type InstanceStatusFilter } from '@/components/features/instances/components/InstanceFiltersBar';
 import type { InstanceType } from '@/components/features/instances/types/instance';
@@ -26,7 +26,6 @@ import {
 const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
-    const navigate = useNavigate();
     const { user, isAdmin, canAccessInstance } = useAuth();
     const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = useMemo(
@@ -73,7 +72,17 @@ export default function Instances() {
                     <h1>Inventario de instancias</h1>
                     <p className="text-secundario">Administrá todas tus máquinas virtuales y contenedores.</p>
                 </div>
-                {isAdmin() && <Button type="button" onClick={() => navigate('/instances/new')}><Plus className={style.smallIcon} /> Crear instancia</Button>}
+                {isAdmin() && <Button type="button" onClick={() => {
+                    // TODO(Etapa 2 - RF-07): descomentar la navegación cuando esté integrado el aprovisionamiento.
+                    // navigate('/instances/new');
+                    // TODO(Etapa 2 - RF-07): eliminar este aviso al habilitar la navegación.
+                    toast.add({
+                        title: 'Aprovisionamiento en desarrollo',
+                        description: 'La creación de instancias estará disponible próximamente en la Etapa 2.',
+                        type: 'error',
+                        priority: 'high',
+                    });
+                }}><Plus className={style.smallIcon} /> Crear instancia</Button>}
             </header>
 
             <InstanceFiltersBar
