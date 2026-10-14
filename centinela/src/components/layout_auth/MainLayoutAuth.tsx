@@ -8,7 +8,7 @@ import { TypewriterText } from './TypewriterText';
 
 // La app usa JetBrains Mono por defecto; el diseño de auth pide una sans geométrica.
 const INTER = "font-[family-name:'Inter',ui-sans-serif,system-ui,sans-serif]";
-const HEADLINE = 'Gestioná tus entornos virtuales de forma simple';
+const HEADLINE = 'Tu infraestructura virtual, simplificada y bajo control';
 
 const features = [
     {
@@ -23,8 +23,8 @@ const features = [
     },
     {
         icon: ShieldCheck,
-        title: 'Seguro y confiable',
-        description: 'Conexión segura con tu servidor Proxmox y protección con doble factor (2FA).',
+        title: 'Protección de infraestructura con doble factor',
+        description: 'Gestionar servidores requiere la máxima seguridad. El 2FA añade una capa de protección indispensable para salvaguardar tus servicios críticos ante cualquier acceso no autorizado.',
     },
 ];
 

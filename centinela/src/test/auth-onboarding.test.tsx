@@ -6,16 +6,16 @@ import { Mail } from 'lucide-react';
 import MainLayoutAuth from '@/components/layout_auth/MainLayoutAuth';
 import { AuthenticationInputField } from '@/components/features/auth/components/AuthenticationInputField';
 
-const HEADLINE = 'Gestioná tus entornos virtuales de forma simple';
+const HEADLINE = 'Tu infraestructura virtual, simplificada y bajo control';
 const INTRO =
     'Centinela te permite administrar, monitorear y operar tus máquinas virtuales y contenedores Proxmox VE en tiempo real desde una interfaz moderna, segura y fácil de usar.';
 const FEATURE_1_TITLE = 'Control centralizado';
 const FEATURE_1_DESC = 'Administrá todas tus instancias desde un solo lugar.';
 const FEATURE_2_TITLE = 'Monitoreo en tiempo real';
 const FEATURE_2_DESC = 'Visualizá el uso de recursos y el estado de tus instancias al instante.';
-const FEATURE_3_TITLE = 'Seguro y confiable';
+const FEATURE_3_TITLE = 'Protección de infraestructura con doble factor';
 const FEATURE_3_DESC =
-    'Conexión segura con tu servidor Proxmox y protección con doble factor (2FA).';
+    'Gestionar servidores requiere la máxima seguridad. El 2FA añade una capa de protección indispensable para salvaguardar tus servicios críticos ante cualquier acceso no autorizado.';
 
 describe('Onboarding de la columna lateral de autenticación (86e3kz4du)', () => {
     it('muestra el copy informativo aprobado con las tres features', () => {
@@ -31,6 +31,9 @@ describe('Onboarding de la columna lateral de autenticación (86e3kz4du)', () =>
         expect(screen.getByText(FEATURE_3_TITLE)).toBeInTheDocument();
         expect(screen.getByText(FEATURE_3_DESC)).toBeInTheDocument();
         expect(screen.getByText(/2FA/)).toBeInTheDocument();
+        expect(screen.getAllByText(/2FA/)).toHaveLength(1);
+        expect(screen.queryByText('Seguro y confiable')).not.toBeInTheDocument();
+        expect(screen.queryByText('Gestioná tus entornos virtuales de forma simple')).not.toBeInTheDocument();
     });
 
     it('muestra la marca de Centinela con su logo', () => {
@@ -64,6 +67,8 @@ describe('Titular con efecto de máquina de escribir', () => {
         render(<MainLayoutAuth>formulario</MainLayoutAuth>);
 
         expect(screen.getByRole('heading', { name: HEADLINE })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /tu infraestructura virtual/i, level: 1 })).toHaveAccessibleName(HEADLINE);
+        expect(screen.getAllByRole('heading', { name: /tu infraestructura virtual/i })).toHaveLength(1);
     });
 
     it('escribe el titular letra por letra y luego lo completa, sin dejar timers colgados', () => {
@@ -102,6 +107,7 @@ describe('Titular con efecto de máquina de escribir', () => {
         render(<MainLayoutAuth>formulario</MainLayoutAuth>);
 
         expect(screen.getByTestId('typewriter-text').textContent).toBe(HEADLINE);
+        expect(document.querySelector('.auth-cursor')).not.toBeInTheDocument();
     });
 });
 
