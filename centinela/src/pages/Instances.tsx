@@ -28,7 +28,7 @@ const INSTANCES_PER_PAGE = 10;
 export default function Instances() {
     const navigate = useNavigate();
     const { user, isAdmin, canAccessInstance } = useAuth();
-    const { instances, isLoading, errorMessage, reloadInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
+    const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = useMemo(
         () => instances.filter((instance) => canAccessInstance(instance.id)),
         [instances, canAccessInstance],
@@ -60,7 +60,8 @@ export default function Instances() {
         setCurrentPage(1);
     };
     const totalPages = Math.max(1, Math.ceil(filteredInstances.length / INSTANCES_PER_PAGE));
-    const firstInstanceIndex = (currentPage - 1) * INSTANCES_PER_PAGE;
+    const activePage = Math.min(currentPage, totalPages);
+    const firstInstanceIndex = (activePage - 1) * INSTANCES_PER_PAGE;
     const paginatedInstances = filteredInstances.slice(firstInstanceIndex, firstInstanceIndex + INSTANCES_PER_PAGE);
     const firstVisibleInstance = filteredInstances.length === 0 ? 0 : firstInstanceIndex + 1;
     const lastVisibleInstance = Math.min(firstInstanceIndex + INSTANCES_PER_PAGE, filteredInstances.length);
@@ -114,14 +115,14 @@ export default function Instances() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={11} className={style.emptyState} role="status">Cargando instancias…</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={10} className={style.emptyState} role="status">Cargando instancias…</TableCell></TableRow>
                         ) : errorMessage ? (
-                            <TableRow><TableCell colSpan={11} className={style.emptyState}>
+                            <TableRow><TableCell colSpan={10} className={style.emptyState}>
                                 <p role="alert">{errorMessage}</p>
                                 <Button type="button" variant="outline" onClick={reloadInventory}>Reintentar</Button>
                             </TableCell></TableRow>
                         ) : filteredInstances.length === 0 ? (
-                            <TableRow><TableCell colSpan={11} className={style.emptyState}>
+                            <TableRow><TableCell colSpan={10} className={style.emptyState}>
                                 {visibleInstances.length === 0 ? 'Sin instancias' : (
                                     <div className="flex flex-col items-center gap-3">
                                         <p>No se encontraron instancias que coincidan con los filtros aplicados</p>
@@ -131,6 +132,8 @@ export default function Instances() {
                             </TableCell></TableRow>
                         ) : paginatedInstances.map((instance) => {
                             const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
+                            const cpuUsage = instance.status === 'stopped' ? '-' : formatCpuUsage(instance.cpuUsage);
+                            const ramUsage = instance.status === 'stopped' ? '-' : formatRamUsage(instance.ramUsage, instance.maxRam);
                             return (
                                 <TableRow key={instance.id} className="hover:bg-slate-50/70">
                                     <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).includes(instance.id)} disabled /></TableCell>
@@ -151,8 +154,8 @@ export default function Instances() {
                                     <TableCell className="p-4"><InstanceTypeBadge type={instance.type} /></TableCell>
                                     <TableCell className="p-4"><InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} pendingAction={pendingPowerActions[instance.id]?.action} /></TableCell>
                                     <TableCell className="p-4 text-secundario">{instance.node}</TableCell>
-                                    <TableCell className="p-4 table-text-secondary">{formatCpuUsage(instance.cpuUsage)}</TableCell>
-                                    <TableCell className="p-4 table-text-secondary">{formatRamUsage(instance.ramUsage, instance.maxRam)}</TableCell>
+                                    <TableCell className={`p-4 table-text-secondary ${cpuUsage === '-' ? 'text-center' : ''}`}>{cpuUsage}</TableCell>
+                                    <TableCell className={`p-4 table-text-secondary ${ramUsage === '-' ? 'text-center' : ''}`}>{ramUsage}</TableCell>
                                     <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
                                     <TableCell className="relative p-4 text-right">
                                         <div role="group" aria-label="Acciones">
@@ -161,7 +164,7 @@ export default function Instances() {
                                                 transition={transitioningTasks[instance.id] ?? null}
                                                 isPowerActionPending={Boolean(pendingPowerActions[instance.id])}
                                                 onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
-                                                onDeleteAccepted={reloadInventory}
+                                                onDeleteAccepted={revalidateInventory}
                                             />
                                         </div>
                                     </TableCell>
@@ -184,12 +187,12 @@ export default function Instances() {
                                 <PaginationItem>
                                     <PaginationPrevious
                                         href="#"
-                                        aria-disabled={currentPage === 1}
-                                        tabIndex={currentPage === 1 ? -1 : 0}
-                                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : undefined}
+                                        aria-disabled={activePage === 1}
+                                        tabIndex={activePage === 1 ? -1 : 0}
+                                        className={activePage === 1 ? 'pointer-events-none opacity-50' : undefined}
                                         onClick={(event) => {
                                             event.preventDefault();
-                                            setCurrentPage((page) => Math.max(1, page - 1));
+                                            setCurrentPage(Math.max(1, activePage - 1));
                                         }}
                                     />
                                 </PaginationItem>
@@ -198,7 +201,7 @@ export default function Instances() {
                                         <PaginationLink
                                             href="#"
                                             size="icon"
-                                            isActive={currentPage === page}
+                                            isActive={activePage === page}
                                             aria-label={`Página ${page}`}
                                             onClick={(event) => {
                                                 event.preventDefault();
@@ -212,12 +215,12 @@ export default function Instances() {
                                 <PaginationItem>
                                     <PaginationNext
                                         href="#"
-                                        aria-disabled={currentPage === totalPages}
-                                        tabIndex={currentPage === totalPages ? -1 : 0}
-                                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : undefined}
+                                        aria-disabled={activePage === totalPages}
+                                        tabIndex={activePage === totalPages ? -1 : 0}
+                                        className={activePage === totalPages ? 'pointer-events-none opacity-50' : undefined}
                                         onClick={(event) => {
                                             event.preventDefault();
-                                            setCurrentPage((page) => Math.min(totalPages, page + 1));
+                                            setCurrentPage(Math.min(totalPages, activePage + 1));
                                         }}
                                     />
                                 </PaginationItem>
