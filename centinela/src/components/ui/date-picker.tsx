@@ -89,7 +89,7 @@ function DatePickerWithRange(props: DatePickerWithRangeProps) {
                   format(date.from, "LLL dd, y")
                 )
               ) : (
-                <span>Pick a date</span>
+                <span>Seleccione una fecha</span>
               )}
             </Button>
           }
