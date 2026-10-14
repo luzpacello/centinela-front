@@ -5,6 +5,7 @@ import { updateUserDetails } from '@/components/features/users/services/userDeta
 import { userDeletionMessage, userSuspensionMessage, userReactivationMessage } from '@/components/features/users/utils/userAccountMessages';
 import { toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
+import { format, startOfDay } from 'date-fns';
 import {
     Search,
     Filter,
@@ -20,13 +21,13 @@ import {
     QrCode,
     UserRound,
     UsersRound,
-    Calendar,
     UserKey
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -311,7 +312,7 @@ export default function UsersPage() {
                         <DropdownMenuTrigger>
                             <Filter className="size-4!" /> Filtros
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[240px] max-w-[calc(100vw-2rem)]">
+                        <DropdownMenuContent align="end" className="w-[260px] max-w-[calc(100vw-2rem)]">
                             <DropdownMenuRadioGroup value={statusFilter === 'all' ? '' : statusFilter} onValueChange={(value) => {
                                 if (value === 'active' || value === 'inactive') {
                                     setStatusFilter(value);
@@ -334,32 +335,22 @@ export default function UsersPage() {
                                 <DropdownMenuRadioItem value="disabled">2FA deshabilitado</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuGroup>
+                            <DropdownMenuGroup className="[&_[data-slot=field]]:mx-0 [&_[data-slot=field]]:w-full">
                                 <DropdownMenuLabel>Último acceso</DropdownMenuLabel>
-                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-700">
-                                    <Calendar className="size-4 text-slate-500" aria-hidden="true" />
-                                    <input
-                                        type="date"
-                                        aria-label="Desde"
-                                        value={lastAccessFrom}
-                                        onChange={(event) => {
-                                            setLastAccessFrom(event.target.value);
-                                            setCurrentPage(1);
-                                        }}
-                                        className="bg-transparent outline-none"
-                                    />
-                                    <span>-</span>
-                                    <input
-                                        type="date"
-                                        aria-label="Hasta"
-                                        value={lastAccessTo}
-                                        onChange={(event) => {
-                                            setLastAccessTo(event.target.value);
-                                            setCurrentPage(1);
-                                        }}
-                                        className="bg-transparent outline-none"
-                                    />
-                                </div>
+                                <DatePickerWithRange
+                                    value={{
+                                        from: lastAccessFrom ? new Date(`${lastAccessFrom}T00:00:00`) : undefined,
+                                        to: lastAccessTo ? new Date(`${lastAccessTo}T00:00:00`) : undefined,
+                                    }}
+                                    onValueChange={(range) => {
+                                        setLastAccessFrom(range?.from ? format(range.from, 'yyyy-MM-dd') : '');
+                                        setLastAccessTo(range?.to ? format(range.to, 'yyyy-MM-dd') : '');
+                                        setCurrentPage(1);
+                                    }}
+                                    aria-label="Desde / Hasta"
+                                    maxDate={startOfDay(new Date())}
+                                    showLabel={false}
+                                />
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
                             <DropdownMenuCheckboxItem checked={statusFilter === 'all' && twoFactorFilter === 'all' && !lastAccessFrom && !lastAccessTo} onCheckedChange={() => {
