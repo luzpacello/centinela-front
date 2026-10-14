@@ -1,13 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { addDays, format } from "date-fns"
+import { format, startOfDay, subMonths } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Field } from "@/components/ui/field"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Popover,
   PopoverContent,
@@ -38,21 +38,44 @@ function DatePickerBasic() {
   )
 }
 
-function DatePickerWithRange() {
-  const initialDate = new Date(new Date().getFullYear(), 0, 20)
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: initialDate,
-    to: addDays(initialDate, 20),
+interface DatePickerWithRangeProps {
+  value?: DateRange
+  onValueChange?: (range: DateRange | undefined) => void
+  maxDate?: Date
+  showLabel?: boolean
+  "aria-label"?: string
+}
+
+function DatePickerWithRange(props: DatePickerWithRangeProps) {
+  const { value, onValueChange, maxDate, showLabel = false, "aria-label": accessibleLabel = "Desde / Hasta" } = props
+  const triggerId = React.useId()
+  const [internalRange, setInternalRange] = React.useState<DateRange | undefined>(() => {
+    const today = startOfDay(new Date())
+    return { from: subMonths(today, 1), to: today }
   })
+  const isControlled = "value" in props
+  const date = isControlled ? value : internalRange
+
+  function handleRangeChange(range: DateRange | undefined) {
+    if (!isControlled) setInternalRange(range)
+    onValueChange?.(range)
+  }
 
   return (
     <Field className="mx-auto w-60">
+      {showLabel && <FieldLabel htmlFor={triggerId}>Rango de fechas</FieldLabel>}
+      <span id={`${triggerId}-description`} className="sr-only">
+        Desde: {date?.from ? format(date.from, "dd/MM/yyyy") : "sin seleccionar"}.
+        Hasta: {date?.to ? format(date.to, "dd/MM/yyyy") : "sin seleccionar"}.
+      </span>
       <Popover>
         <PopoverTrigger
+          id={triggerId}
           render={
             <Button
               variant="secondary"
-              id="date-picker-range"
+              aria-label={accessibleLabel}
+              aria-describedby={`${triggerId}-description`}
               className="justify-start font-normal"
             >
               <CalendarIcon data-icon="inline-start" className="px-1"/>
@@ -76,8 +99,11 @@ function DatePickerWithRange() {
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={setDate}
+            onSelect={handleRangeChange}
             numberOfMonths={2}
+            disabled={maxDate ? { after: maxDate } : undefined}
+            excludeDisabled
+            resetOnSelect
           />
         </PopoverContent>
       </Popover>
