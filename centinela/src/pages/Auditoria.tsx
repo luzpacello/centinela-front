@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { format, startOfDay, subMonths } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { useLocation } from 'react-router';
 import {
     Filter,
     Download,
@@ -86,12 +87,17 @@ function formatFechaHora(value?: string | null): string {
 export default function AuditoriaPage() {
     // Si el usuario tiene rol OPERATOR, el hook lo patea a /dashboard
     const estaAutorizado = useGuardiaRol(['OPERATOR']);
-    const [searchTerm, setSearchTerm] = useState('');
+    const location = useLocation();
+    const navigationState = location.state as { auditUser?: { id?: unknown; label?: unknown } } | null;
+    const initialAuditUserId = typeof navigationState?.auditUser?.id === 'string' ? navigationState.auditUser.id : '';
+    const initialAuditUserLabel = typeof navigationState?.auditUser?.label === 'string' ? navigationState.auditUser.label : initialAuditUserId;
+    const [searchTerm, setSearchTerm] = useState(initialAuditUserLabel);
     const [pagina, setPagina] = useState(1);
     const [accion, setAccion] = useState('');
     const [resultado, setResultado] = useState('');
-    const [usuarioId, setUsuarioId] = useState('');
+    const [usuarioId, setUsuarioId] = useState(initialAuditUserId);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (initialAuditUserId) return undefined;
         const today = startOfDay(new Date());
         return { from: subMonths(today, 1), to: today };
     });
@@ -203,9 +209,10 @@ export default function AuditoriaPage() {
     }
 
     // El backend no expone búsqueda libre; el buscador filtra la página visible.
+    const effectiveSearchTerm = initialAuditUserId && usuarioId === initialAuditUserId && searchTerm === initialAuditUserLabel ? '' : searchTerm;
     const filteredAuditEvents = items.filter((event) =>
         Object.values(event).some((value) =>
-            String(value ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+            String(value ?? '').toLowerCase().includes(effectiveSearchTerm.toLowerCase())
         )
     );
 
@@ -287,7 +294,10 @@ export default function AuditoriaPage() {
                                 />
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup aria-label="Usuario" value={usuarioId || 'all'} onValueChange={(value) => updateFilter(setUsuarioId, value === 'all' ? '' : value)}>
+                            <DropdownMenuRadioGroup aria-label="Usuario" value={usuarioId || 'all'} onValueChange={(value) => {
+                                updateFilter(setUsuarioId, value === 'all' ? '' : value);
+                                setSearchTerm(value === initialAuditUserId ? initialAuditUserLabel : '');
+                            }}>
                                 <DropdownMenuLabel>Usuario</DropdownMenuLabel>
                                 <DropdownMenuRadioItem value="all">Todos los usuarios</DropdownMenuRadioItem>
                                 {usuarioOptions.map(([id, nombre]) => (
