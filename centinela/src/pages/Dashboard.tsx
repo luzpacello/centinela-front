@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
+import { CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -69,10 +69,6 @@ export default function Dashboard() {
                             {eventsStatus.label}
                         </Badge>
 
-                        <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
-                            <Bell className={style.smallIcon} />
-                        </Button>
-
                     </div>
 
                 </div>
@@ -115,18 +111,6 @@ export default function Dashboard() {
                     <Separator className="mt-5 mb-5" />
                     <p className="text-caption"><span className={style.orangeText}>{formatShare(inactiveInstances)}</span> del total</p>
                 </Card>
-                <Card className={style.summaryCard}>
-                    <div className={style.cardHeader}>
-                        <span className={style.purpleIcon}><Box className={style.icon} /></span>
-                        <div>
-                            <p className="text-metrica">0</p>
-                            <h2 className="text-caption">Plantillas</h2>
-                        </div>
-                    </div>
-                    <Separator className="mt-5 mb-5" />
-
-                    <p className="text-caption">Disponibles para usar</p>
-                </Card>
             </div>
 
             <Card className={style.resourceCard}>
@@ -164,39 +148,6 @@ export default function Dashboard() {
                 )}
             </Card>
 
-            <div className={style.details}>
-                <Card className={style.detailCard}>
-                    <div className={style.sectionHeader}>
-                        <h4>Instancias recientes</h4>
-                        <Button type="button" variant="ghost">Ver todas</Button>
-                    </div>
-                    <div className={style.emptyState}>Sin instancias</div>
-                    <Button type="button" variant="outline" className={style.footerButton}>
-                        Ver todas las instancias <ArrowRight className={style.smallIcon} />
-                    </Button>
-                </Card>
-
-                <Card className={style.detailCard}>
-                    <div className={style.sectionHeader}>
-                        <h4>Actividad reciente</h4>
-                        <Button type="button" variant="ghost">Ver todo</Button>
-                    </div>
-                    <div className={style.emptyState}>Sin novedades</div>
-                    <Button type="button" variant="outline" className={style.footerButton}>
-                        Ver toda la actividad <ArrowRight className={style.smallIcon} />
-                    </Button>
-                </Card>
-
-                <Card className={style.detailCard}>
-                    <div className={style.sectionHeader}>
-                        <h4>Alertas y estado</h4>
-                        <Button type="button" variant="ghost">Ver todas</Button>
-                    </div>
-                    <div className={style.emptyState}>Sin alertas</div>
-
-                </Card>
-            </div>
-
             <Card className={style.systemFooter}>
                 <div className={style.systemStatus}>
                     <ShieldCheck className={style.systemIcon} />
@@ -231,14 +182,13 @@ const style = {
     profile: 'flex items-center gap-4 text-slate-600',
     avatar: 'flex size-9 items-center justify-center rounded-full bg-green-800 text-base font-medium text-white',
     primaryButton: 'bg-green-700! text-white hover:bg-green-800! hover:border-green-800!',
-    horizontalContent: 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4',
+    horizontalContent: 'grid grid-cols-1 gap-4 sm:grid-cols-3',
     summaryCard: 'gap-0 rounded-xl border border-slate-100 bg-white p-5 shadow-sm ring-0',
     cardHeader: 'flex items-center gap-5',
     icon: 'size-6',
     smallIcon: 'size-4!',
     greenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-green-800',
     orangeIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600',
-    purpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-600',
     metric: 'my-1 text-[28px] font-semibold leading-tight text-slate-900',
     metricTitle: 'm-0 text-sm font-normal text-slate-600',
     summaryFooter: 'flex items-end gap-2 ',
@@ -259,12 +209,7 @@ const style = {
     roundGreenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-800',
     roundBlueIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600',
     roundPurpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600',
-    chartPlaceholder: 'flex h-20 min-w-16 flex-1 items-center justify-center text-xs text-slate-400',
-    details: 'grid grid-cols-1 gap-4 xl:grid-cols-3',
-    detailCard: 'flex min-h-[340px] flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm ring-0',
     textButton: 'h-8 px-1 text-xs text-slate-500',
-    emptyState: 'flex min-h-28 flex-1 items-center justify-center text-sm text-slate-400',
-    footerButton: 'w-full justify-between text-xs text-blue-600',
     quickActions: 'flex flex-col gap-2 border-t border-slate-100 pt-4',
     quickAction: 'h-8 w-full justify-start gap-2 px-3 text-xs',
     trailingIcon: 'ml-auto size-4!',
