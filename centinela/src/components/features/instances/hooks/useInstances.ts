@@ -93,6 +93,7 @@ export function useInstances() {
   const [finishedTaskIds, setFinishedTaskIds] = useState<ReadonlySet<string>>(() => new Set());
   const showRefreshError = useRef(true);
   const hadRunningTask = useRef(false);
+  const deletedInstanceIds = useRef(new Set<number>());
   const { ultimoMensaje, estado } = useEventsContext();
 
   // Espejo de las acciones pendientes para leerlas desde los efectos silencioso
@@ -110,11 +111,15 @@ export function useInstances() {
     inventory: InventoryInstance[],
     currentPending: Record<number, PendingPowerAction>,
   ): Record<number, PendingPowerAction> => {
-    setInstances(inventory);
+    for (const vmid of deletedInstanceIds.current) {
+      if (!inventory.some((instance) => instance.id === vmid)) deletedInstanceIds.current.delete(vmid);
+    }
+    const visibleInventory = inventory.filter((instance) => !deletedInstanceIds.current.has(instance.id));
+    setInstances(visibleInventory);
     setErrorMessage(null);
     showRefreshError.current = false;
-    hadRunningTask.current = inventory.some((instance) => instance.activeTask?.status === 'RUNNING');
-    const nextPending = convergePendingPowerActions(currentPending, inventory);
+    hadRunningTask.current = visibleInventory.some((instance) => instance.activeTask?.status === 'RUNNING');
+    const nextPending = convergePendingPowerActions(currentPending, visibleInventory);
     if (nextPending !== currentPending) setPendingPowerActions(nextPending);
     return nextPending;
   }, []);
@@ -216,6 +221,21 @@ export function useInstances() {
       if (target) notifyTaskResult(target, ultimoMensaje);
     }
 
+    const action = readDetalleString(ultimoMensaje.detalles, 'accion')
+      ?? readDetalleString(ultimoMensaje.detalles, 'action');
+    const isCompletedDeletion = ultimoMensaje.tipo === 'TASK_FINISHED'
+      && action?.toLowerCase() === 'delete'
+      && readDetalleString(ultimoMensaje.detalles, 'estado') === 'COMPLETED';
+    const deletedVmid = Number(ultimoMensaje.recursoId);
+    if (isCompletedDeletion && Number.isSafeInteger(deletedVmid) && deletedVmid > 0) {
+      deletedInstanceIds.current.add(deletedVmid);
+      queueMicrotask(() => {
+        setInstances((current) => current.filter((instance) => instance.id !== deletedVmid));
+        revalidateInventory();
+      });
+      return;
+    }
+
     const controller = new AbortController();
     fetchInstanceInventory(controller.signal)
       .then((inventory) => {
@@ -231,7 +251,7 @@ export function useInstances() {
         // Silencioso a propósito: se conserva el inventario actual.
       });
     return () => controller.abort();
-  }, [ultimoMensaje, instances, settleInventory]);
+  }, [ultimoMensaje, instances, revalidateInventory, settleInventory]);
 
   // Estado de transición por fila: se deriva del inventario vigente y descarta
   // las tareas ya cerradas por evento. Es la "tarea guardada en la fila".
@@ -255,6 +275,7 @@ export function useInstances() {
     isLoading,
     errorMessage,
     reloadInventory,
+    revalidateInventory,
     pendingPowerActions,
     markPowerActionAccepted,
     transitioningTasks,
