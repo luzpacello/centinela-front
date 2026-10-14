@@ -1,19 +1,18 @@
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
 import { deleteUserAccount } from '@/components/features/users/services/userDeactivationService';
 import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
+import { useUserRecentActivity } from '@/components/features/users/hooks/useUserRecentActivity';
 import { useRef, useState } from 'react';
 import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
 import { ApiRequestError } from '@/services/apiClient';
 import { isUserEmailConflict, userEmailConflictMessage, userDeletionMessage, userSuspensionMessage, userReactivationMessage } from '@/components/features/users/utils/userAccountMessages';
 import { toast } from '@/components/ui/toast';
 import {
+    SquareText,
     ArrowLeft,
-    CalendarDays,
     CheckCircle2,
     ChevronRight,
-    HardDrive,
     KeyRound,
-    Laptop,
     Loader2,
     LockKeyhole,
     Monitor,
@@ -38,18 +37,6 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PermissionGate from '@/context/PermissionGate';
-
-const additionalSecurityInformation = [
-    { label: 'Último cambio de contraseña', value: '02/05/2024, 09:10', icon: CalendarDays, highlighted: false },
-    { label: 'Intentos de inicio fallidos', value: '0', icon: KeyRound, highlighted: false },
-    { label: 'Bloqueado', value: 'No', icon: LockKeyhole, highlighted: false },
-];
-
-const recentActivity = [
-    { title: 'Inició sesión correctamente', time: 'Hoy, 17:41', address: '192.168.1.77', icon: ShieldCheck },
-    { title: 'Inició instancia Windows 11 (102)', time: 'Hoy, 17:40', address: '192.168.1.77', icon: Laptop },
-    { title: 'Tomó snapshot de Ubuntu Server (101)', time: 'Hoy, 16:22', address: '192.168.1.77', icon: HardDrive },
-];
 
 export default function DetailsUserPage() {
     const navigate = useNavigate();
@@ -211,8 +198,8 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 
                 <aside className={styles.sidebarColumn}>
                     <UserSummaryCard user={confirmedUser} values={confirmedUser} />
-                    {!isDeleted && <SecurityCard user={user} />}
-                    {!isDeleted && <RecentActivityCard />}
+                    <SecurityCard user={confirmedUser} />
+                    <PermissionGate requiredRole="ADMIN"><RecentActivityCard user={confirmedUser} /></PermissionGate>
                 </aside>
             </div>
         </section>
@@ -287,9 +274,6 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
                 <TableHeader>
                     <TableRow className="header-of-table">
                         <TableHead>Instancia</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Nodo</TableHead>
-                        <TableHead>Estado</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -298,14 +282,6 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
                             <TableCell className={styles.instanceNameCell}>
                                 <Monitor className={styles.instanceIcon} aria-hidden="true" />
                                 <p className="text-of-table">Instancia ({instanceId})</p>
-                            </TableCell>
-                            <TableCell>—</TableCell>
-                            <TableCell>—</TableCell>
-                            <TableCell>
-                                <span className={styles.activeStatus}>
-                                    <span className={styles.activeStatusDot} />
-                                    Activo
-                                </span>
                             </TableCell>
                         </TableRow>
                     ))}
@@ -321,7 +297,6 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
 }
 
 function UserSummaryCard({ user, values }: { user: UserDetails; values: EditableUserValues }) {
-    const isActive = values.activo;
 
     return (
         <Card className={styles.sidebarCard}>
@@ -330,10 +305,6 @@ function UserSummaryCard({ user, values }: { user: UserDetails; values: Editable
                 <div className={styles.userSummaryDetails}>
                     <div className={styles.userNameRow}>
                         <strong className="body">{user.nombreUsuario}</strong>
-                        <Badge variant={user.eliminadoEn != null ? 'destructive' : 'default'} className={user.eliminadoEn != null ? undefined : isActive ? styles.activeUserBadge : styles.inactiveUserBadge}>
-                            {user.eliminadoEn == null && <span className={isActive ? styles.activeUserBadgeDot : styles.inactiveUserBadgeDot} />}
-                            {user.eliminadoEn != null ? 'Eliminado' : isActive ? 'Activo' : 'Inactivo'}
-                        </Badge>
                     </div>
                     <Badge className={styles.standardUserBadge}>{formatRole(values.rol)}</Badge>
                     <p className="text-secundario">{values.emailUsuario}</p>
@@ -346,32 +317,40 @@ function UserSummaryCard({ user, values }: { user: UserDetails; values: Editable
 }
 
 function SecurityCard({ user }: { user: UserDetails }) {
-    const securityInformation = [
-        {
-            label: 'Autenticación 2FA',
-            value: user.totpVinculado ? 'Activado' : 'Desactivado',
-            icon: ShieldCheck,
-            highlighted: user.totpVinculado,
-        },
-        ...additionalSecurityInformation,
-    ];
+    const accountStatus = user.eliminadoEn != null ? 'Eliminado' : user.activo ? 'Activo' : 'Suspendido';
 
     return (
         <Card className={styles.sidebarCard}>
             <h4>Seguridad</h4>
             <div className={styles.securityList}>
-                {securityInformation.map(({ label, value, icon: SecurityIcon, highlighted }) => (
-                    <div key={label} className={styles.securityRow}>
-                        <span className={styles.securityLabel}>
-                            <SecurityIcon className={styles.securityIcon} aria-hidden="true" />
-                            {label}
-                        </span>
-                        <strong className={highlighted ? styles.enabledSecurityValue : styles.securityValue}>
-                            {highlighted && <CheckCircle2 className={styles.enabledSecurityIcon} aria-hidden="true" />}
-                            {value}
-                        </strong>
-                    </div>
-                ))}
+                <div className={styles.securityRow}>
+                    <span className={styles.securityLabel}>
+                        <ShieldCheck className={styles.securityIcon} aria-hidden="true" />
+                        Autenticación 2FA
+                    </span>
+                    <strong className={user.totpVinculado ? styles.enabledSecurityValue : styles.securityValue}>
+                        {user.totpVinculado && <CheckCircle2 className={styles.enabledSecurityIcon} aria-hidden="true" />}
+                        {user.totpVinculado ? 'Activado' : 'Desactivado'}
+                    </strong>
+                </div>
+                <div className={styles.securityRow}>
+                    <span className={styles.securityLabel}>
+                        <LockKeyhole className={styles.securityIcon} aria-hidden="true" />
+                        Estado de la cuenta
+                    </span>
+                    <Badge variant={user.activo == false ? 'destructive' : 'success'}>
+                        {accountStatus}
+                    </Badge>
+                </div>
+                <div className={styles.securityRow}>
+                    <span className={styles.securityLabel}>
+                        <KeyRound className={styles.securityIcon} aria-hidden="true" />
+                        Cambio de contraseña
+                    </span>
+                    <Badge variant={user.cambioContrasenaRequerido ? 'destructive' : 'warning'}>
+                        {user.cambioContrasenaRequerido ? 'Necesario' : 'No requerido'}
+                    </Badge>
+                </div>
             </div>
         </Card>
     );
@@ -396,28 +375,32 @@ function formatDateTime(value: string | null): string {
     });
 }
 
-function RecentActivityCard() {
+function RecentActivityCard({ user }: { user: UserDetails }) {
+    const navigate = useNavigate();
+    const { activity, isLoading, errorMessage } = useUserRecentActivity(user.id);
+
     return (
         <Card className={styles.activityCard}>
             <h4>Actividad reciente</h4>
-            <div className={styles.activityList}>
-                {recentActivity.map(({ title, time, address, icon: ActivityIcon }) => (
-                    <div key={title} className={styles.activityRow}>
-                        <span className={styles.activityIconContainer}>
-                            <ActivityIcon className={styles.activityIcon} aria-hidden="true" />
-                        </span>
+            <div className={styles.activityList} aria-busy={isLoading}>
+                {isLoading && <p className="py-4 text-secundario">Cargando actividad…</p>}
+                {!isLoading && errorMessage && <p className="py-4 text-secundario" role="alert">{errorMessage}</p>}
+                {!isLoading && !errorMessage && activity.length === 0 && <p className="py-4 text-secundario">No hay actividad reciente registrada.</p>}
+                {!isLoading && !errorMessage && activity.map((event) => (
+                    <div key={event.id} className={styles.activityRow}>
+                        <SquareText className={styles.activityIcon} aria-hidden="true" />
+                        
                         <div className={styles.activityDetails}>
-                            <p className="body">{title}</p>
-                            <p className="text-secundario">{time}</p>
+                            <p className="body">{event.accion}</p>
+                            {event.fechaHora && <p className="text-secundario">{formatDateTime(event.fechaHora)}</p>}
                         </div>
-                        <Badge className={styles.addressBadge}>{address}</Badge>
+                        {event.resultado && <Badge variant="success">{event.resultado}</Badge>}
                     </div>
                 ))}
             </div>
-            <button type="button" className={styles.allActivityButton}>
+            <Button type="button" variant="secondary" onClick={() => navigate('/auditoria', { state: { auditUser: { id: user.id, label: user.nombreUsuario } } })}>
                 Ver toda la actividad
-                <ChevronRight className={styles.activityLinkIcon} aria-hidden="true" />
-            </button>
+            </Button>
         </Card>
     );
 }
@@ -450,9 +433,7 @@ const styles = {
     instanceIcon: 'size-4 text-slate-500',
     virtualMachineTypeBadge: 'rounded-md border-0 bg-blue-50 px-2 text-[11px] font-medium text-blue-700',
     containerTypeBadge: 'rounded-md border-0 bg-emerald-50 px-2 text-[11px] font-medium text-emerald-700',
-    activeStatus: 'inline-flex items-center gap-2 font-medium text-slate-800',
     inactiveStatus: 'inline-flex items-center gap-2 text-slate-500',
-    activeStatusDot: 'size-2 rounded-full bg-emerald-600',
     inactiveStatusDot: 'size-2 rounded-full bg-slate-400',
     accessNotice: 'mx-5 mb-4 mt-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500',
     noticeIcon: 'size-3.5 shrink-0',
@@ -463,10 +444,7 @@ const styles = {
     userSummaryDetails: 'min-w-0 flex-1',
     userNameRow: 'mb-2 flex flex-wrap items-center gap-3',
     summaryUserName: 'text-base text-slate-950',
-    activeUserBadge: 'border-0 bg-emerald-50 text-[11px] font-medium text-emerald-700',
-    activeUserBadgeDot: 'size-2 rounded-full bg-emerald-600',
     inactiveUserBadge: 'border-0 bg-slate-100 text-[11px] font-medium text-slate-600',
-    inactiveUserBadgeDot: 'size-2 rounded-full bg-slate-400',
     standardUserBadge: 'rounded-md border-0 bg-blue-50 text-[11px] font-medium text-blue-700',
     securityList: 'flex flex-col gap-5',
     securityRow: 'flex items-center justify-between gap-4 text-xs',
@@ -478,10 +456,6 @@ const styles = {
     activityCard: 'gap-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-0',
     activityList: 'mt-1 divide-y divide-slate-100',
     activityRow: 'flex items-center gap-3 py-4',
-    activityIconContainer: 'flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700',
-    activityIcon: 'size-4',
+    activityIcon: 'size-5 hidden rounded-md border-0 bg-blue-50 text-[10px] font-medium text-blue-600 sm:inline-flex',
     activityDetails: 'min-w-0 flex-1',
-    addressBadge: 'hidden rounded-md border-0 bg-blue-50 text-[10px] font-medium text-blue-600 sm:inline-flex',
-    allActivityButton: 'flex items-center gap-2 border-t border-slate-100 px-5 py-4 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50/50 hover:text-blue-700',
-    activityLinkIcon: 'size-4',
 };
