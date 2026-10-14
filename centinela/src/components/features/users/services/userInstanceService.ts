@@ -4,6 +4,8 @@ export interface UserInstance {
   id: string;
   name: string;
   type: 'VM' | 'LXC';
+  node?: string | null;
+  status?: string | null;
 }
 
 export type InstancePermissionLevel = 'FULL_ACCESS' | 'READ_ONLY';
@@ -39,7 +41,13 @@ export async function fetchUserInstanceInventory(signal?: AbortSignal): Promise<
     if (instanceType !== 'VM' && instanceType !== 'LXC') {
       throw new ApiRequestError('El inventario contiene un tipo de instancia desconocido.');
     }
-    return { id: String(instanceVmid(instance.id)), name: instance.name, type: instanceType };
+    return {
+      id: String(instanceVmid(instance.id)),
+      name: instance.name,
+      type: instanceType,
+      node: typeof instance.node === 'string' ? instance.node : null,
+      status: typeof instance.status === 'string' ? instance.status : null,
+    };
   });
 }
 
