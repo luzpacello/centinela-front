@@ -249,12 +249,14 @@ function UserInformationTabs({
                     </PermissionGate>}
                 </Tabs>
             </Card>
-            {activeTab === 'general' && !readOnly && <AssignedInstancesCard instanceIds={instanceAccess.assignedIds} />}
+            {activeTab === 'general' && !readOnly && <AssignedInstancesCard instanceAccess={instanceAccess} />}
         </>
     );
 }
 
-function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | number> }) {
+function AssignedInstancesCard({ instanceAccess }: { instanceAccess: ReturnType<typeof useUserInstanceAccess> }) {
+    const inventoryById = new Map(instanceAccess.instances.map((instance) => [instance.id, instance]));
+
     return (
         <Card className={styles.assignedInstancesCard}>
             <div className={styles.cardHeaderWithAction}>
@@ -270,23 +272,45 @@ function AssignedInstancesCard({ instanceIds }: { instanceIds: Array<string | nu
                 </PermissionGate>
             </div>
 
-            <Table className={styles.instancesTable}>
+            {instanceAccess.isLoading ? (
+                <p className="px-5 py-8 text-center text-secundario" role="status">Cargando instancias…</p>
+            ) : instanceAccess.assignedIds.length === 0 ? (
+                <p className="px-5 py-8 text-center text-secundario">No tiene instancias asignadas.</p>
+            ) : <Table className={styles.instancesTable}>
                 <TableHeader>
                     <TableRow className="header-of-table">
                         <TableHead>Instancia</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Nodo</TableHead>
+                        <TableHead>Estado</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {instanceIds.map((instanceId) => (
-                        <TableRow key={instanceId} className={styles.tableBodyRow}>
-                            <TableCell className={styles.instanceNameCell}>
-                                <Monitor className={styles.instanceIcon} aria-hidden="true" />
-                                <p className="text-of-table">Instancia ({instanceId})</p>
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                    {instanceAccess.assignedIds.map((instanceId) => {
+                        const instance = inventoryById.get(String(instanceId));
+                        const status = instance?.status?.toLowerCase();
+                        const statusLabel = status === 'running' ? 'Activo' : status === 'stopped' ? 'Detenido' : status === 'paused' ? 'Pausado' : instance?.status || '—';
+                        return (
+                            <TableRow key={instanceId} className={styles.tableBodyRow}>
+                                <TableCell>
+                                    <div className={styles.instanceNameCell}>
+                                        <Monitor className={styles.instanceIcon} aria-hidden="true" />
+                                        <p className="text-of-table">{instance?.name || 'Instancia'} ({instanceId})</p>
+                                    </div>
+                                </TableCell>
+                                <TableCell>{instance?.type || '—'}</TableCell>
+                                <TableCell>{instance?.node || '—'}</TableCell>
+                                <TableCell>
+                                    <span className={status === 'running' ? styles.activeStatus : styles.inactiveStatus}>
+                                        {status && <span className={status === 'running' ? styles.activeStatusDot : styles.inactiveStatusDot} />}
+                                        {statusLabel}
+                                    </span>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
                 </TableBody>
-            </Table>
+            </Table>}
 
             <div className={styles.accessNotice}>
                 <LockKeyhole className={styles.noticeIcon} aria-hidden="true" />
@@ -433,7 +457,9 @@ const styles = {
     instanceIcon: 'size-4 text-slate-500',
     virtualMachineTypeBadge: 'rounded-md border-0 bg-blue-50 px-2 text-[11px] font-medium text-blue-700',
     containerTypeBadge: 'rounded-md border-0 bg-emerald-50 px-2 text-[11px] font-medium text-emerald-700',
+    activeStatus: 'inline-flex items-center gap-2 font-medium text-slate-800',
     inactiveStatus: 'inline-flex items-center gap-2 text-slate-500',
+    activeStatusDot: 'size-2 rounded-full bg-emerald-600',
     inactiveStatusDot: 'size-2 rounded-full bg-slate-400',
     accessNotice: 'mx-5 mb-4 mt-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500',
     noticeIcon: 'size-3.5 shrink-0',
