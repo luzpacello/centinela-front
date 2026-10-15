@@ -26,15 +26,27 @@ function readDetalleString(detalles: Record<string, unknown> | null, key: string
 // error con el motivo reportado por el backend si terminó FAILED.
 function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsMessage): void {
   const estadoTarea = readDetalleString(message.detalles, 'estado');
+  const accion = readDetalleString(message.detalles, 'accion') || 'de la instancia';
+
   if (estadoTarea === 'FAILED') {
     const error = readDetalleString(message.detalles, 'error');
+    const exitstatus = readDetalleString(message.detalles, 'exitstatus');
     const motivo = readDetalleString(message.detalles, 'motivo');
+
+    let descriptionMessage = 'Error al ejecutar la acción sobre la instancia';
+
+    if (motivo === 'PROXMOX_ERROR') {
+      const detailsText = error || exitstatus || 'Error desconocido';
+      descriptionMessage = `Proxmox no pudo completar la acción ${detailsText}`;
+    } else if (motivo == 'TIMEOUT') {
+      descriptionMessage = 'La acción no terminó en 3 minutos; revisá el estado de la instancia';
+    } else if (error) {
+      descriptionMessage = error;
+    }
+
     toast.add({
       title: `La orden falló en ${instance.name}`,
-      description: error
-        ?? (motivo === 'TIMEOUT'
-          ? 'La operación superó el tiempo de espera de Proxmox.'
-          : 'Proxmox no pudo completar la operación.'),
+      description: descriptionMessage,
       type: 'error',
     });
     return;
@@ -42,7 +54,7 @@ function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsM
 
   toast.add({
     title: `Orden completada en ${instance.name}`,
-    description: 'La operación finalizó correctamente.',
+    description: `Operación ${accion} sobre la instancia finalizada correctamente`,
     type: 'success',
   });
 }
