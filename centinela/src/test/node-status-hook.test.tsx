@@ -47,9 +47,12 @@ describe('useNodeStatus', () => {
         expect(getNodeStatus).toHaveBeenCalledTimes(1);
         expect(result.current.data).toEqual(status);
         expect(result.current.health).toBe('healthy');
+        expect(result.current.history).toEqual([{ cpu: 69, ram: 33.01, storage: 33.01 }]);
 
         act(() => { vi.advanceTimersByTime(10_000); });
+        await act(async () => { await Promise.resolve(); });
         expect(getNodeStatus).toHaveBeenCalledTimes(2);
+        expect(result.current.history).toHaveLength(2);
     });
 
     it('no consulta con la pestaña oculta y reanuda al volver a estar visible', async () => {

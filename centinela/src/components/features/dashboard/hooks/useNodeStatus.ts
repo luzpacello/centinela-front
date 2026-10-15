@@ -5,10 +5,21 @@ const POLLING_INTERVAL_MS = 10_000;
 
 export type NodeHealth = 'loading' | 'healthy' | 'warning' | 'inaccessible';
 
+// Cantidad máxima de muestras que se conservan para las curvas de tendencia
+// (36 muestras × 10 s ≈ 6 minutos de histórico en vivo).
+const HISTORY_LIMIT = 36;
+
+export interface NodeStatusSample {
+    cpu: number;
+    ram: number;
+    storage: number;
+}
+
 export function useNodeStatus() {
     const [data, setData] = useState<NodeStatusResponse | null>(null);
     const [error, setError] = useState<Error | null>(null);
     const [loading, setLoading] = useState(true);
+    const [history, setHistory] = useState<NodeStatusSample[]>([]);
     const [retryCount, setRetryCount] = useState(0);
     const hasData = useRef(false);
 
@@ -47,6 +58,10 @@ export function useNodeStatus() {
                     hasData.current = true;
                     setData(nextData);
                     setError(null);
+                    setHistory((previous) => [
+                        ...previous.slice(-(HISTORY_LIMIT - 1)),
+                        { cpu: nextData.cpu.usagePercent, ram: nextData.ram.usagePercent, storage: nextData.storage.usagePercent },
+                    ]);
                 }
             } catch (requestError) {
                 if (!disposed && !controller.signal.aborted) {
@@ -109,6 +124,7 @@ export function useNodeStatus() {
         error,
         health,
         loading,
+        history,
         retry: () => setRetryCount((count) => count + 1),
     };
 }

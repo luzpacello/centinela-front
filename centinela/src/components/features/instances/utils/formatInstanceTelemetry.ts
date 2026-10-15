@@ -3,7 +3,7 @@ export function formatCpuUsage(usage?: number | null): string {
   return new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 1 }).format(usage);
 }
 
-function formatMemoryBytes(bytes: number): string {
+export function formatMemoryBytes(bytes: number): string {
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 

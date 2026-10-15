@@ -49,4 +49,28 @@ describe('ResourceMeters', () => {
 
         expect(screen.getByText('75%')).toBeInTheDocument();
     });
+
+    it('dibuja la curva de tendencia con las muestras recibidas', () => {
+        render(
+            <CpuGauge
+                percent={30}
+                cores={8}
+                samples={[10, 20, 15, 30]}
+            />
+        );
+
+        const sparkline = screen.getByTestId('cpu-meter-sparkline');
+        const points = sparkline.querySelector('polyline')?.getAttribute('points')?.trim();
+        expect(points?.split(/\s+/)).toHaveLength(4);
+        expect(screen.getByText('30%')).toBeInTheDocument();
+    });
+
+    it('se banca una sola muestra dibujando una línea plana', () => {
+        render(
+            <StorageMeter usedGb={510} totalGb={1024} samples={[42]} />
+        );
+
+        expect(screen.getByTestId('storage-meter-sparkline')).toBeInTheDocument();
+        expect(screen.getByText('49.8%')).toBeInTheDocument();
+    });
 });
