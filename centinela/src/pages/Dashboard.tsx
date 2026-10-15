@@ -1,4 +1,4 @@
-import { CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
+import { Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,12 @@ import { useEventsContext } from '@/context/EventsContext';
 import type { EventsClientStatus } from '@/services/eventsClient';
 import { useNodeStatus, type NodeHealth } from '@/components/features/dashboard/hooks/useNodeStatus';
 import { formatUptime } from '@/components/features/dashboard/utils/formatUptime';
+import { useTemplates } from '@/components/features/dashboard/hooks/useTemplates';
+import RecentInstancesCard from '@/components/features/dashboard/components/RecentInstancesCard';
+import RecentActivityCard from '@/components/features/dashboard/components/RecentActivityCard';
+import AlertsStatusCard from '@/components/features/dashboard/components/AlertsStatusCard';
+import { useAuth } from '@/context/AuthContext';
+import { useInstances } from '@/components/features/instances/hooks/useInstances';
 
 // Traducción del estado del canal de eventos a lo que ve el operador.
 const EVENTS_STATUS_PRESENTATION: Record<EventsClientStatus, { label: string; dot: string }> = {
@@ -37,7 +43,11 @@ function formatFetchedAt(value?: string): string {
 export default function Dashboard() {
     const { estado, motivoCierre } = useEventsContext();
     const eventsStatus = EVENTS_STATUS_PRESENTATION[estado];
-    const { data, error, health, loading, retry } = useNodeStatus();
+    const { isAdmin } = useAuth();
+    const admin = isAdmin();
+    const templates = useTemplates(admin);
+    const instancesData = useInstances();
+    const { data, error, health, loading, retry, history } = useNodeStatus();
     const nodeHealth = NODE_HEALTH_PRESENTATION[health];
     const instanceSummary = data?.instancesSummary;
     const totalInstances = instanceSummary ? instanceSummary.vms.total + instanceSummary.lxc.total : null;
@@ -69,12 +79,16 @@ export default function Dashboard() {
                             {eventsStatus.label}
                         </Badge>
 
+                        <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
+                            <Bell className={style.smallIcon} />
+                        </Button>
+
                     </div>
 
                 </div>
             </header>
 
-            <div className={style.horizontalContent}>
+            <div className={`grid grid-cols-1 gap-4 ${admin ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`}>
                 <Card className={style.summaryCard}>
                     <div className={style.cardHeader}>
                         <span className={style.greenIcon}><Monitor className={style.icon} /></span>
@@ -111,6 +125,19 @@ export default function Dashboard() {
                     <Separator className="mt-5 mb-5" />
                     <p className="text-caption"><span className={style.orangeText}>{formatShare(inactiveInstances)}</span> del total</p>
                 </Card>
+                {admin && (
+                    <Card className={style.summaryCard}>
+                        <div className={style.cardHeader}>
+                            <span className={style.purpleIcon}><Box className={style.icon} /></span>
+                            <div>
+                                <p className="text-metrica">{formatCount(templates.loading ? null : templates.count)}</p>
+                                <h2 className="text-caption">Plantillas</h2>
+                            </div>
+                        </div>
+                        <Separator className="mt-5 mb-5" />
+                        <p className="text-caption">Disponibles para usar</p>
+                    </Card>
+                )}
             </div>
 
             <Card className={style.resourceCard}>
@@ -132,9 +159,9 @@ export default function Dashboard() {
                     </div>
                 ) : data ? (
                     <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
-                        <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} />
-                        <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} />
-                        <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} />
+                        <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} />
+                        <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} />
+                        <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} samples={history.map((sample) => sample.storage)} />
                     </div>
                 ) : null}
 
@@ -147,6 +174,21 @@ export default function Dashboard() {
                     </div>
                 )}
             </Card>
+
+            <div className={style.details}>
+                <RecentInstancesCard
+                    instances={instancesData.instances}
+                    isLoading={instancesData.isLoading}
+                    errorMessage={instancesData.errorMessage}
+                    reloadInventory={instancesData.reloadInventory}
+                />
+                {admin && <RecentActivityCard />}
+                <AlertsStatusCard
+                    instances={instancesData.instances}
+                    templatesCount={templates.count}
+                    isLoading={instancesData.isLoading}
+                />
+            </div>
 
             <Card className={style.systemFooter}>
                 <div className={style.systemStatus}>
@@ -182,13 +224,14 @@ const style = {
     profile: 'flex items-center gap-4 text-slate-600',
     avatar: 'flex size-9 items-center justify-center rounded-full bg-green-800 text-base font-medium text-white',
     primaryButton: 'bg-green-700! text-white hover:bg-green-800! hover:border-green-800!',
-    horizontalContent: 'grid grid-cols-1 gap-4 sm:grid-cols-3',
+    details: 'grid grid-cols-1 gap-4 xl:grid-cols-3',
     summaryCard: 'gap-0 rounded-xl border border-slate-100 bg-white p-5 shadow-sm ring-0',
     cardHeader: 'flex items-center gap-5',
     icon: 'size-6',
     smallIcon: 'size-4!',
     greenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-green-800',
     orangeIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600',
+    purpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-600',
     metric: 'my-1 text-[28px] font-semibold leading-tight text-slate-900',
     metricTitle: 'm-0 text-sm font-normal text-slate-600',
     summaryFooter: 'flex items-end gap-2 ',
