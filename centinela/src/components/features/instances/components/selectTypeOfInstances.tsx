@@ -1,0 +1,168 @@
+import { Box, Monitor } from 'lucide-react';
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxList,
+} from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    INSTANCE_TYPE_OPTIONS,
+    NODE_OPTIONS,
+    TEMPLATE_OPTIONS,
+} from '@/components/features/instances/data/createInstanceOptions';
+import type {
+    CreateInstanceDraft,
+    InstanceType,
+    UpdateCreateInstanceField,
+} from '@/components/features/instances/types/createInstance';
+
+interface SelectTypeOfInstancesProps {
+    draft: CreateInstanceDraft;
+    onFieldChange: UpdateCreateInstanceField;
+    onTypeChange: (type: InstanceType) => void;
+}
+
+export default function SelectTypeOfInstances({
+    draft,
+    onFieldChange,
+    onTypeChange,
+}: SelectTypeOfInstancesProps) {
+    const templates = draft.tipo ? TEMPLATE_OPTIONS[draft.tipo] : [];
+    const instanceNameLabel = draft.tipo === 'lxc' ? 'Nombre del contenedor' : 'Nombre de la instancia';
+
+    return (
+        <div className={styles.pageContent}>
+            <section className={styles.contentSection} aria-labelledby="instance-type-title">
+                <h2 id="instance-type-title" className={styles.sectionTitle}>Tipo de instancia</h2>
+                <div className={styles.instanceTypeGrid}>
+                    {INSTANCE_TYPE_OPTIONS.map((option) => {
+                        const isSelected = draft.tipo === option.type;
+                        const TypeIcon = option.type === 'vm' ? Monitor : Box;
+
+                        return (
+                            <button
+                                key={option.type}
+                                type="button"
+                                aria-pressed={isSelected}
+                                className={`${styles.instanceTypeButton} ${isSelected ? styles.selectedInstanceTypeButton : styles.unselectedInstanceTypeButton}`}
+                                onClick={() => onTypeChange(option.type)}
+                            >
+                                <span className={`${styles.instanceTypeIconContainer} ${isSelected ? styles.selectedInstanceTypeIconContainer : styles.unselectedInstanceTypeIconContainer}`}>
+                                    <TypeIcon className={styles.instanceTypeIcon} aria-hidden="true" />
+                                </span>
+                                <span className={styles.instanceTypeTextContainer}>
+                                    <strong className={styles.instanceTypeTitle}>{option.title}</strong>
+                                    <span className={styles.instanceTypeDescription}>{option.description}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
+
+            <section className={styles.contentSection} aria-labelledby="basic-information-title">
+                <h2 id="basic-information-title" className={styles.sectionTitle}>Información básica</h2>
+                <div className={styles.formGrid}>
+                    <div className={styles.fieldContainer}>
+                        <label className={styles.fieldLabel} htmlFor="instance-name">{instanceNameLabel}</label>
+                        <Input
+                            id="instance-name"
+                            value={draft.nombre}
+                            placeholder={draft.tipo === 'lxc' ? 'Ej: app-container' : 'Ej: web-server-01'}
+                            onChange={(event) => onFieldChange('nombre', event.target.value)}
+                        />
+                        <p className={styles.fieldDescription}>Solo letras, números, guiones y puntos. Ej: mi-instancia-01</p>
+                    </div>
+
+                    <div className={styles.fieldContainer}>
+                        <label className={styles.fieldLabel} htmlFor="destination-node">Nodo de destino</label>
+                        <Combobox
+                            value={draft.nodo || null}
+                            onValueChange={(value) => onFieldChange('nodo', value ?? '')}
+                        >
+                            <ComboboxInput id="destination-node" placeholder="Seleccionar nodo" />
+                            <ComboboxContent>
+                                <ComboboxList>
+                                    {NODE_OPTIONS.map((option) => (
+                                        <ComboboxItem key={option.value} value={option.value}>{option.label}</ComboboxItem>
+                                    ))}
+                                </ComboboxList>
+                            </ComboboxContent>
+                        </Combobox>
+                        <p className={styles.fieldDescription}>Selecciona el nodo donde se creará la instancia.</p>
+                    </div>
+
+                    <div className={`${styles.fieldContainer} ${styles.descriptionField}`}>
+                        <label className={styles.fieldLabel} htmlFor="instance-description">Descripción (opcional)</label>
+                        <div className={styles.textareaContainer}>
+                            <Textarea
+                                id="instance-description"
+                                value={draft.descripcion}
+                                maxLength={255}
+                                placeholder="Describe el propósito de la instancia."
+                                className={styles.descriptionTextarea}
+                                onChange={(event) => onFieldChange('descripcion', event.target.value)}
+                            />
+                            <span className={styles.characterCounter}>{draft.descripcion.length} / 255</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className={styles.contentSection} aria-labelledby="template-title">
+                <h2 id="template-title" className={styles.sectionTitle}>Plantilla y sistema operativo</h2>
+                <div className={styles.templateFieldContainer}>
+                    <label className={styles.fieldLabel} htmlFor="instance-template">Plantilla (Template)</label>
+                    <Combobox
+                        value={draft.templateOso || null}
+                        onValueChange={(value) => onFieldChange('templateOso', value ?? '')}
+                        disabled={!draft.tipo}
+                    >
+                        <ComboboxInput
+                            id="instance-template"
+                            placeholder={draft.tipo ? 'Seleccionar plantilla' : 'Selecciona primero un tipo'}
+                            disabled={!draft.tipo}
+                        />
+                        <ComboboxContent>
+                            <ComboboxList>
+                                {templates.map((option) => (
+                                    <ComboboxItem key={option.value} value={option.value}>{option.label}</ComboboxItem>
+                                ))}
+                            </ComboboxList>
+                        </ComboboxContent>
+                    </Combobox>
+                    <p className={styles.fieldDescription}>Selecciona una plantilla compatible con el tipo de instancia.</p>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+const styles = {
+    pageContent: 'divide-y divide-slate-200',
+    contentSection: 'grid gap-5 p-6',
+    sectionTitle: 'mb-0 text-base font-semibold text-slate-950',
+    instanceTypeGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-2',
+    instanceTypeButton: 'flex min-h-28 w-full items-center gap-4 rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
+    selectedInstanceTypeButton: 'border-blue-600 bg-blue-50/50',
+    unselectedInstanceTypeButton: 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30',
+    instanceTypeIconContainer: 'flex size-12 shrink-0 items-center justify-center rounded-full',
+    selectedInstanceTypeIconContainer: 'bg-blue-100 text-blue-600',
+    unselectedInstanceTypeIconContainer: 'bg-slate-100 text-slate-500',
+    instanceTypeIcon: 'size-6',
+    instanceTypeTextContainer: 'flex min-w-0 flex-col gap-1',
+    instanceTypeTitle: 'text-sm font-semibold text-slate-950',
+    instanceTypeDescription: 'text-xs leading-5 text-slate-500',
+    formGrid: 'grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2',
+    fieldContainer: 'min-w-0',
+    fieldLabel: 'mb-2 block text-xs font-medium text-slate-900',
+    fieldDescription: 'mt-2 text-xs text-slate-500',
+    descriptionField: 'md:col-span-2',
+    textareaContainer: 'relative',
+    descriptionTextarea: 'min-h-20 resize-none pb-7',
+    characterCounter: 'pointer-events-none absolute bottom-2 right-3 text-[11px] text-slate-500',
+    templateFieldContainer: 'min-w-0 md:w-[calc(50%_-_0.75rem)]',
+};
