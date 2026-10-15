@@ -1,27 +1,26 @@
-import { useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
-
-const steps = ['General', 'Sistema', 'Disco', 'Red', 'SO', 'Resumen'];
-const stepDescriptions = ['Tipo y nombre', 'Recursos', 'Almacenamiento', 'Conectividad', 'Sistema operativo', 'Revisar y crear'];
+import SelectTypeOfInstances from '@/components/features/instances/components/selectTypeOfInstances';
+import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
+import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
+import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
 
 export default function CreateNewInstances() {
     const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(1);
+    const {
+        currentStep,
+        draft,
+        goToNextStep,
+        goToPreviousStep,
+        selectInstanceType,
+        updateField,
+    } = useCreateInstanceWizard();
 
     function goBack() {
         navigate(-1);
-    }
-
-    function goToNextStep() {
-        setCurrentStep((step) => Math.min(step + 1, steps.length));
-    }
-        
-    function goToBackStep() {
-        setCurrentStep((step) => Math.max(step - 1, 1));
     }
 
     return (
@@ -41,11 +40,11 @@ export default function CreateNewInstances() {
                     <Button type="button" variant="outline" onClick={goBack}>
                         Cancelar
                     </Button>                    
-                    <Button type="button" variant="outline" onClick={goToBackStep}>
+                    <Button type="button" variant="outline" onClick={goToPreviousStep} disabled={currentStep === 1}>
                         <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
                         Anterior
                     </Button>
-                    <Button type="button" onClick={goToNextStep}>
+                    <Button type="button" onClick={goToNextStep} disabled={currentStep === INSTANCE_CREATION_STEPS.length}>
                         Siguiente
                         <ArrowRight className={styles.smallIcon} aria-hidden="true" />
                     </Button>
@@ -55,13 +54,27 @@ export default function CreateNewInstances() {
             <Card className={styles.stepperCard}>
                 <div className={styles.stepperContainer}>
                     <Stepper
-                        steps={steps}
-                        descriptions={stepDescriptions}
+                        steps={INSTANCE_CREATION_STEPS.map((step) => step.title)}
+                        descriptions={INSTANCE_CREATION_STEPS.map((step) => step.description)}
                         currentStep={currentStep}
-                        tone="success"
                     />
                 </div>
             </Card>
+
+            <div className={styles.creationContentGrid}>
+                <main className={styles.stepContentContainer}>
+                    {currentStep === 1 && (
+                        <SelectTypeOfInstances
+                            draft={draft}
+                            onFieldChange={updateField}
+                            onTypeChange={selectInstanceType}
+                        />
+                    )}
+                </main>
+                <aside className={styles.summaryContainer}>
+                    <InstanceCreationSummary draft={draft} />
+                </aside>
+            </div>
         </section>
     );
 }
@@ -77,4 +90,7 @@ const styles = {
     smallIcon: 'size-4!',
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
+    creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',
+    stepContentContainer: 'min-h-[32rem] min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
+    summaryContainer: 'min-w-0',
 };
