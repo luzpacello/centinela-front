@@ -1,15 +1,16 @@
-import { Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
+import { Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CpuGauge, RamMeter, StorageMeter } from '@/components/features/dashboard/components/ResourceMeter';
-import { useEventsContext } from '@/context/EventsContext';
+import { useEventsContext, useEventSubscription } from '@/context/EventsContext';
 import type { EventsClientStatus } from '@/services/eventsClient';
 import { useNodeStatus, type NodeHealth } from '@/components/features/dashboard/hooks/useNodeStatus';
 import { formatUptime } from '@/components/features/dashboard/utils/formatUptime';
 import { useTemplates } from '@/components/features/dashboard/hooks/useTemplates';
 import RecentInstancesCard from '@/components/features/dashboard/components/RecentInstancesCard';
+import InstancesSummaryCards from '@/components/features/dashboard/components/InstancesSummaryCards';
 import RecentActivityCard from '@/components/features/dashboard/components/RecentActivityCard';
 import AlertsStatusCard from '@/components/features/dashboard/components/AlertsStatusCard';
 import { useAuth } from '@/context/AuthContext';
@@ -140,6 +141,11 @@ export default function Dashboard() {
                 )}
             </div>
 
+            <section className={style.typeSummary}>
+                <h2 className={style.typeSummaryTitle}>Conteo por tipo de recurso</h2>
+                <InstancesSummaryCards summary={instanceSummary} isLoading={loading} />
+            </section>
+
             <Card className={style.resourceCard}>
                 <div className={style.sectionHeader}>
                     <div className={style.sectionHeading}>
@@ -245,20 +251,9 @@ const style = {
     sectionHeading: 'flex flex-wrap items-center gap-x-4 gap-y-1',
     meterSkeleton: 'h-[116px] animate-pulse rounded-xl border border-slate-100 bg-slate-100',
     connectionError: 'mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800',
-    sectionTitle: 'm-0 text-sm font-semibold text-slate-900',
-    resources: 'mt-5 grid grid-cols-1 divide-y divide-slate-100 xl:grid-cols-3 xl:divide-x xl:divide-y-0',
-    resource: 'flex min-w-0 flex-wrap items-center gap-4 px-4 py-3',
-    resourceTitle: 'mb-2 text-sm font-normal text-slate-900',
-    roundGreenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-800',
-    roundBlueIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600',
-    roundPurpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600',
-    textButton: 'h-8 px-1 text-xs text-slate-500',
-    quickActions: 'flex flex-col gap-2 border-t border-slate-100 pt-4',
-    quickAction: 'h-8 w-full justify-start gap-2 px-3 text-xs',
-    trailingIcon: 'ml-auto size-4!',
-    systemFooter: 'grid grid-cols-1 gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm ring-0 md:grid-cols-2 xl:grid-cols-4 md:divide-x md:divide-slate-100',
+    systemFooter: 'grid grid-cols-1 gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm ring-0 md:grid-cols-2 xl:grid-cols-3 md:divide-x md:divide-slate-100',
+    typeSummary: 'flex flex-col gap-3',
+    typeSummaryTitle: 'text-sm font-semibold text-slate-900',
     systemStatus: 'flex items-center gap-4 px-3',
     systemIcon: 'size-6 shrink-0 text-slate-500',
-    systemTitle: 'm-0 text-xs font-medium text-slate-900',
-    caption: 'mt-1 text-xs text-slate-500',
 };
