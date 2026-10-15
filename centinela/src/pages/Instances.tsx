@@ -12,7 +12,11 @@ import { InstanceIpAddress } from '@/components/features/instances/components/In
 import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/utils/formatInstanceTelemetry';
 import { toast } from '@/components/ui/toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import InstanceFiltersBar, { type InstanceStatusFilter } from '@/components/features/instances/components/InstanceFiltersBar';
+import {
+    InstanceSearchFilters,
+    InstanceStatusTabs,
+    type InstanceStatusFilter,
+} from '@/components/features/instances/components/InstanceFiltersBar';
 import type { InstanceType } from '@/components/features/instances/types/instance';
 import {
     Pagination,
@@ -43,7 +47,8 @@ export default function Instances() {
 
         return visibleInstances.filter((instance) => {
             const matchesText = instance.name.toLocaleLowerCase('es').includes(normalizedSearch)
-                || String(instance.id).includes(normalizedSearch);
+                || String(instance.id).includes(normalizedSearch)
+                || (instance.ip ?? '').toLocaleLowerCase('es').includes(normalizedSearch);
             const matchesType = typeFilter === 'all' || instance.type === typeFilter;
             const matchesStatus = statusFilter === 'all'
                 || (statusFilter === 'running' && instance.status === 'running')
@@ -72,33 +77,46 @@ export default function Instances() {
                     <h1>Inventario de instancias</h1>
                     <p className="text-secundario">Administrá todas tus máquinas virtuales y contenedores.</p>
                 </div>
-                {isAdmin() && <Button type="button" onClick={() => {
-                    // TODO(Etapa 2 - RF-07): descomentar la navegación cuando esté integrado el aprovisionamiento.
-                    // navigate('/instances/new');
-                    // TODO(Etapa 2 - RF-07): eliminar este aviso al habilitar la navegación.
-                    toast.add({
-                        title: 'Aprovisionamiento en desarrollo',
-                        description: 'La creación de instancias estará disponible próximamente en la Etapa 2.',
-                        type: 'error',
-                        priority: 'high',
-                    });
-                }}><Plus className={style.smallIcon} /> Crear instancia</Button>}
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <InstanceSearchFilters
+                        search={search}
+                        onSearchChange={(value) => {
+                            setSearch(value);
+                            setCurrentPage(1);
+                        }}
+                        typeFilter={typeFilter}
+                        onTypeFilterChange={(value) => {
+                            setTypeFilter(value);
+                            setCurrentPage(1);
+                        }}
+                    />
+
+                    {isAdmin() && (
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                // TODO(Etapa 2 - RF-07): descomentar la navegación cuando esté integrado el aprovisionamiento.
+                                // navigate('/instances/new');
+                                // TODO(Etapa 2 - RF-07): eliminar este aviso al habilitar la navegación.
+                                toast.add({
+                                    title: 'Aprovisionamiento en desarrollo',
+                                    description: 'La creación de instancias estará disponible próximamente en la Etapa 2.',
+                                    type: 'error',
+                                    priority: 'high',
+                                });
+                            }}
+                        >
+                            <Plus className={style.smallIcon} /> Crear instancia
+                        </Button>
+                    )}
+                </div>
             </header>
 
-            <InstanceFiltersBar
-                search={search}
-                onSearchChange={(value) => {
-                    setSearch(value);
-                    setCurrentPage(1);
-                }}
+            <InstanceStatusTabs
                 statusFilter={statusFilter}
                 onStatusFilterChange={(value) => {
                     setStatusFilter(value);
-                    setCurrentPage(1);
-                }}
-                typeFilter={typeFilter}
-                onTypeFilterChange={(value) => {
-                    setTypeFilter(value);
                     setCurrentPage(1);
                 }}
                 totalCount={visibleInstances.length}
@@ -143,8 +161,8 @@ export default function Instances() {
                             const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
                             const cpuUsage = instance.status === 'stopped' ? '-' : formatCpuUsage(instance.cpuUsage);
                             const ramUsage = instance.status === 'stopped' ? '-' : formatRamUsage(instance.ramUsage, instance.maxRam);
-                            const transition= transitioningTasks[instance.id] ?? null;
-                            const isPending= Boolean(pendingPowerActions[instance.id]);
+                            const transition = transitioningTasks[instance.id] ?? null;
+                            const isPending = Boolean(pendingPowerActions[instance.id]);
                             return (
                                 <TableRow key={instance.id} className="hover:bg-slate-50/70">
                                     <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).includes(instance.id)} disabled /></TableCell>
@@ -246,7 +264,7 @@ export default function Instances() {
 
 const style = {
     page: 'flex min-w-0 flex-col gap-6 text-slate-900',
-    header: 'flex flex-wrap items-start justify-between gap-5 pb-1',
+    header: 'flex flex-wrap items-center justify-between gap-5 pb-1',
     smallIcon: 'size-4!',
     inventoryCard: 'min-w-0 gap-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0',
     table: 'min-w-[52rem] text-xs text-slate-700',
