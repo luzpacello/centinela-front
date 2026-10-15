@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router';
 import {
-    Activity,
     Bell,
     ChevronDown,
     Circle,
-    LayoutDashboard,
+    FileText,
+    House,
     LogOut,
     PanelLeftClose,
     PanelLeftOpen,
@@ -71,7 +71,7 @@ export default function Sidebar({ user }: { user?: UserSession }) {
 
                 <div className={style.navLinksContainer}>
                     <NavLink to="/dashboard" title={isCollapsed ? 'Dashboard' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
-                        <LayoutDashboard className="size-4.5" aria-hidden="true" />
+                        <House className="size-4.5" aria-hidden="true" />
                         {!isCollapsed && <span>Dashboard</span>}
                     </NavLink>
                     <NavLink to="/instances" title={isCollapsed ? 'Instancias' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
@@ -80,7 +80,7 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                     </NavLink>
                     <PermissionGate requiredRole="ADMIN">
                         <NavLink to="/auditoria" title={isCollapsed ? 'Auditoría' : undefined} className={({ isActive }) => getNavigationLinkClassName({ isActive, isCollapsed })}>
-                            <Activity className="size-4.5" aria-hidden="true" />
+                            <FileText className="size-4.5" aria-hidden="true" />
                             {!isCollapsed && <span>Auditoría</span>}
                         </NavLink>
                     </PermissionGate>
