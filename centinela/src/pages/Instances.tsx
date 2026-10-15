@@ -143,6 +143,8 @@ export default function Instances() {
                             const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
                             const cpuUsage = instance.status === 'stopped' ? '-' : formatCpuUsage(instance.cpuUsage);
                             const ramUsage = instance.status === 'stopped' ? '-' : formatRamUsage(instance.ramUsage, instance.maxRam);
+                            const transition= transitioningTasks[instance.id] ?? null;
+                            const isPending= Boolean(pendingPowerActions[instance.id]);
                             return (
                                 <TableRow key={instance.id} className="hover:bg-slate-50/70">
                                     <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).includes(instance.id)} disabled /></TableCell>
@@ -170,8 +172,8 @@ export default function Instances() {
                                         <div role="group" aria-label="Acciones">
                                             <InstanceAction
                                                 instance={instance}
-                                                transition={transitioningTasks[instance.id] ?? null}
-                                                isPowerActionPending={Boolean(pendingPowerActions[instance.id])}
+                                                transition={transition}
+                                                isPowerActionPending={isPending}
                                                 onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
                                                 onDeleteAccepted={revalidateInventory}
                                             />
