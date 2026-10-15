@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getNodeStatus, type NodeStatusResponse } from '../services/nodeStatusService';
 
 const POLLING_INTERVAL_MS = 10_000;
@@ -6,8 +6,9 @@ const POLLING_INTERVAL_MS = 10_000;
 export type NodeHealth = 'loading' | 'healthy' | 'warning' | 'inaccessible';
 
 // Cantidad máxima de muestras que se conservan para las curvas de tendencia
-// (36 muestras × 10 s ≈ 6 minutos de histórico en vivo).
-const HISTORY_LIMIT = 36;
+// (72 muestras × 10 s = 12 minutos de histórico en vivo). Cuantas más muestras
+// entren en el mismo ancho, más juntos quedan los puntos de la curva.
+const HISTORY_LIMIT = 72;
 
 export interface NodeStatusSample {
     cpu: number;
@@ -21,6 +22,7 @@ export function useNodeStatus() {
     const [loading, setLoading] = useState(true);
     const [history, setHistory] = useState<NodeStatusSample[]>([]);
     const [retryCount, setRetryCount] = useState(0);
+    const [refetchCount, setRefetchCount] = useState(0);
     const hasData = useRef(false);
 
     useEffect(() => {
@@ -109,7 +111,7 @@ export function useNodeStatus() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('focus', handleFocus);
         };
-    }, [retryCount]);
+    }, [retryCount, refetchCount]);
 
     const health: NodeHealth = error
         ? 'inaccessible'
@@ -119,12 +121,19 @@ export function useNodeStatus() {
                 ? 'warning'
                 : 'healthy';
 
+    const retry = useCallback(() => setRetryCount((count) => count + 1), []);
+
+    // Revalidación silenciosa: vuelve a consultar el nodo sin mostrar skeletons
+    // (el estado de carga solo aparece cuando todavía no hay datos).
+    const refetch = useCallback(() => setRefetchCount((count) => count + 1), []);
+
     return {
         data,
         error,
         health,
         loading,
         history,
-        retry: () => setRetryCount((count) => count + 1),
+        retry,
+        refetch,
     };
 }

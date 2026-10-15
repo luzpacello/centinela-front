@@ -1,15 +1,16 @@
-import { Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square, Timer } from 'lucide-react';
+import { Bell, Box, CirclePlay, Clock3, Monitor, RefreshCw, Server, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CpuGauge, RamMeter, StorageMeter } from '@/components/features/dashboard/components/ResourceMeter';
-import { useEventsContext } from '@/context/EventsContext';
+import { useEventsContext, useEventSubscription } from '@/context/EventsContext';
 import type { EventsClientStatus } from '@/services/eventsClient';
 import { useNodeStatus, type NodeHealth } from '@/components/features/dashboard/hooks/useNodeStatus';
 import { formatUptime } from '@/components/features/dashboard/utils/formatUptime';
 import { useTemplates } from '@/components/features/dashboard/hooks/useTemplates';
 import RecentInstancesCard from '@/components/features/dashboard/components/RecentInstancesCard';
+import InstancesSummaryCards from '@/components/features/dashboard/components/InstancesSummaryCards';
 import RecentActivityCard from '@/components/features/dashboard/components/RecentActivityCard';
 import AlertsStatusCard from '@/components/features/dashboard/components/AlertsStatusCard';
 import { useAuth } from '@/context/AuthContext';
@@ -26,11 +27,11 @@ const EVENTS_STATUS_PRESENTATION: Record<EventsClientStatus, { label: string; do
     unauthorized: { label: 'Sesión finalizada', dot: 'bg-red-600' },
 };
 
-const NODE_HEALTH_PRESENTATION: Record<NodeHealth, { label: string; className: string }> = {
-    loading: { label: 'Consultando nodo', className: 'border-slate-200 text-slate-600' },
-    healthy: { label: 'Saludable', className: 'border-emerald-200 text-emerald-700' },
-    warning: { label: 'Advertencia', className: 'border-amber-300 text-amber-700' },
-    inaccessible: { label: 'Inaccesible', className: 'border-red-300 text-red-700' },
+const NODE_HEALTH_PRESENTATION: Record<NodeHealth, { label: string; className: string; textClassName: string }> = {
+    loading: { label: 'Consultando nodo', className: 'border-slate-200 text-slate-600', textClassName: 'text-slate-600' },
+    healthy: { label: 'Saludable', className: 'border-emerald-200 text-emerald-700', textClassName: 'text-emerald-700' },
+    warning: { label: 'Advertencia', className: 'border-amber-300 text-amber-700', textClassName: 'text-amber-700' },
+    inaccessible: { label: 'Inaccesible', className: 'border-red-300 text-red-700', textClassName: 'text-red-700' },
 };
 
 function formatFetchedAt(value?: string): string {
@@ -47,7 +48,12 @@ export default function Dashboard() {
     const admin = isAdmin();
     const templates = useTemplates(admin);
     const instancesData = useInstances();
-    const { data, error, health, loading, retry, history } = useNodeStatus();
+    const { data, error, health, loading, retry, refetch, history } = useNodeStatus();
+
+    // El conteo y la telemetría se revalidan apenas el nodo termina una tarea o
+    // cambia el estado de una instancia, sin esperar el sondeo de 10 segundos.
+    useEventSubscription({ tipo: 'TASK_FINISHED' }, refetch);
+    useEventSubscription({ tipo: 'INSTANCE_STATE_CHANGED' }, refetch);
     const nodeHealth = NODE_HEALTH_PRESENTATION[health];
     const instanceSummary = data?.instancesSummary;
     const totalInstances = instanceSummary ? instanceSummary.vms.total + instanceSummary.lxc.total : null;
@@ -140,6 +146,11 @@ export default function Dashboard() {
                 )}
             </div>
 
+            <section className={style.typeSummary}>
+                <h2 className={style.typeSummaryTitle}>Conteo por tipo de recurso</h2>
+                <InstancesSummaryCards summary={instanceSummary} isLoading={loading} />
+            </section>
+
             <Card className={style.resourceCard}>
                 <div className={style.sectionHeader}>
                     <div className={style.sectionHeading}>
@@ -193,19 +204,21 @@ export default function Dashboard() {
             <Card className={style.systemFooter}>
                 <div className={style.systemStatus}>
                     <ShieldCheck className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Canal de eventos</h2><p className="text-caption">{eventsStatus.label}</p></div>
+                    <div><h2 className="text-destacado">Conexión</h2><p className="text-caption">{estado === 'open' ? 'Conectado' : eventsStatus.label}</p></div>
                 </div>
                 <div className={style.systemStatus}>
                     <Clock3 className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Última telemetría</h2><p className="text-caption">{formatFetchedAt(data?.fetchedAt)}</p></div>
+                    <div><h2 className="text-destacado">Última sincronización</h2><p className="text-caption">{formatFetchedAt(data?.fetchedAt)}</p></div>
                 </div>
                 <div className={style.systemStatus}>
                     <Server className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Sistema</h2><p className="text-caption">{nodeHealth.label}</p></div>
-                </div>
-                <div className={style.systemStatus}>
-                    <Timer className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Uptime del nodo</h2><p className="text-caption">{data ? formatUptime(data.uptimeSeconds) : '—'}</p></div>
+                    <div>
+                        <h2 className="text-destacado">
+                            Estado del sistema{' '}
+                            <span className={nodeHealth.textClassName}>{nodeHealth.label}</span>
+                        </h2>
+                        <p className="text-caption">Tiempo de ejecución: {data ? formatUptime(data.uptimeSeconds) : '—'}</p>
+                    </div>
                 </div>
             </Card>
         </section>
@@ -215,15 +228,11 @@ export default function Dashboard() {
 const style = {
     page: 'flex min-w-0 flex-col gap-5 text-slate-900',
     header: 'flex flex-wrap items-start justify-between gap-4 pb-1',
-    pageTitle: 'mb-2 text-[30px] font-semibold tracking-tight text-slate-900',
-    description: 'text-sm leading-relaxed text-slate-500',
     headerActions: 'flex flex-col items-end gap-3',
     eventsBadge: 'gap-2 border-slate-200 px-3 py-1 font-medium text-slate-600',
     staleBadge: 'max-w-full whitespace-normal border-amber-300 text-amber-800',
     eventsDot: 'size-2 rounded-full',
     profile: 'flex items-center gap-4 text-slate-600',
-    avatar: 'flex size-9 items-center justify-center rounded-full bg-green-800 text-base font-medium text-white',
-    primaryButton: 'bg-green-700! text-white hover:bg-green-800! hover:border-green-800!',
     details: 'grid grid-cols-1 gap-4 xl:grid-cols-3',
     summaryCard: 'gap-0 rounded-xl border border-slate-100 bg-white p-5 shadow-sm ring-0',
     cardHeader: 'flex items-center gap-5',
@@ -232,10 +241,7 @@ const style = {
     greenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-green-800',
     orangeIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600',
     purpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-600',
-    metric: 'my-1 text-[28px] font-semibold leading-tight text-slate-900',
-    metricTitle: 'm-0 text-sm font-normal text-slate-600',
     summaryFooter: 'flex items-end gap-2 ',
-    status: 'mr-3 inline-flex items-center gap-2',
     greenDot: 'size-2 rounded-full bg-green-700',
     grayDot: 'size-2 rounded-full bg-slate-400',
     greenText: 'font-medium text-green-700',
@@ -245,20 +251,9 @@ const style = {
     sectionHeading: 'flex flex-wrap items-center gap-x-4 gap-y-1',
     meterSkeleton: 'h-[116px] animate-pulse rounded-xl border border-slate-100 bg-slate-100',
     connectionError: 'mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800',
-    sectionTitle: 'm-0 text-sm font-semibold text-slate-900',
-    resources: 'mt-5 grid grid-cols-1 divide-y divide-slate-100 xl:grid-cols-3 xl:divide-x xl:divide-y-0',
-    resource: 'flex min-w-0 flex-wrap items-center gap-4 px-4 py-3',
-    resourceTitle: 'mb-2 text-sm font-normal text-slate-900',
-    roundGreenIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-800',
-    roundBlueIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600',
-    roundPurpleIcon: 'flex size-14 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600',
-    textButton: 'h-8 px-1 text-xs text-slate-500',
-    quickActions: 'flex flex-col gap-2 border-t border-slate-100 pt-4',
-    quickAction: 'h-8 w-full justify-start gap-2 px-3 text-xs',
-    trailingIcon: 'ml-auto size-4!',
-    systemFooter: 'grid grid-cols-1 gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm ring-0 md:grid-cols-2 xl:grid-cols-4 md:divide-x md:divide-slate-100',
+    systemFooter: 'grid grid-cols-1 gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm ring-0 md:grid-cols-2 xl:grid-cols-3 md:divide-x md:divide-slate-100',
+    typeSummary: 'flex flex-col gap-3',
+    typeSummaryTitle: 'text-sm font-semibold text-slate-900',
     systemStatus: 'flex items-center gap-4 px-3',
     systemIcon: 'size-6 shrink-0 text-slate-500',
-    systemTitle: 'm-0 text-xs font-medium text-slate-900',
-    caption: 'mt-1 text-xs text-slate-500',
 };

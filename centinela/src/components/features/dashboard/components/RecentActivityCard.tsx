@@ -1,4 +1,5 @@
-import { useEffect, useState, type ElementType } from 'react';
+import { useEffect, useRef, useState, type ElementType } from 'react';
+import { useEventSubscription } from '@/context/EventsContext';
 import { useNavigate } from 'react-router';
 import { ArrowRight, CirclePlay, LogIn, Plus, Settings, Square, Trash2, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -74,24 +75,38 @@ export default function RecentActivityCard() {
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [reloadCount, setReloadCount] = useState(0);
+    const hasLoaded = useRef(false);
 
     useEffect(() => {
         const controller = new AbortController();
-        setIsLoading(true);
-        setErrorMessage(null);
-        getRecentActivity(controller.signal)
-            .then((page) => {
+
+        // Solo la primera carga muestra skeletons: las revalidaciones que disparan
+        // los eventos del canal son silenciosas, para no parpadear el panel.
+        const load = async () => {
+            if (!hasLoaded.current) setIsLoading(true);
+            setErrorMessage(null);
+            try {
+                const page = await getRecentActivity(controller.signal);
                 if (controller.signal.aborted) return;
+                hasLoaded.current = true;
                 setItems(page.items ?? []);
-                setIsLoading(false);
-            })
-            .catch((error: unknown) => {
+            } catch (error: unknown) {
                 if (controller.signal.aborted) return;
                 setErrorMessage(error instanceof Error ? error.message : 'No se pudo cargar la actividad reciente.');
-                setIsLoading(false);
-            });
+            } finally {
+                if (!controller.signal.aborted) setIsLoading(false);
+            }
+        };
+
+        void load();
         return () => controller.abort();
     }, [reloadCount]);
+
+    // Los movimientos nuevos llegan por el canal: al terminar una tarea o al
+    // cambiar el estado de una instancia se relee la auditoría al instante, sin
+    // esperar a que el operador recargue la pantalla.
+    useEventSubscription({ tipo: 'TASK_FINISHED' }, () => setReloadCount((count) => count + 1));
+    useEventSubscription({ tipo: 'INSTANCE_STATE_CHANGED' }, () => setReloadCount((count) => count + 1));
 
     const goToAudit = () => navigate('/auditoria');
 
