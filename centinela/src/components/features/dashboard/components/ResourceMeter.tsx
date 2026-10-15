@@ -17,18 +17,28 @@ const getThresholdClasses = (percent: number) => {
 const SPARKLINE_WIDTH = 100;
 const SPARKLINE_HEIGHT = 28;
 
-// Convierte las muestras reales del sondeo en puntos SVG. La escala usa como
-// techo el mayor valor visto (con un piso de 10) para que las variaciones
-// chicas también se vean; con una sola muestra dibuja una línea plana.
+// Convierte las muestras reales del sondeo en puntos SVG. La escala usa el rango
+// observado (mínimo y máximo de la ventana): con datos casi planos —el simulador
+// se mueve décimas— una escala absoluta deja la curva recta y no se ve la
+// tendencia. Sin variación real dibuja una línea al medio, sin inventar picos.
 function buildSparklinePoints(samples: number[]): string {
     const safe = samples.map((value) => Math.max(0, Math.min(100, value)));
     if (safe.length === 0) return `0,${SPARKLINE_HEIGHT} ${SPARKLINE_WIDTH},${SPARKLINE_HEIGHT}`;
 
-    const ceiling = Math.max(10, Math.max(...safe) * 1.15);
-    const levelFor = (value: number) => SPARKLINE_HEIGHT - (value / ceiling) * SPARKLINE_HEIGHT;
+    const min = Math.min(...safe);
+    const max = Math.max(...safe);
+    const range = max - min;
+    // Margen vertical para que la curva no toque los bordes del gráfico.
+    const padding = 3;
+    const usable = SPARKLINE_HEIGHT - padding * 2;
+
+    const levelFor = (value: number) => {
+        if (range < 0.01) return SPARKLINE_HEIGHT / 2;
+        return padding + (1 - (value - min) / range) * usable;
+    };
 
     if (safe.length === 1) {
-        const level = levelFor(safe[0]).toFixed(2);
+        const level = (SPARKLINE_HEIGHT / 2).toFixed(2);
         return `0,${level} ${SPARKLINE_WIDTH},${level}`;
     }
 
@@ -47,10 +57,13 @@ interface BaseMeterProps {
     details: string;
     testId: string;
     iconTheme: string; // Nueva propiedad para recuperar los colores originales
+    // Color del trazo: el mismo que el del ícono, para que la curva y el medidor
+    // se lean como una sola pieza.
+    strokeTheme: string;
     samples?: number[];
 }
 
-function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, samples }: BaseMeterProps) {
+function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, samples }: BaseMeterProps) {
     const safePercent = Math.max(0, Math.min(100, percent));
     const theme = getThresholdClasses(safePercent);
     const displayedPercent = Number(safePercent.toFixed(2));
@@ -92,7 +105,7 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, sam
                         vectorEffect="non-scaling-stroke"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`transition-all duration-500 ${theme.stroke}`}
+                        className={`transition-all duration-500 ${strokeTheme}`}
                     />
                 </svg>
                 {/* Porcentaje numérico */}
@@ -113,6 +126,7 @@ export function CpuGauge({ percent, cores, samples }: { percent: number; cores: 
             details={`${cores} hilos lógicos`}
             testId="cpu-meter"
             iconTheme="bg-emerald-50 text-emerald-700" // Verde original
+            strokeTheme="stroke-emerald-700"
             samples={samples}
         />
     );
@@ -132,6 +146,7 @@ export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: n
             details={`${formatGb(usedGb)} / ${formatGb(totalGb)}`}
             testId="ram-meter"
             iconTheme="bg-blue-50 text-blue-600" // Azul original
+            strokeTheme="stroke-blue-600"
             samples={samples}
         />
     );
@@ -149,6 +164,7 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedG
             details={`${formatStorage(usedGb)} / ${formatStorage(totalGb)}`}
             testId="storage-meter"
             iconTheme="bg-purple-50 text-purple-600" // Morado original
+            strokeTheme="stroke-purple-600"
             samples={samples}
         />
     );

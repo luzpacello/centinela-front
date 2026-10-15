@@ -1,12 +1,26 @@
 import '@testing-library/jest-dom/vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 const authState = vi.hoisted(() => ({ isAdmin: true }));
 
+// Los componentes se suscriben al canal por tipo; el test guarda los callbacks
+// registrados para poder emitir el evento a mano.
+const eventChannel = vi.hoisted(() => ({
+    filters: [] as Array<{ tipo?: string; recursoId?: string | number }>,
+    callbacks: [] as Array<(event: Record<string, unknown>) => void>,
+}));
+
 vi.mock('@/context/EventsContext', () => ({
     useEventsContext: () => ({ estado: 'open', ultimoMensaje: null, error: null, motivoCierre: null }),
+    useEventSubscription: (
+        filter: { tipo?: string; recursoId?: string | number },
+        callback: (event: Record<string, unknown>) => void,
+    ) => {
+        eventChannel.filters.push(filter);
+        eventChannel.callbacks.push(callback);
+    },
 }));
 
 vi.mock('@/context/AuthContext', () => ({
@@ -90,6 +104,8 @@ function renderDashboard() {
 
 beforeEach(() => {
     authState.isAdmin = true;
+    eventChannel.filters.length = 0;
+    eventChannel.callbacks.length = 0;
     vi.mocked(getNodeStatus).mockReset();
     getMock.mockReset();
     getMock.mockImplementation((path: unknown) => {
@@ -100,6 +116,18 @@ beforeEach(() => {
         return Promise.reject(new Error(`GET inesperado: ${route}`));
     });
 });
+
+// Emite un evento del canal a TODOS los suscriptores registrados para ese tipo
+// (el canal real notifica a cada suscriptor, no solo al primero).
+async function emitEvent(tipo: string, detalles: Record<string, unknown> | null = null) {
+    const targets = eventChannel.callbacks.filter((_, index) => eventChannel.filters[index]?.tipo === tipo);
+    if (targets.length === 0) throw new Error(`Ningún componente se suscribió a ${tipo}`);
+    await act(async () => {
+        for (const callback of targets) {
+            callback({ id: `evento-${tipo}`, tipo, severidad: 'INFO', recursoId: '101', detalles });
+        }
+    });
+}
 
 describe('Dashboard node status', () => {
     it('muestra skeleton inicial y luego telemetría, uptime y aviso stale', async () => {
@@ -114,11 +142,12 @@ describe('Dashboard node status', () => {
         expect(await screen.findByText(/Datos desactualizados/)).toBeInTheDocument();
         expect(screen.getByText('37.5%')).toBeInTheDocument();
         expect(screen.getByText('33.01%')).toBeInTheDocument();
-        expect(screen.getByText('1d')).toBeInTheDocument();
+        expect(screen.queryByText('1d')).not.toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Instancias totales' })).toBeInTheDocument();
-        expect(screen.getByText('18')).toBeInTheDocument();
-        expect(screen.getByText('12')).toBeInTheDocument();
-        expect(screen.getByText('6')).toBeInTheDocument();
+        // Los números consolidados aparecen también en las tarjetas por tipo.
+        expect(screen.getAllByText('18').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('12').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('6').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Advertencia').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
         expect(screen.getByTestId('cpu-meter-sparkline')).toBeInTheDocument();
@@ -245,5 +274,129 @@ describe('Dashboard node status', () => {
 
         expect(await screen.findByText('Todo en orden')).toBeInTheDocument();
         expect(screen.getByText('No hay alertas ni incidencias.')).toBeInTheDocument();
+    });
+
+    it('el pie muestra Conexión, Última sincronización y Estado del sistema, sin bloques viejos', async () => {
+        // Nodo saludable: el estado va en verde al lado del título.
+        vi.mocked(getNodeStatus).mockResolvedValue({ ...status, storage: { ...status.storage, usagePercent: 69 } });
+
+        renderDashboard();
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+
+        expect(screen.getByRole('heading', { name: 'Conexión' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Última sincronización' })).toBeInTheDocument();
+        // El estado va al lado del título, en el mismo encabezado y con su color.
+        const encabezadoSistema = screen.getByRole('heading', { name: /Estado del sistema/ });
+        expect(encabezadoSistema).toHaveTextContent('Estado del sistema Saludable');
+        expect(encabezadoSistema.querySelector('span')).toHaveClass('text-emerald-700');
+        expect(screen.getByText('Conectado')).toBeInTheDocument();
+        expect(screen.getByText('Tiempo de ejecución: 1d')).toBeInTheDocument();
+
+        expect(screen.queryByRole('heading', { name: 'Canal de eventos' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Uptime del nodo' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Última telemetría' })).not.toBeInTheDocument();
+    });
+
+    it('revalida el estado del nodo ante TASK_FINISHED, sin skeletons', async () => {
+        vi.mocked(getNodeStatus)
+            .mockResolvedValueOnce(status)
+            .mockResolvedValueOnce({
+                ...status,
+                instancesSummary: {
+                    ...status.instancesSummary,
+                    vms: { running: 8, stopped: 1, paused: 1, total: 10 },
+                },
+            });
+
+        renderDashboard();
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+        expect(getNodeStatus).toHaveBeenCalledTimes(1);
+
+        await emitEvent('TASK_FINISHED', { tareaId: 't-1', estado: 'COMPLETED' });
+
+        expect(getNodeStatus).toHaveBeenCalledTimes(2);
+        expect(await screen.findByText('19')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Cargando telemetría')).not.toBeInTheDocument();
+    });
+
+    it('revalida el estado del nodo ante INSTANCE_STATE_CHANGED', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+
+        renderDashboard();
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+        expect(getNodeStatus).toHaveBeenCalledTimes(1);
+
+        await emitEvent('INSTANCE_STATE_CHANGED', { vmid: 101, estado: 'running' });
+
+        expect(getNodeStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it('recarga la Actividad reciente al recibir un evento del canal', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        renderDashboard();
+        expect(await screen.findByText('Instancia iniciada')).toBeInTheDocument();
+
+        const auditCalls = () => getMock.mock.calls.filter(([path]) => String(path).includes('admin/audit')).length;
+        const before = auditCalls();
+        expect(before).toBeGreaterThan(0);
+
+        await emitEvent('TASK_FINISHED', { tareaId: 't-1', estado: 'COMPLETED' });
+
+        expect(auditCalls()).toBe(before + 1);
+    });
+
+    it('revalida la Actividad reciente sin skeletons ni perder los datos en pantalla', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        let resolveAudit!: (value: unknown) => void;
+        let auditCall = 0;
+        getMock.mockImplementation((path: unknown) => {
+            const route = String(path);
+            if (route.includes('instances')) return Promise.resolve(inventory);
+            if (route.includes('templates')) return Promise.resolve(templates);
+            if (route.includes('admin/audit')) {
+                auditCall += 1;
+                if (auditCall === 1) return Promise.resolve(auditPage);
+                return new Promise((resolve) => { resolveAudit = resolve; });
+            }
+            return Promise.reject(new Error(`GET inesperado: ${route}`));
+        });
+
+        renderDashboard();
+        expect(await screen.findByText('Instancia iniciada')).toBeInTheDocument();
+
+        await emitEvent('TASK_FINISHED', { tareaId: 't-1', estado: 'COMPLETED' });
+
+        expect(screen.queryByLabelText('Cargando actividad reciente')).not.toBeInTheDocument();
+        expect(screen.getByText('Instancia iniciada')).toBeInTheDocument();
+
+        await act(async () => { resolveAudit(auditPage); });
+    });
+
+    it('desglosa el conteo por tipo de recurso (VM y LXC)', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+
+        renderDashboard();
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+
+        const vms = screen.getByTestId('summary-vms');
+        expect(vms).toHaveTextContent('Máquinas virtuales (QEMU)');
+        expect(within(vms).getByText('9')).toBeInTheDocument();
+        expect(within(vms).getByText('6')).toBeInTheDocument();
+        expect(within(vms).getByText('2')).toBeInTheDocument();
+        expect(within(vms).getByText('En ejecución')).toBeInTheDocument();
+        expect(within(vms).getByText('Detenidas')).toBeInTheDocument();
+
+        const lxc = screen.getByTestId('summary-lxc');
+        expect(lxc).toHaveTextContent('Contenedores (LXC)');
+        expect(within(lxc).getByText('9')).toBeInTheDocument();
+    });
+
+    it('muestra skeletons del conteo por tipo mientras carga', () => {
+        vi.mocked(getNodeStatus).mockReturnValue(new Promise(() => {}));
+
+        renderDashboard();
+
+        expect(screen.getByLabelText('Cargando conteo de máquinas virtuales')).toBeInTheDocument();
+        expect(screen.getByLabelText('Cargando conteo de contenedores')).toBeInTheDocument();
     });
 });
