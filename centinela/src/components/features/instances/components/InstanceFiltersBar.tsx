@@ -1,15 +1,8 @@
-import { CirclePlay, Container, Filter, Monitor, Search, Square } from 'lucide-react';
+import { CirclePlay, Container, Monitor, Search, Square } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropDownMenu';
 import type { InstanceStatusFilter, InstanceType } from '../types/instance';
 
 export type { InstanceStatusFilter };
@@ -90,32 +83,39 @@ export function InstanceSearchFilters({
                 />
             </div>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger aria-label="Filtrar por tipo de instancia">
-                    <Filter className="size-4!" aria-hidden="true" /> {typeFilter === 'all' ? 'Filtros' : `Filtros: ${typeFilter}`}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuRadioGroup
-                        value={typeFilter}
-                        onValueChange={(value) => {
-                            if (value === 'all' || value === 'VM' || value === 'LXC') {
-                                onTypeFilterChange(value);
-                            }
-                        }}
-                    >
-                        <DropdownMenuLabel>Seleccionar tipo de instancia:</DropdownMenuLabel>
-                        <DropdownMenuRadioItem value="VM">
-                            <Monitor aria-hidden="true" /> VM (Máquina virtual)
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="LXC">
-                            <Container aria-hidden="true" /> LXC (Contenedor)
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="all">
-                            Ver todas las instancias
-                        </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Selector visible y accesible directo en la barra */}
+            <div role="group" aria-label="Filtrar por tipo de recurso" className="inline-flex rounded-lg border border-slate-200 bg-slate-50/50 p-1">
+                <Button
+                    type="button"
+                    size="sm"
+                    variant={typeFilter === 'all' ? 'default' : 'ghost'}
+                    aria-pressed={typeFilter === 'all'}
+                    onClick={() => onTypeFilterChange('all')}
+                    className="h-8 px-3 text-xs font-medium"
+                >
+                    Todas
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant={typeFilter === 'VM' ? 'default' : 'ghost'}
+                    aria-pressed={typeFilter === 'VM'}
+                    onClick={() => onTypeFilterChange('VM')}
+                    className="h-8 gap-1.5 px-3 text-xs font-medium"
+                >
+                    <Monitor className="size-3.5" aria-hidden="true" /> VM
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant={typeFilter === 'LXC' ? 'default' : 'ghost'}
+                    aria-pressed={typeFilter === 'LXC'}
+                    onClick={() => onTypeFilterChange('LXC')}
+                    className="h-8 gap-1.5 px-3 text-xs font-medium"
+                >
+                    <Container className="size-3.5" aria-hidden="true" /> LXC
+                </Button>
+            </div>
         </div>
     );
 }
