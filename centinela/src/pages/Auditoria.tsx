@@ -276,7 +276,6 @@ export default function AuditoriaPage() {
                             onChange={(event) => setSearchTerm(event.target.value)}
                         />
                     </div>
-                    <Button type="button" variant="outline" onClick={handleExport}><Download className="size-4!" /> Exportar</Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger><Filter className="size-4!" /> Filtros</DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-1rem)]">
@@ -319,6 +318,7 @@ export default function AuditoriaPage() {
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    <Button type="button" onClick={handleExport}><Download className="size-4!" /> Exportar</Button>
                 </div>
             </div>
 

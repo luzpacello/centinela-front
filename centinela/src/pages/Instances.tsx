@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Container, Monitor, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,7 +11,6 @@ import InstanceAction from '@/components/features/instances/components/InstanceA
 import { InstanceTypeBadge, InstanceStatusBadge } from '@/components/features/instances/components/InstanceBadges';
 import { InstanceIpAddress } from '@/components/features/instances/components/InstanceIpAddress';
 import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/utils/formatInstanceTelemetry';
-import { toast } from '@/components/ui/toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     InstanceSearchFilters,
@@ -30,6 +30,7 @@ import InstanceTester from '@/components/features/instances/components/InstanceT
 const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
+    const navigate = useNavigate();
     const { user, isAdmin, canAccessInstance } = useAuth();
     const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = useMemo(
@@ -95,17 +96,7 @@ export default function Instances() {
                     {isAdmin() && (
                         <Button
                             type="button"
-                            onClick={() => {
-                                // TODO(Etapa 2 - RF-07): descomentar la navegación cuando esté integrado el aprovisionamiento.
-                                // navigate('/instances/new');
-                                // TODO(Etapa 2 - RF-07): eliminar este aviso al habilitar la navegación.
-                                toast.add({
-                                    title: 'Aprovisionamiento en desarrollo',
-                                    description: 'La creación de instancias estará disponible próximamente en la Etapa 2.',
-                                    type: 'error',
-                                    priority: 'high',
-                                });
-                            }}
+                            onClick={() => navigate('/instances/new')}
                         >
                             <Plus className={style.smallIcon} /> Crear instancia
                         </Button>
