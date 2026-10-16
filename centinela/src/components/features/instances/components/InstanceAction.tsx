@@ -188,7 +188,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
         ['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED'].includes(error.errorCode);
 
       if (isInstanceForbidden) {
-        setDeleteError(getErrorMessage(error, 'delete'));
+        setDeleteError(getErrorMessage(error));
         return;
       }
 
@@ -269,7 +269,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
               </Menu.Item>
               <PermissionGate requiredRole="ADMIN">
                 <Menu.Item
-                  render={<button type="button" arial-label="delete"/>}
+                  render={<button type="button" arial-label="delete" />}
                   onClick={() => {
                     setIsMenuOpen(false);
                     setDeleteVerification('');
