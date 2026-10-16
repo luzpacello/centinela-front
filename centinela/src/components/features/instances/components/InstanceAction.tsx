@@ -85,7 +85,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   //const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const canOperate = canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY';
+  const canOperate = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
 
   console.log('InstanceAction DEBUG', {
     name: instance.name,
@@ -112,7 +112,8 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
     if (!pendingAction) return;
-    if (!canOperateInstance(instance.id) || instance.nivelAcceso === 'READ_ONLY') {
+    // Asegura que el admin pueda disparar la acción sin restricciones de nivel de acceso
+    if (!isAdmin() && instance.nivelAcceso === 'READ_ONLY') {
       throw new ApiRequestError('No tenés permiso para operar esta instancia.');
     }
     if (isTransitioning) throw new ApiRequestError('La instancia ya tiene una tarea en curso.');
@@ -216,30 +217,10 @@ export default function InstanceAction({ instance, transition: transitionProp, i
           <Menu.Positioner align="end" sideOffset={4} className="z-50">
             <Menu.Popup aria-label={`Acciones para ${instance.name}`} finalFocus={pendingAction ? false : undefined}
               className="w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 text-left outline-none">
-              {/* 
-              {canOperate && <>
-                <Menu.Item render={<button type="button" />} nativeButton
-                  disabled={instance.status !== 'stopped'}
-                  onClick={() => { setIsMenuOpen(false); setPendingAction('start'); }}
-                  className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                  <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Encender</Badge>
-                </Menu.Item>
-                <Menu.Item render={<button type="button" />} nativeButton
-                  disabled={instance.status !== 'running'}
-                  onClick={() => { setIsMenuOpen(false); setPendingAction('stop'); }}
-                  className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                  <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
-                </Menu.Item>
-              </>}
-              <Menu.Item render={<button type="button" />} nativeButton
-                onClick={() => { setIsMenuOpen(false); setIsDetailsOpen(true); }}
-                className={`w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none ${canOperate ? 'border-t border-slate-100' : ''}`}>
-                <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Eye className="text-blue-600" /> Ver instancia</Badge>
-              </Menu.Item>*/}
               {canOperate && (
                 <>
                   {instance.status === 'stopped' && (
-                    <Menu.Item render={<button type="button" />} nativeButton
+                    <Menu.Item render={<button type="button" arial-label="start" />} nativeButton
                       onClick={() => {
                         setIsMenuOpen(false);
                         setPendingAction('start');
@@ -251,7 +232,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
 
                   {instance.status === 'running' && (
                     <>
-                      <Menu.Item render={<button type="button" />} nativeButton
+                      <Menu.Item render={<button type="button" arial-label="shutdown" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('shutdown');
@@ -260,7 +241,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                         <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
                       </Menu.Item>
 
-                      <Menu.Item render={<button type="button" />} nativeButton
+                      <Menu.Item render={<button type="button" arial-label="reboot" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('reboot');
@@ -269,7 +250,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                         <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><RotateCcw className="text-amber-600" /> Reiniciar</Badge>
                       </Menu.Item>
 
-                      <Menu.Item render={<button type="button" />} nativeButton
+                      <Menu.Item render={<button type="button" arial-label="stop" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('stop');
@@ -288,6 +269,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
               </Menu.Item>
               <PermissionGate requiredRole="ADMIN">
                 <Menu.Item
+                  render={<button type="button" arial-label="delete"/>}
                   onClick={() => {
                     setIsMenuOpen(false);
                     setDeleteVerification('');

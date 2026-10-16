@@ -26,7 +26,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
-
+import InstanceTester from '@/components/features/instances/components/InstanceTester';
 const INSTANCES_PER_PAGE = 10;
 
 export default function Instances() {
@@ -258,6 +258,7 @@ export default function Instances() {
                     </div>
                 </footer>
             </Card>
+            <InstanceTester />
         </section>
     );
 }

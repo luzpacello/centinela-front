@@ -1,69 +1,36 @@
+import React from 'react';
 import '@testing-library/jest-dom/vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { MemoryRouter } from 'react-router';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
-// Mocks idénticos a tu estructura de proyecto
-const events = vi.hoisted(() => ({
-  state: {
-    estado: 'open',
-    ultimoMensaje: null,
-    error: null,
-    motivoCierre: null,
-  } as {
-    estado: string;
-    ultimoMensaje: unknown;
-    error: unknown;
-    motivoCierre: unknown;
-  },
-}));
+import InstancesPage from '@/pages/Instances';
+import { Toaster } from '@/components/ui/toast';
 
-vi.mock('@/context/EventsContext', () => ({
-  useEventsContext: () => events.state,
-}));
+// ============================================================
+// Providers de la aplicación
+// Reemplaza la dependencia de app-providers.ts.
+// ============================================================
 
-vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({
-    user: null,
-    hasRole: () => true,
-    isAdmin: () => true,
-    isOperator: () => false,
-    canAccessInstance: () => true,
-    canOperateInstance: () => true,
-  }),
-}));
+type ContextModule = Record<string, unknown>;
 
-vi.mock('@/services/apiClient', () => ({
-  apiClient: { get: vi.fn(), request: vi.fn() },
-  ApiRequestError: class ApiRequestError extends Error {
-    status?: number;
-    constructor(message: string, status?: number) {
-      super(message);
-      this.status = status;
-    }
-  },
-}));
-
-import { apiClient } from '@/services/apiClient';
-import Instances from '@/pages/Instances';
-
-const getMock = apiClient.get as unknown as Mock;
-const requestMock = apiClient.request as unknown as Mock;
-
-const stoppedInstance = {
-  id: 102,
-  name: 'base-datos',
-  type: 'lxc',
-  node: 'pve',
-  status: 'stopped',
-  ip: null,
-  cpuUsage: null,
-  ramUsage: null,
-  maxRam: null,
-  nivelAcceso: 'FULL_ACCESS',
-  activeTask: null,
-};
+const contextModules = import.meta.glob<ContextModule>(
+  '@/context/**/*.{ts,tsx,js,jsx}',
+  { eager: true },
+);
 
 // Polyfill para que JSDOM reconozca los métodos del HTMLDialogElement
 beforeAll(() => {
@@ -75,56 +42,574 @@ beforeAll(() => {
   };
 });
 
-function renderInstances() {
-  return {
-    user: userEvent.setup(),
-    ...render(
-      <MemoryRouter>
-        <Instances />
-      </MemoryRouter>
-    ),
-  };
+const providers = Object.values(contextModules).flatMap((module) =>
+  Object.entries(module)
+    .filter(
+      ([name, value]) =>
+        /Provider$/.test(name) && typeof value === 'function',
+    )
+    .map(([name, value]) => ({
+      name,
+      Provider: value as React.ComponentType<{
+        children?: React.ReactNode;
+      }>,
+    })),
+);
+
+function withProtectedProviders(
+  children: React.ReactNode,
+): React.ReactElement {
+  return providers.reduceRight<React.ReactElement>(
+    (inner, { Provider }) =>
+      React.createElement(Provider, null, inner),
+    React.createElement(React.Fragment, null, children),
+  );
 }
 
+// ============================================================
+// Datos y tipos de prueba
+// ============================================================
+
+type Instance = {
+  id: number;
+  name: string;
+  type: 'vm' | 'lxc';
+  node: string;
+  status: string;
+  ip: string | null;
+  cpuUsage: number | null;
+  ramUsage: number | null;
+  maxRam: number | null;
+  nivelAcceso: string;
+  activeTask: null;
+};
+
+type Session = {
+  rol: 'ADMIN' | 'OPERATOR';
+  permisos?: {
+    vmid: number;
+    nivelAcceso: 'FULL_ACCESS' | 'READ_ONLY';
+  }[];
+};
+
+type Action = 'start' | 'shutdown' | 'stop' | 'reboot' | 'delete';
+type FetchMock = ReturnType<typeof vi.fn>;
+
+const inventory: Instance[] = [
+  {
+    id: 101,
+    name: 'servidor-web',
+    type: 'vm',
+    node: 'pve',
+    status: 'running',
+    ip: '192.168.1.50',
+    cpuUsage: 25,
+    ramUsage: 4294967296,
+    maxRam: 17179869184,
+    nivelAcceso: 'FULL_ACCESS',
+    activeTask: null,
+  },
+  {
+    id: 102,
+    name: 'base-datos',
+    type: 'lxc',
+    node: 'pve',
+    status: 'stopped',
+    ip: null,
+    cpuUsage: null,
+    ramUsage: null,
+    maxRam: null,
+    nivelAcceso: 'READ_ONLY',
+    activeTask: null,
+  },
+];
+
+const ACTIONS: Record<Action, RegExp> = {
+  start: /^(iniciar|encender|start)\b/i,
+  shutdown: /^(apagar|apagado ordenado|shutdown)\b(?!.*forz)/i,
+  stop: /^(detener|forzar|stop)\b|apagado forzado/i,
+  reboot: /^(reiniciar|reboot)\b/i,
+  delete: /^(eliminar|borrar|delete)\b/i,
+};
+
+// ============================================================
+// Renderizado
+// ============================================================
+
+function renderInstances({ rol, permisos = [] }: Session) {
+  window.sessionStorage.setItem(
+    'centinela_access',
+    'access-token-instancias',
+  );
+
+  window.localStorage.setItem(
+    'centinela_user',
+    JSON.stringify({
+      id: 'user-test',
+      organizacionId: 'org-1',
+      nombreCompleto: 'Usuario de prueba',
+      email: 'prueba@centinela.local',
+      rol,
+      instanciasPermitidas: permisos.map((p) => p.vmid),
+      permisos,
+      tiene2FA: true,
+    }),
+  );
+
+  return render(
+    withProtectedProviders(
+      <Toaster>
+        <MemoryRouter initialEntries={['/instances']}>
+          <InstancesPage />
+        </MemoryRouter>
+      </Toaster>,
+    ),
+  );
+}
+
+// ============================================================
+// Fetch simulado y registro de órdenes
+// ============================================================
+
+function stubFetch(
+  onCommand: (url: string, init: RequestInit) => Promise<Response>,
+): FetchMock {
+  const fetchMock = vi.fn().mockImplementation(
+    (url: string, init: RequestInit = {}) => {
+      const method = (init.method ?? 'GET').toUpperCase();
+
+      if (
+        method === 'GET' &&
+        /\/instances(\?|$)/.test(String(url))
+      ) {
+        return Promise.resolve(
+          new Response(JSON.stringify(inventory), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }),
+        );
+      }
+
+      if (method === 'GET') {
+        return Promise.resolve(
+          new Response('{}', {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }),
+        );
+      }
+
+      return onCommand(String(url), init);
+    },
+  );
+
+  vi.stubGlobal('fetch', fetchMock);
+
+  return fetchMock;
+}
+
+function commands(fetchMock: FetchMock) {
+  return (
+    fetchMock.mock.calls as [string, RequestInit?][]
+  ).filter(([url, init]) => {
+    const method = (init?.method ?? 'GET').toUpperCase();
+
+    return (
+      /\/instances\//.test(String(url)) &&
+      ['POST', 'DELETE', 'PUT', 'PATCH'].includes(method)
+    );
+  });
+}
+
+// ============================================================
+// Helpers de tabla, acciones y modales
+// ============================================================
+
+async function rowOf(name: string): Promise<HTMLElement> {
+  const cell = await screen.findByText(
+    name,
+    {},
+    { timeout: 3000 },
+  );
+
+  const row = cell.closest('tr, [role="row"]');
+
+  expect(
+    row,
+    `"${name}" no está dentro de una fila de tabla`,
+  ).not.toBeNull();
+
+  return row as HTMLElement;
+}
+
+function named(element: HTMLElement, pattern: RegExp): boolean {
+  const name = (
+    element.getAttribute('aria-label') ??
+    element.textContent ??
+    ''
+  ).trim();
+
+  return pattern.test(name);
+}
+
+async function actionsOf(row: HTMLElement): Promise<HTMLElement[]> {
+  const user = userEvent.setup();
+  const direct = within(row).queryAllByRole('button');
+
+  const menuTrigger = direct.find(
+    (button) =>
+      button.getAttribute('aria-haspopup') ||
+      named(button, /^(acciones|más|opciones)\b/i),
+  );
+
+  if (!menuTrigger) {
+    return direct;
+  }
+
+  await user.click(menuTrigger);
+
+  const items = await waitFor(() => {
+    const found = screen.queryAllByRole('menuitem');
+
+    expect(found.length).toBeGreaterThan(0);
+
+    return found;
+  });
+
+  return [...direct, ...items];
+}
+
+async function findAction(
+  row: HTMLElement,
+  action: Action,
+): Promise<HTMLElement | undefined> {
+  const elements = await actionsOf(row);
+
+  return elements.find((element) =>
+    named(element, ACTIONS[action]),
+  );
+}
+
+async function requireAction(
+  row: HTMLElement,
+  action: Action,
+): Promise<HTMLElement> {
+  const element = await findAction(row, action);
+
+  expect(
+    element,
+    `La fila no ofrece la acción "${action}"`,
+  ).toBeDefined();
+
+  return element!;
+}
+
+const queryDialog = () =>
+  screen.queryByRole('dialog') ??
+  screen.queryByRole('alertdialog');
+
+async function findDialog(): Promise<HTMLElement> {
+  return waitFor(
+    () => {
+      const dialog = queryDialog();
+
+      expect(
+        dialog,
+        'No se abrió ningún modal de confirmación',
+      ).not.toBeNull();
+
+      return dialog as HTMLElement;
+    },
+    { timeout: 3000 },
+  );
+}
+
+// ============================================================
+// Configuración de los tests
+// ============================================================
+
+let fetchMock: FetchMock;
+
 beforeEach(() => {
-  events.state.estado = 'open';
-  events.state.ultimoMensaje = null;
-  events.state.error = null;
-  events.state.motivoCierre = null;
-  getMock.mockReset();
-  requestMock.mockReset();
+  fetchMock = stubFetch(() =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          upid: 'UPID:pve:1:start:101:',
+          tareaId: 't-1',
+        }),
+        {
+          status: 202,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    ),
+  );
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  window.sessionStorage.clear();
+  window.localStorage.clear();
 });
 
-describe('Modales de confirmación antierror para acciones operativas', () => {
-  it('Start pide confirmación y cancelar no envía ninguna petición', async () => {
-    getMock.mockResolvedValue([stoppedInstance]);
+// Abre el modal y verifica que aún no se envió ninguna orden.
+async function openAndCancel(
+  name: string,
+  action: Action,
+) {
+  const user = userEvent.setup();
+  const row = await rowOf(name);
 
-    const { user } = renderInstances();
+  await user.click(await requireAction(row, action));
 
-    // 1. Abrir el menú de acciones de la instancia
-    const menuButton = await screen.findByRole('button', { name: /acciones para base-datos/i });
-    await user.click(menuButton);
+  const dialog = await findDialog();
 
-    // 2. Hacer clic en la opción "Encender" (Start)
-    const startOption = await screen.findByText(/encender/i);
-    await user.click(startOption);
+  expect(
+    commands(fetchMock),
+    `"${action}" envió la orden antes de confirmar el modal`,
+  ).toHaveLength(0);
 
-    // 3. Verificar que se despliega el modal de confirmación con su botón correspondiente
-    const confirmButton = await screen.findByRole('button', { name: /confirmar|iniciar|encender|aceptar/i });
-    expect(confirmButton).toBeInTheDocument();
+  return { user, dialog };
+}
 
-    // 4. Presionar "Cancelar" en el modal
-    const cancelButton = screen.getByRole('button', { name: /cancelar/i });
-    await user.click(cancelButton);
+async function cancel(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+) {
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: /cancelar|volver|cerrar/i,
+    }),
+  );
 
-    // 5. Comprobar que el modal se cierra y que NUNCA se invocó a apiClient.request
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /confirmar|iniciar|encender|aceptar/i })).not.toBeInTheDocument();
-    });
-    expect(requestMock).not.toHaveBeenCalled();
+  await waitFor(() => {
+    expect(queryDialog()).toBeNull();
   });
-});
+
+  expect(
+    commands(fetchMock),
+    'Cancelar el modal envió una petición',
+  ).toHaveLength(0);
+}
+
+// ============================================================
+// FRN-15: modales de confirmación antierror
+// ============================================================
+
+describe(
+  'FRN-15 - Modales de confirmación antierror para acciones operativas',
+  () => {
+    it(
+      'Start pide confirmación y cancelar no envía ninguna petición',
+      async () => {
+        renderInstances({ rol: 'ADMIN' });
+
+        const { user, dialog } = await openAndCancel(
+          'base-datos',
+          'start',
+        );
+
+        expect(
+          within(dialog).getByRole('button', {
+            name: /confirmar|iniciar|encender|aceptar/i,
+          }),
+        ).toBeInTheDocument();
+
+        await cancel(user, dialog);
+      },
+      10000,
+    );
+
+    it.each(['shutdown', 'reboot'] as const)(
+      '%s advierte sobre el apagado o reinicio del sistema operativo huésped',
+      async (action) => {
+        renderInstances({ rol: 'ADMIN' });
+
+        const { user, dialog } = await openAndCancel(
+          'servidor-web',
+          action,
+        );
+
+        expect(dialog.textContent).toMatch(
+          /sistema operativo|hu[eé]sped|guest/i,
+        );
+
+        await cancel(user, dialog);
+      },
+    );
+
+    it(
+      'Stop advierte en rojo sobre la posible pérdida de datos y cancelar no envía nada',
+      async () => {
+        renderInstances({ rol: 'ADMIN' });
+
+        const { user, dialog } = await openAndCancel(
+          'servidor-web',
+          'stop',
+        );
+
+        expect(dialog.textContent).toMatch(
+          /p[eé]rdida de datos|perder (los )?datos|datos no guardados/i,
+        );
+
+        const red = [
+          dialog,
+          ...Array.from(
+            dialog.querySelectorAll<HTMLElement>('*'),
+          ),
+        ].some((element) => {
+          const className = element.getAttribute('class') ?? '';
+          const style = element.getAttribute('style') ?? '';
+
+          return (
+            /(^|\s|:)(text|bg|border)-(red|rose)-\d|destructive|danger/i.test(
+              className,
+            ) ||
+            /color:\s*(red|#(?:dc2626|ef4444|b91c1c|f87171)|rgb\((?:220,\s*38,\s*38|239,\s*68,\s*68)\))/i.test(
+              style,
+            )
+          );
+        });
+
+        expect(
+          red,
+          'La advertencia de Stop no tiene un estilo rojo',
+        ).toBe(true);
+
+        await cancel(user, dialog);
+      },
+    );
+
+    it(
+      'Delete requiere escribir el ID o el nombre; cancelar no envía peticiones',
+      async () => {
+        renderInstances({ rol: 'ADMIN' });
+
+        const { user, dialog } = await openAndCancel(
+          'base-datos',
+          'delete',
+        );
+
+        const input = within(dialog).getByRole('textbox');
+
+        const confirm = within(dialog).getByRole('button', {
+          name: /eliminar|borrar|confirmar/i,
+        });
+
+        expect(
+          confirm,
+          'El botón de confirmar Delete debe comenzar deshabilitado',
+        ).toBeDisabled();
+
+        await user.type(input, 'otra-cosa');
+
+        expect(
+          confirm,
+          'Un texto incorrecto habilitó el borrado',
+        ).toBeDisabled();
+
+        await user.clear(input);
+        await user.type(input, 'base-datos');
+
+        if ((confirm as HTMLButtonElement).disabled) {
+          await user.clear(input);
+          await user.type(input, '102');
+        }
+
+        expect(
+          confirm,
+          'Ni el nombre ni el ID habilitaron el borrado',
+        ).toBeEnabled();
+
+        expect(
+          commands(fetchMock),
+          'Escribir la confirmación envió una orden sin pulsar el botón',
+        ).toHaveLength(0);
+
+        await cancel(user, dialog);
+      },
+    );
+
+    it(
+      'OPERATOR ve acciones de energía solo con FULL_ACCESS y nunca ve Delete',
+      async () => {
+        renderInstances({
+          rol: 'OPERATOR',
+          permisos: [
+            {
+              vmid: 101,
+              nivelAcceso: 'FULL_ACCESS',
+            },
+            {
+              vmid: 102,
+              nivelAcceso: 'READ_ONLY',
+            },
+          ],
+        });
+
+        const energy = [
+          ACTIONS.start,
+          ACTIONS.shutdown,
+          ACTIONS.stop,
+          ACTIONS.reboot,
+        ];
+
+        const isEnergy = (element: HTMLElement) =>
+          energy.some((pattern) =>
+            pattern.test(
+              (
+                element.getAttribute('aria-label') ??
+                element.textContent ??
+                ''
+              ).trim(),
+            ),
+          );
+
+        const full = await actionsOf(
+          await rowOf('servidor-web'),
+        );
+
+        expect(
+          full.filter(isEnergy).length,
+          'FULL_ACCESS debe permitir acciones de energía',
+        ).toBeGreaterThan(0);
+
+        expect(
+          full
+            .filter(isEnergy)
+            .every(
+              (element) =>
+                !(element as HTMLButtonElement).disabled,
+            ),
+          'Las acciones con FULL_ACCESS no deben estar deshabilitadas',
+        ).toBe(true);
+
+        const readOnly = await actionsOf(
+          await rowOf('base-datos'),
+        );
+
+        expect(
+          readOnly.filter(isEnergy),
+          'READ_ONLY no debe mostrar acciones de energía',
+        ).toHaveLength(0);
+
+        for (const name of [
+          'servidor-web',
+          'base-datos',
+        ]) {
+          expect(
+            await findAction(await rowOf(name), 'delete'),
+            `El OPERATOR ve Delete en ${name}`,
+          ).toBeUndefined();
+        }
+      },
+    );
+  },
+);
