@@ -176,8 +176,8 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        await user.click(screen.getByRole('button', { name: 'Filtrar por tipo de instancia' }));
-        await user.click(await screen.findByRole('menuitemradio', { name: /VM/ }));
+        // Clic directo al botón visible de VM
+        await user.click(screen.getByRole('button', { name: /^vm\b/i }));
 
         expect(screen.getByText('vm-produccion')).toBeInTheDocument();
         expect(screen.getByText('vm-pausada')).toBeInTheDocument();
@@ -190,8 +190,8 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        await user.click(screen.getByRole('button', { name: 'Filtrar por tipo de instancia' }));
-        await user.click(await screen.findByRole('menuitemradio', { name: /LXC/ }));
+        // Clic directo al botón visible de LXC
+        await user.click(screen.getByRole('button', { name: /^lxc\b/i }));
 
         expect(screen.getByText('base-datos')).toBeInTheDocument();
         expect(screen.queryByText('vm-produccion')).not.toBeInTheDocument();

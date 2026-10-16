@@ -64,9 +64,20 @@ describe('InstanceFiltersBar', () => {
 
     renderBar({ typeFilter: 'VM', onTypeFilterChange });
 
-    await user.click(screen.getByRole('button', { name: 'Filtrar por tipo de instancia' }));
-    await user.click(await screen.findByRole('menuitemradio', { name: /Ver todas las instancias/ }));
+    // Clic directo al botón visible "Todas"
+    await user.click(screen.getByRole('button', { name: /^todas\b/i }));
 
     expect(onTypeFilterChange).toHaveBeenCalledWith('all');
+  });
+
+  it('permite filtrar por máquinas virtuales (VM) directamente', async () => {
+    const user = userEvent.setup();
+    const onTypeFilterChange = vi.fn();
+
+    renderBar({ onTypeFilterChange });
+
+    await user.click(screen.getByRole('button', { name: /^vm\b/i }));
+
+    expect(onTypeFilterChange).toHaveBeenCalledWith('VM');
   });
 });
