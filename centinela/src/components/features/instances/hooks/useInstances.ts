@@ -38,7 +38,7 @@ function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsM
     if (motivo === 'PROXMOX_ERROR') {
       const detailsText = error || exitstatus || 'Error desconocido';
       descriptionMessage = `Proxmox no pudo completar la acción ${detailsText}`;
-    } else if (motivo == 'TIMEOUT') {
+    } else if (motivo === 'TIMEOUT') {
       descriptionMessage = 'La acción no terminó en 3 minutos; revisá el estado de la instancia';
     } else if (error) {
       descriptionMessage = error;
@@ -59,7 +59,7 @@ function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsM
   });
 }
 
-function getTargetStatus(action: InstancePowerAction): InventoryInstance['status']{
+function getTargetStatus(action: InstancePowerAction): InventoryInstance['status'] {
   switch (action) {
     case 'start':
     case 'reboot':
@@ -114,6 +114,15 @@ export function useInstances() {
   useEffect(() => {
     pendingPowerActionsRef.current = pendingPowerActions;
   }, [pendingPowerActions]);
+
+  const clearPendingPowerAction = useCallback((vmid: number) => {
+    setPendingPowerActions((previous) => {
+      if (!previous[vmid]) return previous;
+      const next = { ...previous };
+      delete next[vmid];
+      return next;
+    });
+  }, []);
 
   // Procesa un inventario recién leído de forma uniforme para las tres rutas de
   // consulta (inicial/manual/poll, silenciosa y de eventos): actualiza la tabla,
@@ -181,6 +190,7 @@ export function useInstances() {
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
       });
+
     return () => {
       controller.abort();
       clearTimeout(pollTimer);
@@ -290,6 +300,7 @@ export function useInstances() {
     revalidateInventory,
     pendingPowerActions,
     markPowerActionAccepted,
+    clearPendingPowerAction,
     transitioningTasks,
   };
 }

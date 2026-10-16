@@ -12,7 +12,7 @@ import { getErrorMessage } from '@/utils/errorMapper';
 import { requestInstancePowerAction, deleteInstance } from '../services/instanceService';
 import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../types/instance';
 import { Modal, ModalDescription, ModalFooter, ModalHeader, ModalIcon, ModalTitle } from '@/components/ui/modals';
-import { Button } from '@/components/ui/button'; 
+import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 
 interface InstanceActionProps {
@@ -44,36 +44,36 @@ function describeTransitionAction(action: string): string {
 }
 
 const POWER_ACTION_CONFIG: Record<InstancePowerAction, {
-    title: string;
-    description: string;
-    confirmLabel: string;
-    variant: 'confirmation' | 'destructive';
-  }> = {
-    start: {
-      title: 'Encender instancia',
-      description: '¿Deseás encender esta instancia?',
-      confirmLabel: 'Encender',
-      variant: 'confirmation',
-    },
-    shutdown: {
-      title: 'Apagar instancia',
-      description: 'Se enviará una señal ACPI al sistema operativo invitado para solicitar un apagado seguro.',
-      confirmLabel: 'Apagar',
-      variant: 'confirmation',
-    },
-    reboot: {
-      title: 'Reiniciar instancia',
-      description: 'Se enviará una señal ACPI al sistema operativo invitado para solicitar un reinicio.',
-      confirmLabel: 'Reiniciar',
-      variant: 'confirmation',
-    },
-    stop: {
-      title: 'Forzar apagado',
-      description: 'Advertencia: Forzar el apagado equivale a desconectar la alimentación y puede perder los datos.',
-      confirmLabel: 'Forzar apagado',
-      variant: 'destructive',
-    },
-  };
+  title: string;
+  description: string;
+  confirmLabel: string;
+  variant: 'confirmation' | 'destructive';
+}> = {
+  start: {
+    title: 'Encender instancia',
+    description: '¿Deseás encender esta instancia?',
+    confirmLabel: 'Encender',
+    variant: 'confirmation',
+  },
+  shutdown: {
+    title: 'Apagar instancia',
+    description: 'Se enviará una señal ACPI al sistema operativo invitado para solicitar un apagado seguro.',
+    confirmLabel: 'Apagar',
+    variant: 'confirmation',
+  },
+  reboot: {
+    title: 'Reiniciar instancia',
+    description: 'Se enviará una señal ACPI al sistema operativo invitado para solicitar un reinicio.',
+    confirmLabel: 'Reiniciar',
+    variant: 'confirmation',
+  },
+  stop: {
+    title: 'Forzar apagado',
+    description: 'Advertencia: Forzar el apagado equivale a desconectar la alimentación y puede perder los datos.',
+    confirmLabel: 'Forzar apagado',
+    variant: 'destructive',
+  },
+};
 
 export default function InstanceAction({ instance, transition: transitionProp, isPowerActionPending, onActionAccepted, onDeleteAccepted }: InstanceActionProps) {
   const { canOperateInstance, isAdmin } = useAuth();
@@ -112,30 +112,30 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
     if (!pendingAction) return;
-    if (!canOperateInstance(instance.id)  || instance.nivelAcceso === 'READ_ONLY') {
+    if (!canOperateInstance(instance.id) || instance.nivelAcceso === 'READ_ONLY') {
       throw new ApiRequestError('No tenés permiso para operar esta instancia.');
     }
     if (isTransitioning) throw new ApiRequestError('La instancia ya tiene una tarea en curso.');
-    
+
     const requiresRunningState =
       pendingAction === 'shutdown' ||
       pendingAction === 'reboot' ||
       pendingAction === 'stop';
 
-    if (pendingAction === 'start' && instance.status !== 'stopped'){
+    if (pendingAction === 'start' && instance.status !== 'stopped') {
       throw new ApiRequestError('La instancia no está detenida. Revisá la acción antes de continuar.');
     }
     if (requiresRunningState && instance.status !== 'running') {
       throw new ApiRequestError('La instancia no está en ejecución. Revisá la acción antes de continuar.');
     }
 
-      await requestInstancePowerAction(instance.id, pendingAction);
-      onActionAccepted(pendingAction);
-      toast.add({
-        title: 'Orden enviada',
-        description: `${POWER_ACTION_CONFIG[pendingAction].confirmLabel} solicitado para ${instance.name}.`,
-        type: 'success',
-      });   
+    await requestInstancePowerAction(instance.id, pendingAction);
+    onActionAccepted(pendingAction);
+    toast.add({
+      title: 'Orden enviada',
+      description: `${POWER_ACTION_CONFIG[pendingAction].confirmLabel} solicitado para ${instance.name}.`,
+      type: 'success',
+    });
   }
 
   // Fila en transición: se reemplaza la celda de acciones por el botón en
@@ -151,18 +151,15 @@ export default function InstanceAction({ instance, transition: transitionProp, i
     );
   }
 
+  // Reemplazar la función confirmDelete dentro de InstanceAction:
   async function confirmDelete() {
     if (!canConfirmDelete) {
-      setDeleteError(
-        'Ingresá exactamente el nombre de la instancia o su ID.',
-      );
+      setDeleteError('Ingresá exactamente el nombre de la instancia o su ID.');
       return;
     }
 
     if (!isAdmin()) {
-      setDeleteError(
-        'No tenés permisos para eliminar esta instancia.',
-      );
+      setDeleteError('No tenés permisos para eliminar esta instancia.');
       return;
     }
 
@@ -182,10 +179,19 @@ export default function InstanceAction({ instance, transition: transitionProp, i
       setDeleteVerification('');
       onDeleteAccepted();
     } catch (error) {
-      if (
+      // Si es un 403 de instancia (protegida o acceso denegado), mapear y mostrar en el modal
+      const isInstanceForbidden =
         error instanceof ApiRequestError &&
-        [401, 403].includes(error.status)
-      ) {
+        error.status === 403 &&
+        error.errorCode &&
+        ['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED'].includes(error.errorCode);
+
+      if (isInstanceForbidden) {
+        setDeleteError(getErrorMessage(error, 'delete'));
+        return;
+      }
+
+      if (error instanceof ApiRequestError && [401, 403].includes(error.status)) {
         throw error;
       }
 
@@ -210,7 +216,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
           <Menu.Positioner align="end" sideOffset={4} className="z-50">
             <Menu.Popup aria-label={`Acciones para ${instance.name}`} finalFocus={pendingAction ? false : undefined}
               className="w-52 bg-white rounded-lg shadow-lg border border-slate-200 py-1 text-left outline-none">
-                {/* 
+              {/* 
               {canOperate && <>
                 <Menu.Item render={<button type="button" />} nativeButton
                   disabled={instance.status !== 'stopped'}
@@ -239,7 +245,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                         setPendingAction('start');
                       }}
                       className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Encender</Badge>
+                      <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Encender</Badge>
                     </Menu.Item>
                   )}
 
@@ -251,7 +257,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                           setPendingAction('shutdown');
                         }}
                         className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                          <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
+                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
                       </Menu.Item>
 
                       <Menu.Item render={<button type="button" />} nativeButton
@@ -260,7 +266,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                           setPendingAction('reboot');
                         }}
                         className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                          <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><RotateCcw className="text-amber-600" /> Reiniciar</Badge>
+                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><RotateCcw className="text-amber-600" /> Reiniciar</Badge>
                       </Menu.Item>
 
                       <Menu.Item render={<button type="button" />} nativeButton
@@ -269,7 +275,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                           setPendingAction('stop');
                         }}
                         className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                          <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Forzar apagado</Badge>
+                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Forzar apagado</Badge>
                       </Menu.Item>
                     </>
                   )}
@@ -289,7 +295,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                     setIsDeleteOpen(true);
                   }}
                   className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                    <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Trash className="text-amber-600" /> Eliminar</Badge>
+                  <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Trash className="text-amber-600" /> Eliminar</Badge>
                 </Menu.Item>
               </PermissionGate>
             </Menu.Popup>
@@ -337,18 +343,18 @@ export default function InstanceAction({ instance, transition: transitionProp, i
             </ModalHeader>
             <div className='space-y-2 px-6'>
               <label htmlFor={`delete-verificarion-${instance.id}`}
-              className='text-sm font-medium'>
+                className='text-sm font-medium'>
                 Escribí exactamente el nombre de la instancia o su ID para confirmar.
               </label>
               <input id={`delete-verificarion-${instance.id}`}
-              value={deleteVerification}
-              onChange={(event) => {
-                setDeleteVerification(event.target.value);
-                setDeleteError(null);
-              }}
-              disabled={isDeleting}
-              className='w-full rounded-md border px-3 py-2 text-sm'
-              autoComplete='off'
+                value={deleteVerification}
+                onChange={(event) => {
+                  setDeleteVerification(event.target.value);
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className='w-full rounded-md border px-3 py-2 text-sm'
+                autoComplete='off'
               />
               {deleteError && (
                 <FieldError role='alert'>{deleteError}</FieldError>
