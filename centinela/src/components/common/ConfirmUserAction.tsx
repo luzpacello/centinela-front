@@ -14,9 +14,10 @@ interface ConfirmUserActionProps {
   onCompleted: () => void;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
+  mapErrorMessage?: (error: unknown) => string;
 }
 
-export function ConfirmUserAction({ title, description, variant = 'confirmation', confirmLabel = 'Aceptar', onCompleted, onConfirm, onCancel }: ConfirmUserActionProps) {
+export function ConfirmUserAction({ title, description, variant = 'confirmation', confirmLabel = 'Aceptar', onCompleted, onConfirm, onCancel, mapErrorMessage = getErrorMessage }: ConfirmUserActionProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const submissionInProgress = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +42,7 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
     } catch (error) {
       // Las respuestas 401/403 ya se notifican globalmente.
       if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
-        setErrorMessage(getErrorMessage(error));
+        setErrorMessage(mapErrorMessage(error));
       }
     } finally {
       submissionInProgress.current = false;
