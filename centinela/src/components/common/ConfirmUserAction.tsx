@@ -69,16 +69,18 @@ export function ConfirmUserAction({
     }
   }
 
+  function cancelAction() {
+    if (submissionInProgress.current) return;
+
+    dialogRef.current?.close();
+    onCancel();
+  }
   const isDestructive = variant === 'destructive';
 
   return (
     <dialog ref={dialogRef} role="dialog" aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId}
       className="m-auto w-full max-w-[520px] border-0 bg-transparent p-0 outline-none backdrop:bg-black/40"
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!submissionInProgress.current) onCancel();
-      }}
-    >
+      onCancel={(event) => { event.preventDefault(); cancelAction(); }}>
       <Modal variant={variant} aria-busy={isSubmitting}>
         <ModalHeader>
           <ModalIcon aria-hidden="true">
@@ -89,17 +91,8 @@ export function ConfirmUserAction({
         </ModalHeader>
         {errorMessage && <FieldError role="alert">{errorMessage}</FieldError>}
         <ModalFooter className="py-[30px]">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant={variant === 'destructive' ? 'destructive' : 'default'}
-            disabled={isSubmitting}
-            onClick={() => void confirmAction()}
-          >
-            {isSubmitting ? 'Procesando…' : confirmLabel ?? 'Aceptar'}
-          </Button>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={cancelAction}>Cancelar</Button>
+          <Button type="button" variant={variant === 'destructive' ? 'destructive' : 'default'} disabled={isSubmitting} onClick={() => void confirmAction()}>{isSubmitting ? 'Procesando…' : confirmLabel ?? 'aceptar'}</Button>
         </ModalFooter>
       </Modal>
     </dialog>
