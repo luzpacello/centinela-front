@@ -14,7 +14,7 @@ import { formatCpuUsage, formatRamUsage } from '@/components/features/instances/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     InstanceSearchFilters,
-    InstanceStatusTabs,
+    InstanceTypeTabs,
     type InstanceStatusFilter,
 } from '@/components/features/instances/components/InstanceFiltersBar';
 import type { InstanceType } from '@/components/features/instances/types/instance';
@@ -37,8 +37,8 @@ export default function Instances() {
         () => instances.filter((instance) => canAccessInstance(instance.id)),
         [instances, canAccessInstance],
     );
-    const runningInstanceCount = visibleInstances.filter((instance) => instance.status === 'running').length;
-    const stoppedInstanceCount = visibleInstances.filter((instance) => instance.status === 'stopped' || instance.status === 'paused').length;
+    const vmInstanceCount = visibleInstances.filter((instance) => instance.type === 'VM').length;
+    const lxcInstanceCount = visibleInstances.filter((instance) => instance.type === 'LXC').length;
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<InstanceStatusFilter>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | InstanceType>('all');
@@ -86,9 +86,9 @@ export default function Instances() {
                             setSearch(value);
                             setCurrentPage(1);
                         }}
-                        typeFilter={typeFilter}
-                        onTypeFilterChange={(value) => {
-                            setTypeFilter(value);
+                        statusFilter={statusFilter}
+                        onStatusFilterChange={(value) => {
+                            setStatusFilter(value);
                             setCurrentPage(1);
                         }}
                     />
@@ -104,15 +104,15 @@ export default function Instances() {
                 </div>
             </header>
 
-            <InstanceStatusTabs
-                statusFilter={statusFilter}
-                onStatusFilterChange={(value) => {
-                    setStatusFilter(value);
+            <InstanceTypeTabs
+                typeFilter={typeFilter}
+                onTypeFilterChange={(value) => {
+                    setTypeFilter(value);
                     setCurrentPage(1);
                 }}
                 totalCount={visibleInstances.length}
-                runningCount={runningInstanceCount}
-                stoppedCount={stoppedInstanceCount}
+                vmCount={vmInstanceCount}
+                lxcCount={lxcInstanceCount}
             />
 
             <Card className={style.inventoryCard}>
