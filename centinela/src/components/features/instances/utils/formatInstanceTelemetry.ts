@@ -1,6 +1,6 @@
 export function formatCpuUsage(usage?: number | null): string {
-  if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) return '-';
-  return new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 1 }).format(usage);
+  if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) return '—';
+  return new Intl.NumberFormat('es-AR', { style: 'percent', maximumFractionDigits: 1 }).format(usage / 100);
 }
 
 export function formatMemoryBytes(bytes: number): string {
@@ -8,7 +8,7 @@ export function formatMemoryBytes(bytes: number): string {
 }
 
 export function formatRamUsage(usage?: number | null, maximum?: number | null): string {
-  if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) return '-';
+  if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) return '—';
   const formattedUsage = formatMemoryBytes(usage);
   return typeof maximum === 'number' && Number.isFinite(maximum) && maximum > 0
     ? `${formattedUsage} / ${formatMemoryBytes(maximum)}`
