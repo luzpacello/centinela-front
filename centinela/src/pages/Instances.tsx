@@ -150,8 +150,8 @@ export default function Instances() {
                             </TableCell></TableRow>
                         ) : paginatedInstances.map((instance) => {
                             const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
-                            const cpuUsage = instance.status === 'stopped' ? '-' : formatCpuUsage(instance.cpuUsage);
-                            const ramUsage = instance.status === 'stopped' ? '-' : formatRamUsage(instance.ramUsage, instance.maxRam);
+                            const cpuUsage = formatCpuUsage(instance.cpuUsage);
+                            const ramUsage = formatRamUsage(instance.ramUsage, instance.maxRam);
                             const transition = transitioningTasks[instance.id] ?? null;
                             const isPending = Boolean(pendingPowerActions[instance.id]);
                             return (
@@ -174,8 +174,8 @@ export default function Instances() {
                                     <TableCell className="p-4"><InstanceTypeBadge type={instance.type} /></TableCell>
                                     <TableCell className="p-4"><InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} pendingAction={pendingPowerActions[instance.id]?.action} /></TableCell>
                                     <TableCell className="p-4 text-secundario">{instance.node}</TableCell>
-                                    <TableCell className={`p-4 table-text-secondary ${cpuUsage === '-' ? 'text-center' : ''}`}>{cpuUsage}</TableCell>
-                                    <TableCell className={`p-4 table-text-secondary ${ramUsage === '-' ? 'text-center' : ''}`}>{ramUsage}</TableCell>
+                                    <TableCell className={`p-4 table-text-secondary ${cpuUsage === '—' ? 'text-center' : ''}`}>{cpuUsage}</TableCell>
+                                    <TableCell className={`p-4 table-text-secondary ${ramUsage === '—' ? 'text-center' : ''}`}>{ramUsage}</TableCell>
                                     <TableCell className="p-4 table-text-secondary"><InstanceIpAddress ip={instance.ip} instanceName={instance.name} /></TableCell>
                                     <TableCell className="relative p-4 text-right">
                                         <div role="group" aria-label="Acciones">
