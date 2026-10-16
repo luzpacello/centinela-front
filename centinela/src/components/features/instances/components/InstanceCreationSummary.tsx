@@ -42,7 +42,7 @@ export default function InstanceCreationSummary({ draft }: InstanceCreationSumma
 
             <SummarySection title="Recursos">
                 <SummaryRow icon={Cpu} label="CPU" value={draft.cores == null ? undefined : `${draft.cores} vCPU`} />
-                <SummaryRow icon={MemoryStick} label="Memoria" value={draft.ramMb == null ? undefined : `${draft.ramMb} MB`} />
+                <SummaryRow icon={MemoryStick} label="Memoria" value={formatMemory(draft.ramMb)} />
                 <SummaryRow icon={HardDrive} label="Disco" value={draft.discoGb == null ? undefined : `${draft.discoGb} GB`} />
             </SummarySection>
 
@@ -62,6 +62,11 @@ export default function InstanceCreationSummary({ draft }: InstanceCreationSumma
             </div>
         </Card>
     );
+}
+
+function formatMemory(memoryMb: number | null): string | undefined {
+    if (memoryMb == null) return undefined;
+    return memoryMb >= 1024 ? `${memoryMb / 1024} GB` : `${memoryMb} MB`;
 }
 
 function SummarySection({ title, children }: { title: string; children: React.ReactNode }) {
