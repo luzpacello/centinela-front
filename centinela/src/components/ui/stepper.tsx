@@ -37,7 +37,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentSt
   return (
     <div className="w-full py-4">
       {/* Contenedor principal horizontal para alinear los ítems y las líneas conectoras */}
-      <div className="flex items-center justify-between relative">
+      <div className="flex items-start justify-between relative">
         {steps.map((stepTitle, index) => {
           // Calculamos el número de paso en base 1 para comparar con currentStep
           const stepNumber = index + 1;
@@ -71,7 +71,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentSt
 
                 {/* Etiqueta / Título descriptivo debajo del círculo */}
                 <span
-                  className={`mt-2 text-xs font-medium text-center max-w-[100px] transition-colors duration-200 ${
+                  className={`mt-2 max-w-[140px] whitespace-nowrap text-center text-xs font-medium transition-colors duration-200 ${
                     isCurrent || isCompleted
                       ? 'text-blue-500 font-semibold' // Texto destacado si el paso está activo o superado
                       : 'text-muted-foreground' // Texto atenuado si aún no se llega a este paso
@@ -92,7 +92,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentSt
               */}
               {index < steps.length - 1 && (
                 <div
-                  className={`flex-1 h-[2px] mx-2 -mt-6 transition-colors duration-200 ${
+                  className={`mt-[19px] h-[2px] flex-1 mx-2 transition-colors duration-200 ${
                     // Si el paso iterado es menor al paso actual, la línea conectora se pinta con el color activo
                     stepNumber < currentStep ? 'bg-blue-200' : 'bg-border'
                   }`}
