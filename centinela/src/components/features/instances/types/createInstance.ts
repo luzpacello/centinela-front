@@ -35,6 +35,11 @@ export interface SelectOption {
     label: string;
 }
 
+export interface StorageOption extends SelectOption {
+    availableGb: number;
+    totalGb: number;
+}
+
 export interface InstanceCreationStep {
     title: string;
     description: string;
