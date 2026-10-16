@@ -17,13 +17,25 @@ interface ConfirmUserActionProps {
   mapErrorMessage?: (error: unknown) => string;
 }
 
-export function ConfirmUserAction({ title, description, variant = 'confirmation', confirmLabel = 'Aceptar', onCompleted, onConfirm, onCancel, mapErrorMessage = getErrorMessage }: ConfirmUserActionProps) {
+const INSTANCE_ERROR_CODES = new Set(['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED']);
+
+export function ConfirmUserAction({
+  title,
+  description,
+  variant = 'confirmation',
+  confirmLabel = 'Aceptar',
+  onCompleted,
+  onConfirm,
+  onCancel,
+  mapErrorMessage = getErrorMessage,
+}: ConfirmUserActionProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const submissionInProgress = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const titleId = useId();
   const descriptionId = useId();
+
   useEffect(() => {
     const dialog = dialogRef.current;
     dialog?.showModal();
@@ -40,8 +52,15 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
       await onConfirm();
       onCompleted();
     } catch (error) {
-      // Las respuestas 401/403 ya se notifican globalmente.
-      if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
+      // Las respuestas 401/403 de sesión se notifican globalmente, pero los
+      // errores operativos de instancias se muestran en el cuerpo del modal.
+      const isInstanceForbidden =
+        error instanceof ApiRequestError &&
+        error.status === 403 &&
+        error.errorCode &&
+        INSTANCE_ERROR_CODES.has(error.errorCode);
+
+      if (isInstanceForbidden || !(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
         setErrorMessage(mapErrorMessage(error));
       }
     } finally {
@@ -55,7 +74,11 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
   return (
     <dialog ref={dialogRef} role="dialog" aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId}
       className="m-auto w-full max-w-[520px] border-0 bg-transparent p-0 outline-none backdrop:bg-black/40"
-      onCancel={(event) => { event.preventDefault(); if (!submissionInProgress.current) onCancel(); }}>
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!submissionInProgress.current) onCancel();
+      }}
+    >
       <Modal variant={variant} aria-busy={isSubmitting}>
         <ModalHeader>
           <ModalIcon aria-hidden="true">
@@ -66,8 +89,17 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
         </ModalHeader>
         {errorMessage && <FieldError role="alert">{errorMessage}</FieldError>}
         <ModalFooter className="py-[30px]">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>Cancelar</Button>
-          <Button type="button" variant={variant === 'destructive' ? 'destructive' : 'default'} disabled={isSubmitting} onClick={() => void confirmAction()}>{isSubmitting ? 'Procesando…' : confirmLabel ?? 'aceptar'}</Button>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant={variant === 'destructive' ? 'destructive' : 'default'}
+            disabled={isSubmitting}
+            onClick={() => void confirmAction()}
+          >
+            {isSubmitting ? 'Procesando…' : confirmLabel ?? 'Aceptar'}
+          </Button>
         </ModalFooter>
       </Modal>
     </dialog>
