@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
 import SelectTypeOfInstances from '@/components/features/instances/components/selectTypeOfInstances';
+import ConfigureInstanceResources from '@/components/features/instances/components/configureInstanceResources';
 import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
 import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
 import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
@@ -62,12 +63,18 @@ export default function CreateNewInstances() {
             </Card>
 
             <div className={styles.creationContentGrid}>
-                <main className={styles.stepContentContainer}>
+                <main>
                     {currentStep === 1 && (
                         <SelectTypeOfInstances
                             draft={draft}
                             onFieldChange={updateField}
                             onTypeChange={selectInstanceType}
+                        />
+                    )}
+                    {currentStep === 2 && (
+                        <ConfigureInstanceResources
+                            draft={draft}
+                            onFieldChange={updateField}
                         />
                     )}
                 </main>
@@ -91,6 +98,5 @@ const styles = {
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
     creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',
-    stepContentContainer: 'min-h-[32rem] min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
     summaryContainer: 'min-w-0',
 };
