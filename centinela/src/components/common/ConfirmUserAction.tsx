@@ -50,17 +50,19 @@ export function ConfirmUserAction({ title, description, variant = 'confirmation'
     }
   }
 
+  const isDestructive = variant === 'destructive';
+
   return (
-    <dialog ref={dialogRef}  aria-labelledby={titleId} aria-describedby={descriptionId}
+    <dialog ref={dialogRef} role="dialog" aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId}
       className="m-auto w-full max-w-[520px] border-0 bg-transparent p-0 outline-none backdrop:bg-black/40"
       onCancel={(event) => { event.preventDefault(); if (!submissionInProgress.current) onCancel(); }}>
       <Modal variant={variant} aria-busy={isSubmitting}>
         <ModalHeader>
           <ModalIcon aria-hidden="true">
-            {variant === 'destructive' ? <TriangleAlert /> : <CircleHelp />}
+            {isDestructive ? <TriangleAlert /> : <CircleHelp />}
           </ModalIcon>
           <ModalTitle id={titleId}>{title}</ModalTitle>
-          <ModalDescription id={descriptionId}>{description}</ModalDescription>
+          <ModalDescription id={descriptionId} className={isDestructive ? 'text-red-600 dark:text-red-400 font-medium' : undefined} >{description}</ModalDescription>
         </ModalHeader>
         {errorMessage && <FieldError role="alert">{errorMessage}</FieldError>}
         <ModalFooter className="py-[30px]">
