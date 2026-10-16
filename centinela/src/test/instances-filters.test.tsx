@@ -55,7 +55,7 @@ const inventory = [
         type: 'VM',
         node: 'pve-01',
         status: 'running',
-        ip: null,
+        ip: '192.168.1.101',
         cpuUsage: null,
         ramUsage: null,
         maxRam: null,
@@ -68,7 +68,7 @@ const inventory = [
         type: 'LXC',
         node: 'pve-01',
         status: 'stopped',
-        ip: null,
+        ip: '10.20.20.60',
         cpuUsage: null,
         ramUsage: null,
         maxRam: null,
@@ -119,11 +119,11 @@ afterEach(() => {
 });
 
 describe('Filtros del inventario de instancias', () => {
-    it('filtra por nombre parcial e ID numérico y no vuelve a consultar el inventario', async () => {
+    it('filtra por nombre parcial, ID numérico e IP y no vuelve a consultar el inventario', async () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        const searchInput = screen.getByRole('textbox', { name: 'Buscar por ID o nombre' });
+        const searchInput = screen.getByRole('textbox', { name: 'Buscar por ID, nombre o IP' });
         await user.type(searchInput, 'prod');
 
         expect(screen.getByText('vm-produccion')).toBeInTheDocument();
@@ -134,6 +134,11 @@ describe('Filtros del inventario de instancias', () => {
         await user.type(searchInput, '101');
         expect(screen.getByText('vm-produccion')).toBeInTheDocument();
         expect(screen.queryByText('base-datos')).not.toBeInTheDocument();
+
+        await user.clear(searchInput);
+        await user.type(searchInput, '10.20.20.60');
+        expect(screen.getByText('base-datos')).toBeInTheDocument();
+        expect(screen.queryByText('vm-produccion')).not.toBeInTheDocument();
         expect(getMock).toHaveBeenCalledTimes(1);
     });
 
@@ -155,7 +160,7 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        await user.type(screen.getByRole('textbox', { name: 'Buscar por ID o nombre' }), 'sin-coincidencias');
+        await user.type(screen.getByRole('textbox', { name: 'Buscar por ID, nombre o IP' }), 'sin-coincidencias');
 
         expect(screen.getByText('No se encontraron instancias que coincidan con los filtros aplicados')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Restablecer filtros' }));

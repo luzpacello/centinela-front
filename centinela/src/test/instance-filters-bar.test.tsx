@@ -42,7 +42,7 @@ describe('InstanceFiltersBar', () => {
     const onSearchChange = vi.fn();
 
     renderBar({ onSearchChange });
-    await user.type(screen.getByRole('textbox', { name: 'Buscar por ID o nombre' }), 'test');
+    await user.type(screen.getByRole('textbox', { name: 'Buscar por ID, nombre o IP' }), 'test');
 
     expect(onSearchChange).toHaveBeenCalled();
   });
