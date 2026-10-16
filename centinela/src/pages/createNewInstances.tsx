@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
 import SelectTypeOfInstances from '@/components/features/instances/components/selectTypeOfInstances';
+import ConfigureInstanceResources from '@/components/features/instances/components/configureInstanceResources';
 import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
 import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
 import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
@@ -68,6 +69,12 @@ export default function CreateNewInstances() {
                             draft={draft}
                             onFieldChange={updateField}
                             onTypeChange={selectInstanceType}
+                        />
+                    )}
+                    {currentStep === 2 && (
+                        <ConfigureInstanceResources
+                            draft={draft}
+                            onFieldChange={updateField}
                         />
                     )}
                 </main>
