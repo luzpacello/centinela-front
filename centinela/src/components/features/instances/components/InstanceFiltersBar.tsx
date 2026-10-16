@@ -1,6 +1,13 @@
-import { CirclePlay, Container, Monitor, Search, Square } from 'lucide-react';
+import { Container, Filter, Monitor, Search, Server } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropDownMenu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { InstanceStatusFilter, InstanceType } from '../types/instance';
@@ -15,42 +22,42 @@ export interface InstanceFiltersBarProps {
     typeFilter: 'all' | InstanceType;
     onTypeFilterChange: (type: 'all' | InstanceType) => void;
     totalCount: number;
-    runningCount: number;
-    stoppedCount: number;
+    vmCount: number;
+    lxcCount: number;
     className?: string;
 }
 
-type InstanceStatusTabsProps = Pick<
+type InstanceTypeTabsProps = Pick<
     InstanceFiltersBarProps,
-    'statusFilter' | 'onStatusFilterChange' | 'totalCount' | 'runningCount' | 'stoppedCount'
+    'typeFilter' | 'onTypeFilterChange' | 'totalCount' | 'vmCount' | 'lxcCount'
 >;
 
-export function InstanceStatusTabs({
-    statusFilter,
-    onStatusFilterChange,
+export function InstanceTypeTabs({
+    typeFilter,
+    onTypeFilterChange,
     totalCount,
-    runningCount,
-    stoppedCount,
-}: InstanceStatusTabsProps) {
+    vmCount,
+    lxcCount,
+}: InstanceTypeTabsProps) {
     return (
         <Tabs
-            value={statusFilter}
+            value={typeFilter}
             onValueChange={(value) => {
-                if (value === 'all' || value === 'running' || value === 'stopped') {
-                    onStatusFilterChange(value);
+                if (value === 'all' || value === 'VM' || value === 'LXC') {
+                    onTypeFilterChange(value);
                 }
             }}
             className="w-auto min-w-0"
         >
-            <TabsList variant="line" aria-label="Filtrar instancias por estado" className="max-w-full">
+            <TabsList variant="line" aria-label="Filtrar instancias por tipo" className="max-w-full">
                 <TabsTrigger value="all" className="px-4">
-                    <Monitor aria-hidden="true" /> Instancias totales <Badge variant="secondary">{totalCount}</Badge>
+                    <Server aria-hidden="true" /> Instancias totales <Badge variant="secondary">{totalCount}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="running" className="px-4">
-                    <CirclePlay aria-hidden="true" /> En ejecución <Badge variant="secondary">{runningCount}</Badge>
+                <TabsTrigger value="VM" className="px-4">
+                    <Monitor aria-hidden="true" /> Maquina virtual (VM) <Badge variant="secondary">{vmCount}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="stopped" className="px-4">
-                    <Square aria-hidden="true" /> Detenidas <Badge variant="secondary">{stoppedCount}</Badge>
+                <TabsTrigger value="LXC" className="px-4">
+                    <Container aria-hidden="true" /> Contenedor (LXC) <Badge variant="secondary">{lxcCount}</Badge>
                 </TabsTrigger>
             </TabsList>
         </Tabs>
@@ -60,15 +67,15 @@ export function InstanceStatusTabs({
 interface InstanceSearchFiltersProps {
     search: string;
     onSearchChange: (search: string) => void;
-    typeFilter: 'all' | InstanceType;
-    onTypeFilterChange: (type: 'all' | InstanceType) => void;
+    statusFilter: InstanceStatusFilter;
+    onStatusFilterChange: (status: InstanceStatusFilter) => void;
 }
 
 export function InstanceSearchFilters({
     search,
     onSearchChange,
-    typeFilter,
-    onTypeFilterChange,
+    statusFilter,
+    onStatusFilterChange,
 }: InstanceSearchFiltersProps) {
     return (
         <div className="flex flex-wrap items-center gap-3">
@@ -83,39 +90,23 @@ export function InstanceSearchFilters({
                 />
             </div>
 
-            {/* Selector visible y accesible directo en la barra */}
-            <div role="group" aria-label="Filtrar por tipo de recurso" className="inline-flex rounded-lg border border-slate-200 bg-slate-50/50 p-1">
-                <Button
-                    type="button"
-                    size="sm"
-                    variant={typeFilter === 'all' ? 'default' : 'ghost'}
-                    aria-pressed={typeFilter === 'all'}
-                    onClick={() => onTypeFilterChange('all')}
-                    className="h-8 px-3 text-xs font-medium"
-                >
-                    Todas
-                </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant={typeFilter === 'VM' ? 'default' : 'ghost'}
-                    aria-pressed={typeFilter === 'VM'}
-                    onClick={() => onTypeFilterChange('VM')}
-                    className="h-8 gap-1.5 px-3 text-xs font-medium"
-                >
-                    <Monitor className="size-3.5" aria-hidden="true" /> VM
-                </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant={typeFilter === 'LXC' ? 'default' : 'ghost'}
-                    aria-pressed={typeFilter === 'LXC'}
-                    onClick={() => onTypeFilterChange('LXC')}
-                    className="h-8 gap-1.5 px-3 text-xs font-medium"
-                >
-                    <Container className="size-3.5" aria-hidden="true" /> LXC
-                </Button>
-            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger>
+                    <Filter className="size-4!" aria-hidden="true" /> Filtros
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[260px] max-w-[calc(100vw-2rem)]">
+                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={(value) => {
+                        if (value === 'all' || value === 'running' || value === 'stopped') {
+                            onStatusFilterChange(value);
+                        }
+                    }}>
+                        <DropdownMenuLabel>Estados</DropdownMenuLabel>
+                        <DropdownMenuRadioItem value="running">Encendidas</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="stopped">Detenidas</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="all">Todas las instancias</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }
@@ -128,24 +119,24 @@ export function InstanceFiltersBar({
     typeFilter,
     onTypeFilterChange,
     totalCount,
-    runningCount,
-    stoppedCount,
+    vmCount,
+    lxcCount,
     className = '',
 }: InstanceFiltersBarProps) {
     return (
         <div className={`flex flex-wrap items-center justify-between gap-4 ${className}`.trim()}>
-            <InstanceStatusTabs
-                statusFilter={statusFilter}
-                onStatusFilterChange={onStatusFilterChange}
+            <InstanceTypeTabs
+                typeFilter={typeFilter}
+                onTypeFilterChange={onTypeFilterChange}
                 totalCount={totalCount}
-                runningCount={runningCount}
-                stoppedCount={stoppedCount}
+                vmCount={vmCount}
+                lxcCount={lxcCount}
             />
             <InstanceSearchFilters
                 search={search}
                 onSearchChange={onSearchChange}
-                typeFilter={typeFilter}
-                onTypeFilterChange={onTypeFilterChange}
+                statusFilter={statusFilter}
+                onStatusFilterChange={onStatusFilterChange}
             />
         </div>
     );
