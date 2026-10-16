@@ -62,7 +62,7 @@ export default function CreateNewInstances() {
             </Card>
 
             <div className={styles.creationContentGrid}>
-                <main className={styles.stepContentContainer}>
+                <main>
                     {currentStep === 1 && (
                         <SelectTypeOfInstances
                             draft={draft}
@@ -91,6 +91,5 @@ const styles = {
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
     creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',
-    stepContentContainer: 'min-h-[32rem] min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
     summaryContainer: 'min-w-0',
 };
