@@ -16,8 +16,8 @@ function renderBar(overrides: Partial<FiltersBarProps> = {}) {
     typeFilter: 'all',
     onTypeFilterChange: vi.fn(),
     totalCount: 10,
-    runningCount: 6,
-    stoppedCount: 4,
+    vmCount: 6,
+    lxcCount: 4,
     ...overrides,
   };
 
@@ -26,14 +26,14 @@ function renderBar(overrides: Partial<FiltersBarProps> = {}) {
 }
 
 describe('InstanceFiltersBar', () => {
-  it('renderiza los filtros de estado con sus contadores', () => {
+  it('renderiza los filtros de tipo con sus contadores', () => {
     renderBar();
 
     expect(screen.getByText('Instancias totales')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
-    expect(screen.getByText('En ejecución')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Maquina virtual (VM) 6' })).toBeInTheDocument();
     expect(screen.getByText('6')).toBeInTheDocument();
-    expect(screen.getByText('Detenidas')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Contenedor (LXC) 4' })).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
   });
 
@@ -47,13 +47,14 @@ describe('InstanceFiltersBar', () => {
     expect(onSearchChange).toHaveBeenCalled();
   });
 
-  it('permite cambiar el filtro de estado a en ejecución', async () => {
+  it('permite cambiar el filtro de estado a encendidas', async () => {
     const user = userEvent.setup();
     const onStatusFilterChange = vi.fn();
 
     renderBar({ onStatusFilterChange });
 
-    await user.click(screen.getByRole('tab', { name: /en ejecución/i }));
+    await user.click(screen.getByRole('button', { name: 'Filtros' }));
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Encendidas' }));
 
     expect(onStatusFilterChange).toHaveBeenCalledWith('running');
   });
@@ -64,19 +65,18 @@ describe('InstanceFiltersBar', () => {
 
     renderBar({ typeFilter: 'VM', onTypeFilterChange });
 
-    // Clic directo al botón visible "Todas"
-    await user.click(screen.getByRole('button', { name: /^todas\b/i }));
+    await user.click(screen.getByRole('tab', { name: /instancias totales/i }));
 
     expect(onTypeFilterChange).toHaveBeenCalledWith('all');
   });
 
-  it('permite filtrar por máquinas virtuales (VM) directamente', async () => {
+  it('permite filtrar por máquinas virtuales (VM) desde las pestañas', async () => {
     const user = userEvent.setup();
     const onTypeFilterChange = vi.fn();
 
     renderBar({ onTypeFilterChange });
 
-    await user.click(screen.getByRole('button', { name: /^vm\b/i }));
+    await user.click(screen.getByRole('tab', { name: /Maquina virtual \(VM\)/i }));
 
     expect(onTypeFilterChange).toHaveBeenCalledWith('VM');
   });
