@@ -50,7 +50,7 @@ vi.mock('@/components/features/dashboard/services/nodeStatusService', () => ({
 }));
 
 import { getNodeStatus, type NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
-import { apiClient } from '@/services/apiClient';
+import { ApiRequestError, apiClient } from '@/services/apiClient';
 import Dashboard from '@/pages/Dashboard';
 
 const getMock = apiClient.get as unknown as Mock;
@@ -167,12 +167,25 @@ describe('Dashboard node status', () => {
 
         renderDashboard();
         expect(await screen.findByRole('alert')).toBeInTheDocument();
-        expect(screen.getAllByText('Inaccesible').length).toBeGreaterThan(0);
+        expect(screen.getByRole('status', { name: 'Estado del nodo' })).toHaveTextContent('Inaccesible');
+        expect(screen.getAllByText('Inaccesible')).toHaveLength(1);
 
         fireEvent.click(screen.getByRole('button', { name: /Reintentar conexión/ }));
 
-        expect((await screen.findAllByText('Saludable')).length).toBeGreaterThan(0);
+        expect(await screen.findByRole('status', { name: 'Estado del nodo' })).toHaveTextContent('Saludable');
+        expect(screen.getAllByText('Saludable')).toHaveLength(1);
         expect(getNodeStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([502, 504])('expone el estado inaccesible en el Dashboard ante HTTP %s', async (httpStatus) => {
+        vi.mocked(getNodeStatus).mockRejectedValueOnce(
+            new ApiRequestError('Error de gateway', httpStatus),
+        );
+
+        renderDashboard();
+
+        expect(await screen.findByRole('status', { name: 'Estado del nodo' })).toHaveTextContent('Inaccesible');
+        expect(screen.getAllByText('Inaccesible')).toHaveLength(1);
     });
 
     it('mantiene la carga real sin estados vacíos simulados', () => {
@@ -285,10 +298,12 @@ describe('Dashboard node status', () => {
 
         expect(screen.getByRole('heading', { name: 'Conexión' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Última sincronización' })).toBeInTheDocument();
-        // El estado va al lado del título, en el mismo encabezado y con su color.
+        // El pie conserva el título y la telemetría; la salud se muestra en el badge de recursos.
         const encabezadoSistema = screen.getByRole('heading', { name: /Estado del sistema/ });
-        expect(encabezadoSistema).toHaveTextContent('Estado del sistema Saludable');
-        expect(encabezadoSistema.querySelector('span')).toHaveClass('text-emerald-700');
+        expect(encabezadoSistema).toHaveTextContent('Estado del sistema');
+        expect(encabezadoSistema).not.toHaveTextContent('Saludable');
+        expect(screen.getByRole('status', { name: 'Estado del nodo' })).toHaveClass('text-emerald-700');
+        expect(screen.getAllByText('Saludable')).toHaveLength(1);
         expect(screen.getByText('Conectado')).toBeInTheDocument();
         expect(screen.getByText('Tiempo de ejecución: 1d')).toBeInTheDocument();
 

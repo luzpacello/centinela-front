@@ -27,11 +27,11 @@ const EVENTS_STATUS_PRESENTATION: Record<EventsClientStatus, { label: string; do
     unauthorized: { label: 'Sesión finalizada', dot: 'bg-red-600' },
 };
 
-const NODE_HEALTH_PRESENTATION: Record<NodeHealth, { label: string; className: string; textClassName: string }> = {
-    loading: { label: 'Consultando nodo', className: 'border-slate-200 text-slate-600', textClassName: 'text-slate-600' },
-    healthy: { label: 'Saludable', className: 'border-emerald-200 text-emerald-700', textClassName: 'text-emerald-700' },
-    warning: { label: 'Advertencia', className: 'border-amber-300 text-amber-700', textClassName: 'text-amber-700' },
-    inaccessible: { label: 'Inaccesible', className: 'border-red-300 text-red-700', textClassName: 'text-red-700' },
+const NODE_HEALTH_PRESENTATION: Record<NodeHealth, { label: string; className: string }> = {
+    loading: { label: 'Consultando nodo', className: 'border-slate-200 text-slate-600' },
+    healthy: { label: 'Saludable', className: 'border-emerald-200 text-emerald-700' },
+    warning: { label: 'Advertencia', className: 'border-amber-300 text-amber-700' },
+    inaccessible: { label: 'Inaccesible', className: 'border-red-300 text-red-700' },
 };
 
 function formatFetchedAt(value?: string): string {
@@ -155,7 +155,9 @@ export default function Dashboard() {
                 <div className={style.sectionHeader}>
                     <div className={style.sectionHeading}>
                         <h3>Uso total de recursos</h3>
-                        <Badge variant="outline" className={nodeHealth.className}>{nodeHealth.label}</Badge>
+                        <Badge aria-label="Estado del nodo" role="status" variant="outline" className={nodeHealth.className}>
+                            {nodeHealth.label}
+                        </Badge>
                     </div>
                     {data?.stale && (
                         <Badge variant="outline" className={style.staleBadge}>
@@ -204,20 +206,27 @@ export default function Dashboard() {
             <Card className={style.systemFooter}>
                 <div className={style.systemStatus}>
                     <ShieldCheck className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Conexión</h2><p className="text-caption">{estado === 'open' ? 'Conectado' : eventsStatus.label}</p></div>
+                    <div>
+                        <h2 className="text-destacado">Conexión</h2>
+                        <p className="text-caption">{estado === 'open' ? 'Conectado' : eventsStatus.label}</p>
+                    </div>
                 </div>
+
                 <div className={style.systemStatus}>
                     <Clock3 className={style.systemIcon} />
-                    <div><h2 className="text-destacado">Última sincronización</h2><p className="text-caption">{formatFetchedAt(data?.fetchedAt)}</p></div>
+                    <div>
+                        <h2 className="text-destacado">Última sincronización</h2>
+                        <p className="text-caption">{formatFetchedAt(data?.fetchedAt)}</p>
+                    </div>
                 </div>
+
                 <div className={style.systemStatus}>
                     <Server className={style.systemIcon} />
                     <div>
-                        <h2 className="text-destacado">
-                            Estado del sistema{' '}
-                            <span className={nodeHealth.textClassName}>{nodeHealth.label}</span>
-                        </h2>
-                        <p className="text-caption">Tiempo de ejecución: {data ? formatUptime(data.uptimeSeconds) : '—'}</p>
+                        <h2 className="text-destacado">Estado del sistema</h2>
+                        <p className="text-caption" data-testid="node-footer-status">
+                            Tiempo de ejecución: {data ? formatUptime(data.uptimeSeconds) : '—'}
+                        </p>
                     </div>
                 </div>
             </Card>
