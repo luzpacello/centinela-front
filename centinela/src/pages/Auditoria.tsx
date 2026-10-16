@@ -10,11 +10,12 @@ import {
     XCircle,
     Eye,
     Search,
-    ListFilter,
+    FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,15 +106,10 @@ export default function AuditoriaPage() {
     const hasta = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
     const [items, setItems] = useState<AuditoriaItemDTO[]>([]);
     const [total, setTotal] = useState(0);
+    const [resultCounts, setResultCounts] = useState<{ successes: number | null; failures: number | null }>({ successes: null, failures: null });
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
-
-    // Las métricas se calculan solo con lo que la API devuelve de verdad: el total
-    // del período y el resultado de los registros de esta página. La API no expone
-    // un desglose global por resultado, así que no se muestra ninguno.
-    const exitososEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'EXITO').length;
-    const fallidosEnPagina = items.filter((item) => (item.resultado ?? '').toUpperCase() === 'FALLA').length;
 
     // useEffect(() => {
     //     get("/api/admin/audit?pagina=1&tamano=10").then(data => console.log("imprimir data ", data))
@@ -164,6 +160,39 @@ export default function AuditoriaPage() {
         loadAudit();
         return () => controller.abort();
     }, [estaAutorizado, pagina, accion, resultado, usuarioId, desde, hasta]);
+
+    useEffect(() => {
+        if (!estaAutorizado) return;
+
+        const controller = new AbortController();
+        const params = new URLSearchParams({ pagina: '1', tamano: String(AUDIT_PAGE_SIZE) });
+        if (accion) params.set('accion', accion);
+        if (usuarioId) params.set('usuarioId', usuarioId);
+        if (desde) params.set('desde', desde);
+        if (hasta) params.set('hasta', hasta);
+
+        async function loadResultCounts() {
+            setResultCounts({ successes: null, failures: null });
+            try {
+                const successParams = new URLSearchParams(params);
+                const failureParams = new URLSearchParams(params);
+                successParams.set('resultado', 'EXITO');
+                failureParams.set('resultado', 'FALLA');
+                const [successes, failures] = await Promise.all([
+                    apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${successParams.toString()}`, { signal: controller.signal }),
+                    apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${failureParams.toString()}`, { signal: controller.signal }),
+                ]);
+                if (!controller.signal.aborted) {
+                    setResultCounts({ successes: successes.total ?? 0, failures: failures.total ?? 0 });
+                }
+            } catch {
+                if (!controller.signal.aborted) setResultCounts({ successes: null, failures: null });
+            }
+        }
+
+        void loadResultCounts();
+        return () => controller.abort();
+    }, [estaAutorizado, accion, usuarioId, desde, hasta]);
 
     if (!estaAutorizado) {
         return null;
@@ -278,7 +307,7 @@ export default function AuditoriaPage() {
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger><Filter className="size-4!" /> Filtros</DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-72 max-w-[calc(100vw-1rem)]">
+                        <DropdownMenuContent align="end" className="w-[260px] max-w-[calc(100vw-2rem)]">
                             <DropdownMenuGroup className="[&_[data-slot=field]]:mx-0 [&_[data-slot=field]]:w-full">
                                 <DropdownMenuLabel>Rango de fecha</DropdownMenuLabel>
                                 <DatePickerWithRange
@@ -326,70 +355,68 @@ export default function AuditoriaPage() {
 
             <Tabs value={resultado || 'all'} onValueChange={(value) => updateFilter(setResultado, value === 'all' ? '' : value)} className="min-w-0 gap-4">
                 <TabsList variant="line" aria-label="Resultado" className="max-w-full">
-                    <TabsTrigger value="all" className="px-4"><ListFilter /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
-                    <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{exitososEnPagina}</Badge></TabsTrigger>
-                    <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{fallidosEnPagina}</Badge></TabsTrigger>
+                    <TabsTrigger value="all" className="px-4"><FileText /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
+                    <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
+                    <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
                 </TabsList>
                 <TabsContent value={resultado || 'all'} className="min-w-0">
             {/* Tabla de Registros */}
-            <Card className="overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="border-b border-slate-100 bg-slate-50/60 text-slate-700">
-                            <tr className="text-xs font-medium uppercase tracking-wider">
-                                <th className="py-3.5 px-4">Fecha y hora</th>
-                                <th className="py-3.5 px-4">Usuario</th>
-                                <th className="py-3.5 px-4">Acción</th>
-                                <th className="py-3.5 px-4">Recurso/instancia</th>
-                                <th className="py-3.5 px-4">Resultado</th>
-                                <th className="py-3.5 px-4 text-right">Detalles</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+            <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
+                    <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isLoading}>
+                        <TableHeader>
+                            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                                <TableHead className="header-of-table px-4">Fecha y hora</TableHead>
+                                <TableHead className="header-of-table px-4">Usuario</TableHead>
+                                <TableHead className="header-of-table px-4">Acción</TableHead>
+                                <TableHead className="header-of-table px-4">Recurso/instancia</TableHead>
+                                <TableHead className="header-of-table px-4">Resultado</TableHead>
+                                <TableHead className="header-of-table px-4 text-right">Detalles</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {isLoading &&
                                 Array.from({ length: 4 }).map((_, index) => (
-                                    <tr key={`skeleton-${index}`} className="animate-pulse">
+                                    <TableRow key={`skeleton-${index}`} className="animate-pulse">
                                         {Array.from({ length: 6 }).map((__, cell) => (
-                                            <td key={cell} className="py-3 px-4"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                                            <TableCell key={cell} className="p-4"><div className="h-4 w-24 rounded bg-slate-100" /></TableCell>
                                         ))}
-                                    </tr>
+                                    </TableRow>
                                 ))}
 
                             {!isLoading && errorMessage && (
-                                <tr>
-                                    <td colSpan={6} className="py-10 px-4 text-center text-sm text-red-600" role="alert">
+                                <TableRow>
+                                    <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-red-600" role="alert">
                                         {errorMessage}
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             )}
 
                             {!isLoading && !errorMessage && filteredAuditEvents.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="py-10 px-4 text-center text-sm text-slate-500">
+                                <TableRow>
+                                    <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
                                         {items.length === 0
                                             ? 'Todavía no hay registros de auditoría para mostrar.'
                                             : 'No se encontraron registros que coincidan con la búsqueda.'}
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             )}
 
                             {!isLoading && !errorMessage && filteredAuditEvents.map((event) => (
-                                <tr key={event.id} className="transition-colors hover:bg-slate-50/70">
-                                    <td className="py-3 px-4 whitespace-nowrap text-secundario">{formatFechaHora(event.fechaHora)}</td>
-                                    <td className="py-3 px-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</td>
-                                    <td className="py-3 px-4">{displayText(event.accion)}</td>
-                                    <td className="py-3 px-4 text-secundario">{displayText(event.instanciaNombre)}</td>
-                                    <td className="py-3 px-4">{getResultBadge(event.resultado)}</td>
-                                    <td className="py-3 px-4 text-right">
+                                <TableRow key={event.id} className="hover:bg-slate-50/70">
+                                    <TableCell className="p-4 text-secundario">{formatFechaHora(event.fechaHora)}</TableCell>
+                                    <TableCell className="p-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</TableCell>
+                                    <TableCell className="p-4">{displayText(event.accion)}</TableCell>
+                                    <TableCell className="p-4 text-secundario">{displayText(event.instanciaNombre)}</TableCell>
+                                    <TableCell className="p-4">{getResultBadge(event.resultado)}</TableCell>
+                                    <TableCell className="p-4 text-right">
                                         <button aria-label={`Ver detalles de ${displayText(event.accion)}`} title={event.detalles || undefined} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
                                             <Eye className="size-4" />
                                         </button>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
 
                 {/* Paginación y Nota inferior */}
                 <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 px-5 py-4 text-xs text-secundario sm:flex-row">
