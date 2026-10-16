@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+    DEFAULT_RESOURCE_CONFIGURATION,
     INITIAL_INSTANCE_DRAFT,
     INSTANCE_CREATION_STEPS,
 } from '@/components/features/instances/data/createInstanceOptions';
@@ -26,6 +27,15 @@ export function useCreateInstanceWizard() {
     }
 
     function goToNextStep() {
+        if (currentStep === 1) {
+            setDraft((currentDraft) => ({
+                ...currentDraft,
+                cores: currentDraft.cores ?? DEFAULT_RESOURCE_CONFIGURATION.cores,
+                ramMb: currentDraft.ramMb ?? DEFAULT_RESOURCE_CONFIGURATION.ramMb,
+                discoGb: currentDraft.discoGb ?? DEFAULT_RESOURCE_CONFIGURATION.discoGb,
+                storageId: currentDraft.storageId || DEFAULT_RESOURCE_CONFIGURATION.storageId,
+            }));
+        }
         setCurrentStep((step) => Math.min(step + 1, INSTANCE_CREATION_STEPS.length));
     }
 
