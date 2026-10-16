@@ -7,6 +7,7 @@ import {
   type ApiErrorEventDetail,
 } from '@/services/apiClient';
 import { applicationRouter } from '@/routes/router';
+import { getErrorMessage } from '@/utils/errorMapper';
 
 function showUnauthorizedToast(message?: string) {
   toast.add({
@@ -31,7 +32,7 @@ export function ApiResponseNotifier() {
       const { detail } = event as CustomEvent<ApiErrorEventDetail>;
       toast.add({
         title: (detail.errorCode && forbiddenTitles[detail.errorCode]) || 'Acción rechazada',
-        description: detail.message || 'No tenés permisos suficientes para realizar esta acción.',
+        description: getErrorMessage(detail),
         type: 'warning',
         priority: 'high',
       });

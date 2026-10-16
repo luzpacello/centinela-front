@@ -264,7 +264,7 @@ export default function Instances() {
 
 const style = {
     page: 'flex min-w-0 flex-col gap-6 text-slate-900',
-    header: 'flex flex-wrap items-center justify-between gap-5 pb-1',
+    header: 'flex flex-wrap items-start justify-between gap-5 pb-1',
     smallIcon: 'size-4!',
     inventoryCard: 'min-w-0 gap-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0',
     table: 'min-w-[52rem] text-xs text-slate-700',

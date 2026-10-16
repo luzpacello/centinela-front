@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/toast';
 import { useAuth } from '@/context/AuthContext';
 import { ApiRequestError } from '@/services/apiClient';
+import { getErrorMessage } from '@/utils/errorMapper';
 import { requestInstancePowerAction, deleteInstance } from '../services/instanceService';
 import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../types/instance';
 import { Modal, ModalDescription, ModalFooter, ModalHeader, ModalIcon, ModalTitle } from '@/components/ui/modals';
@@ -301,6 +302,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
           title={POWER_ACTION_CONFIG[pendingAction].title}
           description={`${POWER_ACTION_CONFIG[pendingAction].description} ${instance.name} (${instance.id}).`}
           onConfirm={confirmPowerAction}
+          mapErrorMessage={(error) => getErrorMessage(error, pendingAction ?? undefined)}
           onCancel={() => setPendingAction(null)}
           onCompleted={() => setPendingAction(null)}
         />,

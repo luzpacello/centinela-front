@@ -1,24 +1,58 @@
-export function getErrorMessage(error: any): string {
-  const errorCode = 
-    error?.response?.data?.errorCode || 
-    error?.response?.errorCode || 
-    error?.errorCode || 
-    error?.message;
+import type { InstancePowerAction } from '@/components/features/instances/types/instance';
 
-  switch (errorCode) {
-    case 'INSTANCE_INVALID_STATE':
-      return 'La acción no corresponde al estado actual de la instancia (por ejemplo, la máquina ya se encuentra encendida o apagada).';
-    case 'INSTANCE_BUSY':
-      return 'La instancia está ejecutando otra tarea en Proxmox. Por favor, espere a que finalice.';
-    case 'INSTANCE_PROTECTED':
-      return 'Esta instancia pertenece a la infraestructura crítica y no admite la acción solicitada.';
-    case 'INSTANCE_ACCESS_DENIED':
-      return 'No posee permisos operativos suficientes sobre esta instancia.';
-    case 'PROXMOX_UNAVAILABLE':
-      return 'El hipervisor Proxmox no se encuentra disponible. Compruebe la conectividad del host.';
-    case 'PROXMOX_TIMEOUT':
-      return 'Proxmox no respondió a tiempo. La acción pudo no haberse aplicado en el servidor.';
-    default:
-      return typeof error === 'string' ? error : (error?.message || 'Ocurrió un error inesperado al procesar la operación.');
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readErrorDetails(error: unknown): { status?: number; errorCode?: string; message?: string } {
+  const root = asRecord(error);
+  const response = asRecord(root?.response);
+  const responseData = asRecord(response?.data);
+  const status = typeof root?.status === 'number'
+    ? root.status
+    : typeof response?.status === 'number'
+      ? response.status
+      : undefined;
+  const errorCode = [
+    root?.errorCode,
+    root?.code,
+    responseData?.errorCode,
+    responseData?.code,
+    response?.errorCode,
+    response?.code,
+  ].find((value): value is string => typeof value === 'string');
+  const message = typeof root?.message === 'string' ? root.message : undefined;
+
+  return { status, errorCode, message };
+}
+
+export function getErrorMessage(error: unknown, action?: InstancePowerAction): string {
+  const { status, errorCode, message } = readErrorDetails(error);
+
+  if (status === 409 && errorCode === 'INSTANCE_INVALID_STATE') {
+    return action === 'start'
+      ? 'La instancia ya está encendida'
+      : 'El estado actual no corresponde a la acción';
   }
+  if (status === 409 && errorCode === 'INSTANCE_BUSY') {
+    return 'La instancia se encuentra ejecutando otra tarea. Aguarde a que finalice.';
+  }
+  if (status === 403 && errorCode === 'INSTANCE_PROTECTED') {
+    return 'La instancia pertenece a infraestructura protegida y no puede ser modificada.';
+  }
+  if (status === 403 && errorCode === 'INSTANCE_ACCESS_DENIED') {
+    return 'No posee permisos suficientes para operar sobre esta instancia.';
+  }
+  if (status === 502 && errorCode === 'PROXMOX_UNAVAILABLE') {
+    return 'El hipervisor Proxmox no está disponible.';
+  }
+  if (status === 504 && errorCode === 'PROXMOX_TIMEOUT') {
+    return 'La respuesta de Proxmox agotó el tiempo de espera.';
+  }
+
+  return typeof error === 'string'
+    ? error
+    : message || 'Ocurrió un error inesperado al procesar la operación.';
 }
