@@ -8,6 +8,7 @@ import type {
     CreateInstanceDraft,
     InstanceType,
     UpdateCreateInstanceField,
+    UpdateInstanceNetworkField,
 } from '@/components/features/instances/types/createInstance';
 
 export function useCreateInstanceWizard() {
@@ -16,6 +17,13 @@ export function useCreateInstanceWizard() {
 
     const updateField: UpdateCreateInstanceField = (field, value) => {
         setDraft((currentDraft) => ({ ...currentDraft, [field]: value }));
+    };
+
+    const updateNetworkField: UpdateInstanceNetworkField = (field, value) => {
+        setDraft((currentDraft) => ({
+            ...currentDraft,
+            red: { ...currentDraft.red, [field]: value },
+        }));
     };
 
     function selectInstanceType(type: InstanceType) {
@@ -50,5 +58,6 @@ export function useCreateInstanceWizard() {
         goToPreviousStep,
         selectInstanceType,
         updateField,
+        updateNetworkField,
     };
 }
