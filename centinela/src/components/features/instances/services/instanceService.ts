@@ -1,5 +1,7 @@
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import type { InstanceActiveTask, InstancePowerActionResponse, InventoryInstance, InstancePowerAction } from '../types/instance';
+import type { CreateInstanceDraft, CreateInstancePayload, CreateInstanceResponse } from '../types/createInstance';
+import { DEFAULT_NETWORK_CONFIGURATION, DEFAULT_RESOURCE_CONFIGURATION } from '../data/createInstanceOptions';
 
 export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
@@ -92,4 +94,59 @@ export async function deleteInstance( vmid: number ): Promise<InstancePowerActio
   }
 
   return response;
+}
+
+export function buildCreateInstancePayload(draft: CreateInstanceDraft): CreateInstancePayload {
+  if (!draft.tipo || !draft.nombre.trim() || !draft.nodo || !draft.templateOso) {
+    throw new ApiRequestError('Revisá los datos generales y seleccioná un sistema operativo antes de crear la instancia.');
+  }
+
+  const networkMode = draft.red.modo ?? DEFAULT_NETWORK_CONFIGURATION.modo;
+  const usesStaticIp = networkMode === 'static';
+  if (usesStaticIp && (!draft.red.ip.trim() || !draft.red.mascara.trim() || !draft.red.gateway.trim())) {
+    throw new ApiRequestError('Completá la dirección IP, el prefijo de red y la puerta de enlace.');
+  }
+
+  return {
+    cores: draft.cores ?? DEFAULT_RESOURCE_CONFIGURATION.cores,
+    descripcion: draft.descripcion.trim(),
+    discoGb: draft.discoGb ?? DEFAULT_RESOURCE_CONFIGURATION.discoGb,
+    nodo: draft.nodo,
+    nombre: draft.nombre.trim(),
+    password: draft.password,
+    ramMb: draft.ramMb ?? DEFAULT_RESOURCE_CONFIGURATION.ramMb,
+    red: {
+      bridge: draft.red.bridge || DEFAULT_NETWORK_CONFIGURATION.bridge,
+      firewall: draft.red.firewall ?? false,
+      gateway: usesStaticIp ? draft.red.gateway.trim() : '',
+      ip: usesStaticIp ? draft.red.ip.trim() : '',
+      mascara: usesStaticIp ? draft.red.mascara.trim() : '',
+      modo: networkMode,
+      vlan: draft.red.vlan ?? 0,
+    },
+    storageId: draft.storageId || DEFAULT_RESOURCE_CONFIGURATION.storageId,
+    templateOso: draft.templateOso,
+    tipo: draft.tipo,
+  };
+}
+
+export async function createInstance(payload: CreateInstancePayload): Promise<CreateInstanceResponse> {
+  const response = await apiClient.post<unknown>('/instances', payload, { expectedStatus: 202 });
+
+  if (typeof response !== 'object' || response === null) {
+    throw new ApiRequestError('La creación fue aceptada, pero no se pudo interpretar su seguimiento.');
+  }
+
+  const creation = response as Record<string, unknown>;
+  if (typeof creation.vmid !== 'number'
+    || typeof creation.tareaId !== 'string'
+    || typeof creation.upid !== 'string') {
+    throw new ApiRequestError('La creación fue aceptada, pero no se pudo interpretar su seguimiento.');
+  }
+
+  return {
+    vmid: creation.vmid,
+    tareaId: creation.tareaId,
+    upid: creation.upid,
+  };
 }
