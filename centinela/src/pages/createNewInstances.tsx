@@ -7,6 +7,7 @@ import SelectTypeOfInstances from '@/components/features/instances/components/se
 import ConfigureInstanceResources from '@/components/features/instances/components/configureInstanceResources';
 import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
 import ConfigureInstanceNetwork from '@/components/features/instances/components/wizard/configureInstanceNetwork';
+import SelectInstanceOperatingSystem from '@/components/features/instances/components/wizard/selectInstanceOperatingSystem';
 import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
 import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
 
@@ -54,7 +55,7 @@ export default function CreateNewInstances() {
                 </div>
             </header>
 
-            {currentStep >= 4 && (
+            {currentStep >= 5 && (
                 <div role="alert" className={styles.developmentNotice}>
                     <TriangleAlert className={styles.developmentNoticeIcon} aria-hidden="true" />
                     <span>Aprovisionamiento en desarrollo — Próximamente en Etapa 2</span>
@@ -90,6 +91,12 @@ export default function CreateNewInstances() {
                         <ConfigureInstanceNetwork
                             draft={draft}
                             onNetworkFieldChange={updateNetworkField}
+                        />
+                    )}
+                    {currentStep === 4 && (
+                        <SelectInstanceOperatingSystem
+                            draft={draft}
+                            onTemplateChange={(templateValue) => updateField('templateOso', templateValue)}
                         />
                     )}
                 </main>
