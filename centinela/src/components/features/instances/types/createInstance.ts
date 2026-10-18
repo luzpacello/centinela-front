@@ -1,4 +1,5 @@
 export type InstanceType = 'vm' | 'lxc';
+export type InstanceNetworkMode = 'dhcp' | 'static';
 
 export interface InstanceNetworkDraft {
     bridge: string;
@@ -6,7 +7,7 @@ export interface InstanceNetworkDraft {
     gateway: string;
     ip: string;
     mascara: string;
-    modo: 'dhcp' | 'static' | null;
+    modo: InstanceNetworkMode | null;
     vlan: number | null;
 }
 
@@ -48,4 +49,9 @@ export interface InstanceCreationStep {
 export type UpdateCreateInstanceField = <Field extends keyof CreateInstanceDraft>(
     field: Field,
     value: CreateInstanceDraft[Field],
+) => void;
+
+export type UpdateInstanceNetworkField = <Field extends keyof InstanceNetworkDraft>(
+    field: Field,
+    value: InstanceNetworkDraft[Field],
 ) => void;
