@@ -6,6 +6,7 @@ import { Stepper } from '@/components/ui/stepper';
 import SelectTypeOfInstances from '@/components/features/instances/components/selectTypeOfInstances';
 import ConfigureInstanceResources from '@/components/features/instances/components/configureInstanceResources';
 import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
+import ConfigureInstanceNetwork from '@/components/features/instances/components/wizard/configureInstanceNetwork';
 import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
 import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
 
@@ -18,6 +19,7 @@ export default function CreateNewInstances() {
         goToPreviousStep,
         selectInstanceType,
         updateField,
+        updateNetworkField,
     } = useCreateInstanceWizard();
 
     function goBack() {
@@ -52,7 +54,7 @@ export default function CreateNewInstances() {
                 </div>
             </header>
 
-            {currentStep >= 3 && (
+            {currentStep >= 4 && (
                 <div role="alert" className={styles.developmentNotice}>
                     <TriangleAlert className={styles.developmentNoticeIcon} aria-hidden="true" />
                     <span>Aprovisionamiento en desarrollo — Próximamente en Etapa 2</span>
@@ -82,6 +84,12 @@ export default function CreateNewInstances() {
                         <ConfigureInstanceResources
                             draft={draft}
                             onFieldChange={updateField}
+                        />
+                    )}
+                    {currentStep === 3 && (
+                        <ConfigureInstanceNetwork
+                            draft={draft}
+                            onNetworkFieldChange={updateNetworkField}
                         />
                     )}
                 </main>
