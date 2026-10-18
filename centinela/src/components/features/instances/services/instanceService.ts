@@ -5,6 +5,9 @@ import { DEFAULT_NETWORK_CONFIGURATION, DEFAULT_RESOURCE_CONFIGURATION } from '.
 
 export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
+//mockInstances es en caso de que se necesite instancias de prueba espara alguna tarea
+//const USE_INSTANCE_MOCKS = import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true';
+
 function validateInstanceVmid(vmid: number): number {
   if (!Number.isSafeInteger(vmid) || vmid <= 0) {
     throw new ApiRequestError('La instancia no tiene un VMID válido.');
@@ -24,6 +27,12 @@ function readOptionalActiveTask(value: unknown): InstanceActiveTask | null {
 }
 
 export async function fetchInstanceInventory(signal?: AbortSignal): Promise<InventoryInstance[]> {
+  {/*if (USE_INSTANCE_MOCKS) {
+    if (signal?.aborted) {
+      throw new DOMException('Operación cancelada', 'AbortError');
+    }
+    return mockInstances.map((instance) => ({ ...instance }));
+  }*/}
   const response = await apiClient.get<unknown>('/instances', { signal, expectedStatus: 200 });
   if (!Array.isArray(response)) throw new ApiRequestError('No se pudo interpretar el inventario de instancias.');
   return response.map((value: unknown): InventoryInstance => {

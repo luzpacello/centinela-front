@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Menu } from '@base-ui/react/menu';
-import { CirclePlay, Eye, Loader2, MoreVertical, Square, RotateCcw, Trash } from 'lucide-react';
+import { CirclePlay, Loader2, MoreVertical, Square, RotateCcw, Trash } from 'lucide-react';
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
 import PermissionGate from '@/context/PermissionGate';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +83,6 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   //const [isSubmitting, setIsSubmitting] = useState(false);
-  const [, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const canOperate = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
 
@@ -262,11 +261,6 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                   )}
                 </>
               )}
-              <Menu.Item render={<button type="button" />} nativeButton
-                onClick={() => { setIsMenuOpen(false); setIsDetailsOpen(true); }}
-                className={`w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none ${canOperate ? 'border-t border-slate-100' : ''}`}>
-                <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Eye className="text-blue-600" /> Ver instancia</Badge>
-              </Menu.Item>
               <PermissionGate requiredRole="ADMIN">
                 <Menu.Item
                   render={<button type="button" arial-label="delete" />}
