@@ -26,8 +26,9 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
-import InstanceTester from '@/components/features/instances/components/InstanceTester';
+//import InstanceTester from '@/components/features/instances/components/InstanceTester';
 const INSTANCES_PER_PAGE = 10;
+import { Link } from 'react-router';
 
 export default function Instances() {
     const navigate = useNavigate();
@@ -164,7 +165,13 @@ export default function Instances() {
                                                 {instance.type === 'VM' ? <Monitor className="size-4" /> : <Container className="size-4" />}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-destacado">{instance.name}</span>
+                                                <Link
+                                                    to={`/instances/${instance.id}`}
+                                                    aria-label={`Ver detalle de instancia ${instance.name}`}
+                                                    className='text-destacado'
+                                                >
+                                                    {instance.name}
+                                                </Link>
                                                 {!isAdmin() && <Badge variant="outline" data-access-level={permissionLevel}>
                                                     {permissionLevel === 'READ_ONLY' ? 'Solo lectura' : permissionLevel === 'FULL_ACCESS' ? 'Control total' : 'Nivel de acceso no disponible'}
                                                 </Badge>}
@@ -249,7 +256,6 @@ export default function Instances() {
                     </div>
                 </footer>
             </Card>
-            <InstanceTester />
         </section>
     );
 }
