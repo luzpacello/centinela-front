@@ -33,6 +33,16 @@ export const NODE_OPTIONS: SelectOption[] = [
     { value: 'pve02', label: 'pve02 (192.168.1.11)' },
 ];
 
+export const NETWORK_BRIDGE_OPTIONS: SelectOption[] = [
+    { value: 'vmbr0', label: 'vmbr0 (recomendado)' },
+    { value: 'vmbr1', label: 'vmbr1 (red interna)' },
+];
+
+export const DEFAULT_NETWORK_CONFIGURATION = {
+    bridge: 'vmbr0',
+    modo: 'dhcp' as const,
+};
+
 export const TEMPLATE_OPTIONS: Record<InstanceType, SelectOption[]> = {
     vm: [
         { value: 'local:iso/ubuntu-24.04.iso', label: 'Ubuntu 24.04 LTS' },
@@ -77,12 +87,12 @@ export const INITIAL_INSTANCE_DRAFT: CreateInstanceDraft = {
     password: '',
     ramMb: null,
     red: {
-        bridge: '',
+        bridge: DEFAULT_NETWORK_CONFIGURATION.bridge,
         firewall: null,
         gateway: '',
         ip: '',
         mascara: '',
-        modo: null,
+        modo: DEFAULT_NETWORK_CONFIGURATION.modo,
         vlan: null,
     },
     storageId: '',
