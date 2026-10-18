@@ -41,6 +41,15 @@ export interface StorageOption extends SelectOption {
     totalGb: number;
 }
 
+export interface OperatingSystemTemplateOption extends SelectOption {
+    templateName: string;
+    distribution: string;
+    operatingSystem: string;
+    version: string;
+    size: string;
+    date: string;
+}
+
 export interface InstanceCreationStep {
     title: string;
     description: string;
