@@ -1,7 +1,8 @@
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import type { InstanceActiveTask, InstancePowerActionResponse, InventoryInstance, InstancePowerAction } from '../types/instance';
-import type { CreateInstanceDraft, CreateInstancePayload, CreateInstanceResponse } from '../types/createInstance';
+import type { CreateInstanceDraft, CreateInstancePayload, CreateInstanceResponse, OperatingSystemTemplateOption, StorageOption } from '../types/createInstance';
 import { DEFAULT_NETWORK_CONFIGURATION, DEFAULT_RESOURCE_CONFIGURATION } from '../data/createInstanceOptions';
+import { isValidStaticNetwork } from '../validation/createInstanceValidation';
 
 export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
@@ -24,6 +25,67 @@ function readOptionalActiveTask(value: unknown): InstanceActiveTask | null {
   const task = value as Record<string, unknown>;
   if (typeof task.tareaId !== 'string' || typeof task.action !== 'string' || typeof task.status !== 'string') return null;
   return { tareaId: task.tareaId, action: task.action, status: task.status.toUpperCase() };
+}
+
+function formatCatalogBytes(bytes: number, allowMegabytes = false): string {
+  const gigabytes = bytes / 1024 ** 3;
+  if (allowMegabytes && gigabytes < 1) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
+  return gigabytes >= 1024
+    ? `${(gigabytes / 1024).toFixed(2)} TB`
+    : `${gigabytes.toFixed(2)} GB`;
+}
+
+export async function fetchCreationStorages(signal?: AbortSignal): Promise<StorageOption[]> {
+  const response = await apiClient.get<unknown>('/node/storages', { signal, expectedStatus: 200 });
+  if (!Array.isArray(response)) throw new ApiRequestError('No se pudo interpretar la lista de almacenamientos.');
+
+  return response.map((value: unknown): StorageOption => {
+    if (typeof value !== 'object' || value === null) throw new ApiRequestError('No se pudo interpretar la lista de almacenamientos.');
+    const storage = value as Record<string, unknown>;
+    if (typeof storage.name !== 'string' || typeof storage.type !== 'string'
+      || typeof storage.freeBytes !== 'number' || !Number.isFinite(storage.freeBytes) || storage.freeBytes < 0
+      || typeof storage.totalBytes !== 'number' || !Number.isFinite(storage.totalBytes) || storage.totalBytes < 0
+      || !Array.isArray(storage.contentTypes) || !storage.contentTypes.every((contentType) => typeof contentType === 'string')) {
+      throw new ApiRequestError('No se pudo interpretar la lista de almacenamientos.');
+    }
+    const availableLabel = formatCatalogBytes(storage.freeBytes);
+    return {
+      value: storage.name,
+      label: `${storage.name} (${storage.type}) · ${availableLabel} libres`,
+      availableGb: storage.freeBytes / 1024 ** 3,
+      totalGb: storage.totalBytes / 1024 ** 3,
+      availableLabel,
+      totalLabel: formatCatalogBytes(storage.totalBytes),
+      type: storage.type,
+      contentTypes: storage.contentTypes,
+    };
+  });
+}
+
+export async function fetchCreationTemplates(signal?: AbortSignal): Promise<OperatingSystemTemplateOption[]> {
+  const response = await apiClient.get<unknown>('/node/templates', { signal, expectedStatus: 200 });
+  if (!Array.isArray(response)) throw new ApiRequestError('No se pudo interpretar la lista de imágenes.');
+
+  return response.map((value: unknown): OperatingSystemTemplateOption => {
+    if (typeof value !== 'object' || value === null) throw new ApiRequestError('No se pudo interpretar la lista de imágenes.');
+    const template = value as Record<string, unknown>;
+    if (typeof template.id !== 'string' || typeof template.name !== 'string'
+      || (template.type !== 'ISO' && template.type !== 'LXC_TEMPLATE')
+      || typeof template.sizeBytes !== 'number' || !Number.isFinite(template.sizeBytes) || template.sizeBytes < 0) {
+      throw new ApiRequestError('No se pudo interpretar la lista de imágenes.');
+    }
+    return {
+      value: template.id,
+      label: template.name,
+      type: template.type,
+      templateName: template.name,
+      distribution: template.type === 'ISO' ? 'ISO' : 'LXC',
+      operatingSystem: '—',
+      version: '—',
+      size: formatCatalogBytes(template.sizeBytes, true),
+      date: '—',
+    };
+  });
 }
 
 export async function fetchInstanceInventory(signal?: AbortSignal): Promise<InventoryInstance[]> {
@@ -108,34 +170,41 @@ export async function deleteInstance( vmid: number ): Promise<InstancePowerActio
 }
 
 export function buildCreateInstancePayload(draft: CreateInstanceDraft): CreateInstancePayload {
-  if (!draft.tipo || !draft.nombre.trim() || !draft.nodo || !draft.templateOso) {
-    throw new ApiRequestError('Revisá los datos generales y seleccioná un sistema operativo antes de crear la instancia.');
+  if (!draft.tipo || !draft.nombre.trim() || !draft.nodo || !draft.templateOso || !draft.storageId.trim()) {
+    throw new ApiRequestError('Revisá los datos generales y seleccioná un almacenamiento y un sistema operativo antes de crear la instancia.');
+  }
+
+  const cores = draft.cores ?? DEFAULT_RESOURCE_CONFIGURATION.cores;
+  const ramMb = draft.ramMb ?? DEFAULT_RESOURCE_CONFIGURATION.ramMb;
+  const discoGb = draft.discoGb ?? DEFAULT_RESOURCE_CONFIGURATION.discoGb;
+  if (![cores, ramMb, discoGb].every((value) => Number.isSafeInteger(value) && value > 0)) {
+    throw new ApiRequestError('Los recursos de CPU, memoria y disco deben ser números enteros positivos.');
   }
 
   const networkMode = draft.red.modo ?? DEFAULT_NETWORK_CONFIGURATION.modo;
   const usesStaticIp = networkMode === 'static';
-  if (usesStaticIp && (!draft.red.ip.trim() || !draft.red.mascara.trim() || !draft.red.gateway.trim())) {
-    throw new ApiRequestError('Completá la dirección IP, el prefijo de red y la puerta de enlace.');
+  if (usesStaticIp && !isValidStaticNetwork(draft.red)) {
+    throw new ApiRequestError('Ingresá una IP IPv4 válida, un prefijo CIDR entre 0 y 32 y una puerta de enlace válida.');
   }
 
   return {
-    cores: draft.cores ?? DEFAULT_RESOURCE_CONFIGURATION.cores,
+    cores,
     descripcion: draft.descripcion.trim(),
-    discoGb: draft.discoGb ?? DEFAULT_RESOURCE_CONFIGURATION.discoGb,
+    discoGb,
     nodo: draft.nodo,
     nombre: draft.nombre.trim(),
     password: draft.password,
-    ramMb: draft.ramMb ?? DEFAULT_RESOURCE_CONFIGURATION.ramMb,
+    ramMb,
     red: {
       bridge: draft.red.bridge || DEFAULT_NETWORK_CONFIGURATION.bridge,
       firewall: draft.red.firewall ?? false,
       gateway: usesStaticIp ? draft.red.gateway.trim() : '',
-      ip: usesStaticIp ? draft.red.ip.trim() : '',
+      ip: usesStaticIp ? `${draft.red.ip.trim()}/${draft.red.mascara.trim()}` : '',
       mascara: usesStaticIp ? draft.red.mascara.trim() : '',
       modo: networkMode,
       vlan: draft.red.vlan ?? 0,
     },
-    storageId: draft.storageId || DEFAULT_RESOURCE_CONFIGURATION.storageId,
+    storageId: draft.storageId.trim(),
     templateOso: draft.templateOso,
     tipo: draft.tipo,
   };
@@ -150,7 +219,7 @@ export async function createInstance(payload: CreateInstancePayload): Promise<Cr
 
   const creation = response as Record<string, unknown>;
   // La creación también responde con el tareaId público; el UPID no se expone.
-  if (typeof creation.vmid !== 'number'
+  if (typeof creation.vmid !== 'number' || !Number.isSafeInteger(creation.vmid) || creation.vmid <= 0
     || typeof creation.tareaId !== 'string'
     || !creation.tareaId.trim()) {
     throw new ApiRequestError('La creación fue aceptada, pero no se pudo interpretar su seguimiento.');
