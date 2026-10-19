@@ -170,7 +170,7 @@ export async function deleteInstance( vmid: number ): Promise<InstancePowerActio
 }
 
 export function buildCreateInstancePayload(draft: CreateInstanceDraft): CreateInstancePayload {
-  if (!draft.tipo || !draft.nombre.trim() || !draft.nodo || !draft.templateOso || !draft.storageId.trim()) {
+  if (!draft.tipo || !draft.nombre.trim() || !draft.templateOso || !draft.storageId.trim()) {
     throw new ApiRequestError('Revisá los datos generales y seleccioná un almacenamiento y un sistema operativo antes de crear la instancia.');
   }
 
@@ -191,12 +191,10 @@ export function buildCreateInstancePayload(draft: CreateInstanceDraft): CreateIn
     cores,
     descripcion: draft.descripcion.trim(),
     discoGb,
-    nodo: draft.nodo,
     nombre: draft.nombre.trim(),
     password: draft.password,
     ramMb,
     red: {
-      bridge: draft.red.bridge || DEFAULT_NETWORK_CONFIGURATION.bridge,
       firewall: draft.red.firewall ?? false,
       gateway: usesStaticIp ? draft.red.gateway.trim() : '',
       ip: usesStaticIp ? `${draft.red.ip.trim()}/${draft.red.mascara.trim()}` : '',
