@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
     INSTANCE_TYPE_OPTIONS,
     NODE_OPTIONS,
-    TEMPLATE_OPTIONS,
 } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
@@ -31,14 +30,13 @@ export default function SelectTypeOfInstances({
     onFieldChange,
     onTypeChange,
 }: SelectTypeOfInstancesProps) {
-    const templates = draft.tipo ? TEMPLATE_OPTIONS[draft.tipo] : [];
     const instanceNameLabel = draft.tipo === 'lxc' ? 'Nombre del contenedor' : 'Nombre de la instancia';
 
     return (
         <div className={styles.pageContent}>
             <Card className={styles.card}>
                 <section className={styles.contentSection} aria-labelledby="instance-type-title">
-                    <h2 id="instance-type-title" className={styles.sectionTitle}>Tipo de instancia</h2>
+                    <h3 id="instance-type-title">Tipo de instancia</h3>
                     <div className={styles.instanceTypeGrid}>
                         {INSTANCE_TYPE_OPTIONS.map((option) => {
                             const isSelected = draft.tipo === option.type;
@@ -66,7 +64,7 @@ export default function SelectTypeOfInstances({
                 </section>
 
                 <section className={styles.contentSection} aria-labelledby="basic-information-title">
-                    <h2 id="basic-information-title" className={styles.sectionTitle}>Información básica</h2>
+                    <h3 id="basic-information-title">Información básica</h3>
                     <div className={styles.formGrid}>
                         <div className={styles.fieldContainer}>
                             <label className={styles.fieldLabel} htmlFor="instance-name">{instanceNameLabel}</label>
@@ -113,32 +111,6 @@ export default function SelectTypeOfInstances({
                         </div>
                     </div>
                 </section>
-
-                <section className={styles.contentSection} aria-labelledby="template-title">
-                    <h2 id="template-title" className={styles.sectionTitle}>Plantilla y sistema operativo</h2>
-                    <div className={styles.templateFieldContainer}>
-                        <label className={styles.fieldLabel} htmlFor="instance-template">Plantilla (Template)</label>
-                        <Combobox
-                            value={draft.templateOso || null}
-                            onValueChange={(value) => onFieldChange('templateOso', value ?? '')}
-                            disabled={!draft.tipo}
-                        >
-                            <ComboboxInput
-                                id="instance-template"
-                                placeholder={draft.tipo ? 'Seleccionar plantilla' : 'Selecciona primero un tipo'}
-                                disabled={!draft.tipo}
-                            />
-                            <ComboboxContent>
-                                <ComboboxList>
-                                    {templates.map((option) => (
-                                        <ComboboxItem key={option.value} value={option.value}>{option.label}</ComboboxItem>
-                                    ))}
-                                </ComboboxList>
-                            </ComboboxContent>
-                        </Combobox>
-                        <p className={styles.fieldDescription}>Selecciona una plantilla compatible con el tipo de instancia.</p>
-                    </div>
-                </section>
             </Card>
         </div>
     );
@@ -148,7 +120,6 @@ const styles = {
     card: 'gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-none ring-0',
     pageContent: 'divide-y divide-slate-200',
     contentSection: 'grid gap-5',
-    sectionTitle: 'mb-0 text-base font-semibold text-slate-950',
     instanceTypeGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-2',
     instanceTypeButton: 'flex min-h-28 w-full items-center gap-4 rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
     selectedInstanceTypeButton: 'border-blue-600 bg-blue-50/50',
@@ -162,11 +133,10 @@ const styles = {
     instanceTypeDescription: 'text-xs leading-5 text-slate-500',
     formGrid: 'grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2',
     fieldContainer: 'min-w-0',
-    fieldLabel: 'mb-2 block text-xs font-medium text-slate-900',
-    fieldDescription: 'mt-2 text-xs text-slate-500',
+    fieldLabel: 'mb-2 block',
+    fieldDescription: 'mt-2',
     descriptionField: 'md:col-span-2',
     textareaContainer: 'relative',
     descriptionTextarea: 'min-h-20 resize-none pb-7',
     characterCounter: 'pointer-events-none absolute bottom-2 right-3 text-[11px] text-slate-500',
-    templateFieldContainer: 'min-w-0 md:w-[calc(50%_-_0.75rem)]',
 };
