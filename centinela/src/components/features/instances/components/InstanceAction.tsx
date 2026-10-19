@@ -86,15 +86,6 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const canOperate = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
 
-  console.log('InstanceAction DEBUG', {
-    name: instance.name,
-    id: instance.id,
-    status: instance.status,
-    nivelAcceso: instance.nivelAcceso,
-    canOperate,
-    canOperateByFunction: canOperateInstance(instance.id),
-  });
-
   const activeTask = instance.activeTask ?? null;
   const derivedTransition: InstanceTransition | null = activeTask?.status === 'RUNNING'
     ? { isTransitioning: true, tareaId: activeTask.tareaId, action: activeTask.action }
