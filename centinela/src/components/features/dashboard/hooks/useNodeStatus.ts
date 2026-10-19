@@ -5,14 +5,11 @@ const POLLING_INTERVAL_MS = 10_000;
 
 export type NodeHealth = 'loading' | 'healthy' | 'warning' | 'inaccessible';
 
-// Cantidad máxima de muestras que se conservan para las curvas de tendencia.
-// Primero entra el histórico del backend (60 puntos, uno por minuto) y después el
-// sondeo de 10 s va agregando la cola viva: así el gráfico ya está formado al
-// entrar, en vez de arrancar como una línea plana y esperar minutos a que se
-// llene.
-const HISTORY_LIMIT = 120;
+// Una hora de sondeos de diez segundos más el histórico inicial por minuto.
+const HISTORY_LIMIT = 480;
 
 export interface NodeStatusSample {
+    timestamp: number;
     cpu: number;
     // Opcionales: el histórico del nodo no siempre trae RAM ni almacenamiento.
     ram?: number;
@@ -63,10 +60,11 @@ export function useNodeStatus() {
                     hasData.current = true;
                     setData(nextData);
                     setError(null);
+                    const time = Date.parse(nextData.fetchedAt);
                     setHistory((previous) => [
-                        ...previous.slice(-(HISTORY_LIMIT - 1)),
-                        { cpu: nextData.cpu.usagePercent, ram: nextData.ram.usagePercent, storage: nextData.storage.usagePercent },
-                    ]);
+                        ...previous.filter((sample) => sample.timestamp !== time),
+                        { timestamp: Number.isFinite(time) ? time : Date.now(), cpu: nextData.cpu.usagePercent, ram: nextData.ram.usagePercent, storage: nextData.storage.usagePercent },
+                    ].sort((a, b) => a.timestamp - b.timestamp).slice(-HISTORY_LIMIT));
                 }
             } catch (requestError) {
                 if (!disposed && !controller.signal.aborted) {
@@ -130,10 +128,7 @@ export function useNodeStatus() {
     // (el estado de carga solo aparece cuando todavía no hay datos).
     const refetch = useCallback(() => setRefetchCount((count) => count + 1), []);
 
-    // Al entrar, el gráfico arranca con el histórico real del host: el backend lo
-    // arma desde el RRD de Proxmox, así que no hay que esperar minutos a que el
-    // sondeo junte muestras. Si la serie no llega, el gráfico queda como estaba y
-    // se llena con el sondeo: no se rompe nada.
+    // El histórico rellena el pasado sin reemplazar las muestras del sondeo.
     useEffect(() => {
         const controller = new AbortController();
 
@@ -147,13 +142,16 @@ export function useNodeStatus() {
                 const muestras: NodeHistoryPoint[] = Array.isArray(serie) ? serie : [];
                 if (muestras.length === 0) return;
                 setHistory((previous) => {
-                    // Las muestras vivas mandan: el histórico solo rellena el pasado.
-                    if (previous.length >= muestras.length) return previous;
-                    return muestras.map((punto) => ({
-                        cpu: punto.cpuPercent,
-                        ram: punto.ramPercent,
-                        storage: punto.storagePercent,
-                    }));
+                    // Si coinciden en el tiempo, prevalece la muestra del sondeo.
+                    const byTime = new Map<number, NodeStatusSample>();
+                    for (const punto of muestras) {
+                        const timestamp = punto.timestamp * 1000;
+                        if (Number.isFinite(timestamp) && timestamp > 0) {
+                            byTime.set(timestamp, { timestamp, cpu: punto.cpuPercent, ram: punto.ramPercent, storage: punto.storagePercent });
+                        }
+                    }
+                    for (const sample of previous) byTime.set(sample.timestamp, sample);
+                    return [...byTime.values()].sort((a, b) => a.timestamp - b.timestamp).slice(-HISTORY_LIMIT);
                 });
             } catch {
                 // Sin histórico el gráfico sigue funcionando con el sondeo.

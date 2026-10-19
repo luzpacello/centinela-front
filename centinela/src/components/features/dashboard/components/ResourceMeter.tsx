@@ -29,35 +29,26 @@ function nivelY(percent: number): number {
 // Curva y área que la rellena. Las muestras sin dato se ignoran: el backend omite
 // ramPercent/storagePercent cuando el punto del RRD no trae su total, y una
 // muestra ausente no tiene que romper la curva.
-function buildSparklinePaths(samples: Array<number | undefined>): { line: string; area: string } {
-    const validas = samples.filter(
-        (value): value is number => typeof value === 'number' && Number.isFinite(value),
-    );
+function buildSparklinePaths(samples: Array<number | undefined>, timestamps?: number[]): { line: string; area: string } | null {
+    const latest = timestamps?.length === samples.length ? Math.max(...timestamps) : NaN;
+    const timed = Number.isFinite(latest) && timestamps?.every(Number.isFinite);
+    const windowStart = latest - 60 * 60 * 1000;
+    const validas = samples.map((value, index) => ({ value, index })).filter(
+        (point): point is { value: number; index: number } => typeof point.value === 'number' && Number.isFinite(point.value),
+    ).filter(({ index }) => !timed || timestamps![index] >= windowStart);
     const piso = SPARKLINE_HEIGHT.toFixed(2);
 
-    if (validas.length === 0) {
-        const nivel = nivelY(0).toFixed(2);
-        return {
-            line: `0,${nivel} ${SPARKLINE_WIDTH},${nivel}`,
-            area: `0,${piso} ${SPARKLINE_WIDTH},${piso}`,
-        };
-    }
+    if (validas.length < 2) return null;
 
-    if (validas.length === 1) {
-        const nivel = nivelY(validas[0]).toFixed(2);
-        return {
-            line: `0,${nivel} ${SPARKLINE_WIDTH},${nivel}`,
-            area: `0,${piso} 0,${nivel} ${SPARKLINE_WIDTH},${nivel} ${SPARKLINE_WIDTH},${piso}`,
-        };
-    }
-
-    const puntos = validas.map((value, index) => ({
-        x: ((index / (validas.length - 1)) * SPARKLINE_WIDTH).toFixed(2),
+    const puntos = validas.map(({ value, index }) => ({
+        x: (timed
+            ? Math.max(0, Math.min(1, (timestamps![index] - windowStart) / (60 * 60 * 1000))) * SPARKLINE_WIDTH
+            : (index / (samples.length - 1)) * SPARKLINE_WIDTH).toFixed(2),
         y: nivelY(value).toFixed(2),
     }));
     const line = puntos.map((punto) => `${punto.x},${punto.y}`).join(' ');
 
-    return { line, area: `0,${piso} ${line} ${SPARKLINE_WIDTH},${piso}` };
+    return { line, area: `${puntos[0].x},${piso} ${line} ${puntos[puntos.length - 1].x},${piso}` };
 }
 
 interface BaseMeterProps {
@@ -74,13 +65,14 @@ interface BaseMeterProps {
     // línea suelta que puede confundirse con el cero.
     fillTheme: string;
     samples?: Array<number | undefined>;
+    timestamps?: number[];
 }
 
-function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, samples }: BaseMeterProps) {
+function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, samples, timestamps }: BaseMeterProps) {
     const safePercent = Math.max(0, Math.min(100, percent));
     const theme = getThresholdClasses(safePercent);
     const displayedPercent = Number(safePercent.toFixed(2));
-    const sparkline = buildSparklinePaths(samples ?? []);
+    const sparkline = buildSparklinePaths(samples ?? [], timestamps);
 
     return (
         <div
@@ -102,41 +94,43 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
                 <span className="text-sm font-medium text-slate-500">{details}</span>
             </div>
 
-            {/* Curva de tendencia con las muestras reales del sondeo + porcentaje vivo */}
+            {/* La tendencia y el porcentaje actual son distintos: sin historial no significa cero. */}
             <div className="flex items-center gap-4">
-                <svg
-                    data-testid={`${testId}-sparkline`}
-                    viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-                    preserveAspectRatio="none"
-                    role="img"
-                    aria-label={`Tendencia de uso de ${title}`}
-                    className="h-12 w-full flex-1"
-                >
-                    <polygon
-                        points={sparkline.area}
-                        stroke="none"
-                        className={`transition-all duration-500 ${fillTheme}`}
-                    />
-                    <polyline
-                        points={sparkline.line}
-                        fill="none"
-                        strokeWidth="2"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`transition-all duration-500 ${strokeTheme}`}
-                    />
-                </svg>
+                <div className="relative min-w-0 flex-1">
+                    <svg
+                        data-testid={`${testId}-sparkline`}
+                        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+                        preserveAspectRatio="none"
+                        role="img"
+                        aria-label={sparkline ? `Tendencia de uso de ${title} en la última hora` : `Sin historial de ${title}`}
+                        className="h-12 w-full"
+                    >
+                        {sparkline && <>
+                            <polygon points={sparkline.area} stroke="none" className={fillTheme} />
+                            <polyline
+                                points={sparkline.line}
+                                fill="none"
+                                strokeWidth="2"
+                                vectorEffect="non-scaling-stroke"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={strokeTheme}
+                            />
+                        </>}
+                    </svg>
+                    {!sparkline && <span className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">Sin historial</span>}
+                </div>
                 {/* Porcentaje numérico */}
                 <span className={`w-16 text-right text-base font-bold tracking-tight ${theme.text}`}>
                     {displayedPercent}%
                 </span>
             </div>
+            <span className="text-xs text-slate-500">Última hora</span>
         </div>
     );
 }
 
-export function CpuGauge({ percent, cores, samples }: { percent: number; cores: number; samples?: Array<number | undefined> }) {
+export function CpuGauge({ percent, cores, samples, timestamps }: { percent: number; cores: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
     return (
         <BaseMeter
             title="CPU"
@@ -148,6 +142,7 @@ export function CpuGauge({ percent, cores, samples }: { percent: number; cores: 
             strokeTheme="stroke-emerald-700"
             fillTheme="fill-emerald-700/15"
             samples={samples}
+            timestamps={timestamps}
         />
     );
 }
@@ -156,7 +151,7 @@ function formatGb(value: number): string {
     return `${Number(value.toFixed(2))} GB`;
 }
 
-export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined> }) {
+export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     return (
         <BaseMeter
@@ -169,11 +164,12 @@ export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: n
             strokeTheme="stroke-blue-600"
             fillTheme="fill-blue-600/15"
             samples={samples}
+            timestamps={timestamps}
         />
     );
 }
 
-export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined> }) {
+export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamps }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     const formatStorage = (gb: number) => gb >= 1000 ? `${Number((gb / 1024).toFixed(2))} TB` : formatGb(gb);
 
@@ -188,6 +184,7 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedG
             strokeTheme="stroke-purple-600"
             fillTheme="fill-purple-600/15"
             samples={samples}
+            timestamps={timestamps}
         />
     );
 }

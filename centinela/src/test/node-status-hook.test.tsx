@@ -3,9 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/features/dashboard/services/nodeStatusService', () => ({
     getNodeStatus: vi.fn(),
+    getNodeHistory: vi.fn(),
 }));
 
-import { getNodeStatus, type NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
+import { getNodeHistory, getNodeStatus, type NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
 import { useNodeStatus } from '@/components/features/dashboard/hooks/useNodeStatus';
 import { ApiRequestError } from '@/services/apiClient';
 
@@ -28,6 +29,8 @@ function setVisibilityState(state: DocumentVisibilityState) {
 
 beforeEach(() => {
     vi.mocked(getNodeStatus).mockReset();
+    vi.mocked(getNodeHistory).mockReset();
+    vi.mocked(getNodeHistory).mockResolvedValue([]);
     setVisibilityState('visible');
 });
 
@@ -39,7 +42,7 @@ afterEach(() => {
 describe('useNodeStatus', () => {
     it('consulta inmediatamente y vuelve a consultar cada 10 segundos', async () => {
         vi.useFakeTimers();
-        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        vi.mocked(getNodeStatus).mockResolvedValueOnce(status).mockResolvedValue({ ...status, fetchedAt: '2026-10-03T14:30:15Z' });
 
         const { result } = renderHook(() => useNodeStatus());
         await act(async () => { await Promise.resolve(); });
@@ -47,12 +50,27 @@ describe('useNodeStatus', () => {
         expect(getNodeStatus).toHaveBeenCalledTimes(1);
         expect(result.current.data).toEqual(status);
         expect(result.current.health).toBe('healthy');
-        expect(result.current.history).toEqual([{ cpu: 69, ram: 33.01, storage: 33.01 }]);
+        expect(result.current.history).toEqual([{ timestamp: Date.parse(status.fetchedAt), cpu: 69, ram: 33.01, storage: 33.01 }]);
 
         act(() => { vi.advanceTimersByTime(10_000); });
         await act(async () => { await Promise.resolve(); });
         expect(getNodeStatus).toHaveBeenCalledTimes(2);
         expect(result.current.history).toHaveLength(2);
+    });
+
+    it('conserva la muestra viva si el histórico llega después y ordena por tiempo', async () => {
+        let resolveHistory!: (value: Array<{ timestamp: number; cpuPercent: number; ramPercent: number; storagePercent: number }>) => void;
+        vi.mocked(getNodeHistory).mockImplementation(() => new Promise((resolve) => { resolveHistory = resolve; }));
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+
+        const { result } = renderHook(() => useNodeStatus());
+        await act(async () => { await Promise.resolve(); });
+        await act(async () => { resolveHistory([{ timestamp: 1759500000, cpuPercent: 10, ramPercent: 20, storagePercent: 30 }]); });
+
+        expect(result.current.history).toEqual([
+            { timestamp: 1759500000000, cpu: 10, ram: 20, storage: 30 },
+            { timestamp: Date.parse(status.fetchedAt), cpu: 69, ram: 33.01, storage: 33.01 },
+        ]);
     });
 
     it('no consulta con la pestaña oculta y reanuda al volver a estar visible', async () => {

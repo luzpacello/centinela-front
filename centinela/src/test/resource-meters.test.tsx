@@ -65,13 +65,32 @@ describe('ResourceMeters', () => {
         expect(screen.getByText('30%')).toBeInTheDocument();
     });
 
-    it('se banca una sola muestra dibujando una línea plana', () => {
+    it('no inventa una tendencia con una sola muestra', () => {
         render(
             <StorageMeter usedGb={510} totalGb={1024} samples={[42]} />
         );
 
-        expect(screen.getByTestId('storage-meter-sparkline')).toBeInTheDocument();
+        expect(screen.getByTestId('storage-meter-sparkline').querySelector('polyline')).toBeNull();
+        expect(screen.getByText('Sin historial')).toBeInTheDocument();
         expect(screen.getByText('49.8%')).toBeInTheDocument();
+    });
+
+    it('no representa una serie vacía como uso cero', () => {
+        render(<RamMeter usedGb={3.35} totalGb={15.3} samples={[]} />);
+        expect(screen.getByTestId('ram-meter-sparkline').querySelector('polyline')).toBeNull();
+        expect(screen.getByText('Sin historial')).toBeInTheDocument();
+    });
+
+    it('mantiene el tiempo real entre muestras sin estirarlas a todo el ancho', () => {
+        render(<RamMeter usedGb={3.35} totalGb={15.3} samples={[20, 22]} timestamps={[1000, 1010]} />);
+        const points = screen.getByTestId('ram-meter-sparkline').querySelector('polyline')?.getAttribute('points') ?? '';
+        expect(Number(points.trim().split(' ')[0].split(',')[0])).toBeGreaterThan(90);
+        expect(Number(points.trim().split(' ')[1].split(',')[0])).toBe(100);
+    });
+
+    it('no une puntos anteriores a la última hora con el valor actual', () => {
+        render(<RamMeter usedGb={3.35} totalGb={15.3} samples={[20, 22]} timestamps={[1000, 3602000]} />);
+        expect(screen.getByTestId('ram-meter-sparkline').querySelector('polyline')).toBeNull();
     });
 
     function nivelPlano(testId: string): number {

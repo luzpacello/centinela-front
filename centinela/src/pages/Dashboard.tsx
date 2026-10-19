@@ -172,9 +172,9 @@ export default function Dashboard() {
                     </div>
                 ) : data ? (
                     <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
-                        <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} />
-                        <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} />
-                        <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} samples={history.map((sample) => sample.storage)} />
+                        <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} timestamps={history.map((sample) => sample.timestamp)} />
+                        <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} timestamps={history.map((sample) => sample.timestamp)} />
+                        <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} samples={history.map((sample) => sample.storage)} timestamps={history.map((sample) => sample.timestamp)} />
                     </div>
                 ) : null}
 
