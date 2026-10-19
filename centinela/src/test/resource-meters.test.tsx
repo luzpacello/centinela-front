@@ -73,4 +73,36 @@ describe('ResourceMeters', () => {
         expect(screen.getByTestId('storage-meter-sparkline')).toBeInTheDocument();
         expect(screen.getByText('49.8%')).toBeInTheDocument();
     });
+
+    function nivelPlano(testId: string): number {
+        const points =
+            screen.getByTestId(testId).querySelector('polyline')?.getAttribute('points') ?? '';
+        const niveles = points
+            .trim()
+            .split(/\s+/)
+            .map((punto) => Number(punto.split(',')[1]));
+
+        expect(new Set(niveles).size, 'La serie plana no es una línea horizontal').toBe(1);
+
+        return niveles[0];
+    }
+
+    it('ubica la línea plana al nivel real de la métrica y no al medio', () => {
+        const bajo = render(
+            <RamMeter usedGb={25.6} totalGb={128} usagePercent={20} samples={[20, 20, 20]} />
+        );
+        const nivelBajo = nivelPlano('ram-meter-sparkline');
+        bajo.unmount();
+
+        render(
+            <RamMeter usedGb={102.4} totalGb={128} usagePercent={80} samples={[80, 80, 80]} />
+        );
+        const nivelAlto = nivelPlano('ram-meter-sparkline');
+
+        expect(nivelAlto, 'Una RAM al 80% no puede quedar por debajo de una al 20%').toBeLessThan(
+            nivelBajo,
+        );
+        expect(nivelBajo).toBeGreaterThan(0);
+        expect(nivelAlto).toBeGreaterThan(0);
+    });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getNodeHistory, getNodeStatus, type NodeStatusResponse } from '../services/nodeStatusService';
+import { getNodeHistory, getNodeStatus, type NodeHistoryPoint, type NodeStatusResponse } from '../services/nodeStatusService';
 
 const POLLING_INTERVAL_MS = 10_000;
 
@@ -138,12 +138,17 @@ export function useNodeStatus() {
 
         void (async () => {
             try {
-                const serie = await getNodeHistory(controller.signal);
-                if (controller.signal.aborted || serie.length === 0) return;
+                const serie: unknown = await getNodeHistory(controller.signal);
+                if (controller.signal.aborted) return;
+                // La serie puede llegar como objeto de error o sin inicializar: sin
+                // esta guarda, `serie.map` revienta dentro del updater de estado y
+                // desmonta el Dashboard entero.
+                const muestras: NodeHistoryPoint[] = Array.isArray(serie) ? serie : [];
+                if (muestras.length === 0) return;
                 setHistory((previous) => {
                     // Las muestras vivas mandan: el histórico solo rellena el pasado.
-                    if (previous.length >= serie.length) return previous;
-                    return serie.map((punto) => ({
+                    if (previous.length >= muestras.length) return previous;
+                    return muestras.map((punto) => ({
                         cpu: punto.cpuPercent,
                         ram: punto.ramPercent,
                         storage: punto.storagePercent,
