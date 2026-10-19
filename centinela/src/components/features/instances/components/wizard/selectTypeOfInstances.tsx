@@ -1,17 +1,7 @@
 import { Box, Monitor } from 'lucide-react';
-import {
-    Combobox,
-    ComboboxContent,
-    ComboboxInput,
-    ComboboxItem,
-    ComboboxList,
-} from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    INSTANCE_TYPE_OPTIONS,
-    NODE_OPTIONS,
-} from '@/components/features/instances/data/createInstanceOptions';
+import { INSTANCE_TYPE_OPTIONS } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
     InstanceType,
@@ -78,21 +68,8 @@ export default function SelectTypeOfInstances({
                         </div>
 
                         <div className={styles.fieldContainer}>
-                            <label className={styles.fieldLabel} htmlFor="destination-node">Nodo de destino</label>
-                            <Combobox
-                                value={draft.nodo || null}
-                                onValueChange={(value) => onFieldChange('nodo', value ?? '')}
-                            >
-                                <ComboboxInput id="destination-node" placeholder="Seleccionar nodo" />
-                                <ComboboxContent>
-                                    <ComboboxList>
-                                        {NODE_OPTIONS.map((option) => (
-                                            <ComboboxItem key={option.value} value={option.value}>{option.label}</ComboboxItem>
-                                        ))}
-                                    </ComboboxList>
-                                </ComboboxContent>
-                            </Combobox>
-                            <p className={styles.fieldDescription}>Selecciona el nodo donde se creará la instancia.</p>
+                            <p className={styles.fieldLabel}>Nodo de destino</p>
+                            <p className='text-secundario'>Asignado automáticamente por el servidor.</p>
                         </div>
 
                         <div className={`${styles.fieldContainer} ${styles.descriptionField}`}>
