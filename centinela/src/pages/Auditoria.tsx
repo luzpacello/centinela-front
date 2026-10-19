@@ -11,6 +11,7 @@ import {
     Eye,
     Search,
     FileText,
+    Clock3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { detalleCompleto, type AuditDetalles } from '@/utils/auditDetalle';
+import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     DropdownMenu,
@@ -130,6 +132,7 @@ export default function AuditoriaPage() {
                 const params = new URLSearchParams({
                     pagina: String(pagina),
                     tamano: String(AUDIT_PAGE_SIZE),
+                    excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
                 });
                 if (accion) params.set('accion', accion);
                 if (resultado) params.set('resultado', resultado);
@@ -166,7 +169,11 @@ export default function AuditoriaPage() {
         if (!estaAutorizado) return;
 
         const controller = new AbortController();
-        const params = new URLSearchParams({ pagina: '1', tamano: String(AUDIT_PAGE_SIZE) });
+        const params = new URLSearchParams({
+            pagina: '1',
+            tamano: String(AUDIT_PAGE_SIZE),
+            excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
+        });
         if (accion) params.set('accion', accion);
         if (usuarioId) params.set('usuarioId', usuarioId);
         if (desde) params.set('desde', desde);
@@ -210,7 +217,10 @@ export default function AuditoriaPage() {
         try {
             const base = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
             const token = getAccessToken();
-            const params = new URLSearchParams({ formato: 'csv' });
+            const params = new URLSearchParams({
+                formato: 'csv',
+                excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
+            });
             if (accion) params.set('accion', accion);
             if (resultado) params.set('resultado', resultado);
             if (usuarioId) params.set('usuarioId', usuarioId);
@@ -263,6 +273,13 @@ export default function AuditoriaPage() {
 
     const getResultBadge = (resultado?: string | null) => {
         const value = (resultado ?? '').toUpperCase();
+        if (value === 'PENDIENTE' || value === 'PENDING') {
+            return (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                    <Clock3 className="size-3.5" /> En curso
+                </span>
+            );
+        }
         if (value === 'EXITO' || value === 'SUCCESS') {
             return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -337,14 +354,11 @@ export default function AuditoriaPage() {
                             <DropdownMenuRadioGroup aria-label="Acción" value={accion || 'all'} onValueChange={(value) => updateFilter(setAccion, value === 'all' ? '' : value)}>
                                 <DropdownMenuLabel>Acción</DropdownMenuLabel>
                                 <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="LOGIN">Login</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="LOGOUT">Logout</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="CREAR_USUARIO">Crear usuario</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="ACTUALIZAR_USUARIO">Editar usuario</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="ELIMINAR_USUARIO">Eliminar usuario</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="CREAR_ROL">Crear rol</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="EDITAR_ROL">Editar rol</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="EXPORTAR_AUDITORIA">Exportar auditoría</DropdownMenuRadioItem>
+                                {AUDIT_ACTION_OPTIONS.map((option) => (
+                                    <DropdownMenuRadioItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </DropdownMenuRadioItem>
+                                ))}
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -402,20 +416,40 @@ export default function AuditoriaPage() {
                                 </TableRow>
                             )}
 
-                            {!isLoading && !errorMessage && filteredAuditEvents.map((event) => (
-                                <TableRow key={event.id} className="hover:bg-slate-50/70">
-                                    <TableCell className="p-4 text-secundario">{formatFechaHora(event.fechaHora)}</TableCell>
-                                    <TableCell className="p-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</TableCell>
-                                    <TableCell className="p-4">{displayText(event.accion)}</TableCell>
-                                    <TableCell className="p-4 text-secundario">{displayText(event.instanciaNombre)}</TableCell>
-                                    <TableCell className="p-4">{getResultBadge(event.resultado)}</TableCell>
-                                    <TableCell className="p-4 text-right">
-                                        <button aria-label={`Ver detalles de ${displayText(event.accion)}`} title={detalleCompleto(event.detalles)} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
-                                            <Eye className="size-4" />
-                                        </button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {!isLoading && !errorMessage && filteredAuditEvents.map((event) => {
+                                const stage = auditStage(event.accion, event.resultado);
+                                const actionLabel = auditActionLabel(event.accion);
+                                const technicalDetail = [event.accion, detalleCompleto(event.detalles)].filter(Boolean).join('\n\n');
+
+                                return (
+                                    <TableRow key={event.id} className="hover:bg-slate-50/70">
+                                        <TableCell className="p-4 text-secundario">{formatFechaHora(event.fechaHora)}</TableCell>
+                                        <TableCell className="p-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</TableCell>
+                                        <TableCell className="p-4">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {stage && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={stage === 'Inicio'
+                                                            ? 'border-sky-200 bg-sky-50 text-sky-700'
+                                                            : 'border-slate-200 bg-slate-50 text-slate-600'}
+                                                    >
+                                                        {stage}
+                                                    </Badge>
+                                                )}
+                                                <span>{actionLabel}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="p-4 text-secundario">{displayText(event.instanciaNombre)}</TableCell>
+                                        <TableCell className="p-4">{getResultBadge(event.resultado)}</TableCell>
+                                        <TableCell className="p-4 text-right">
+                                            <button aria-label={`Ver detalles de ${actionLabel}`} title={technicalDetail || undefined} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+                                                <Eye className="size-4" />
+                                            </button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
 
