@@ -20,17 +20,31 @@ export interface InstancesSummary {
 interface InstancesSummaryCardsProps {
     summary?: InstancesSummary;
     isLoading?: boolean;
+    compact?: boolean;
 }
 
-function TypeCard({ title, detail, summary, icon: Icon, accent, testId }: {
+function TypeCard({ title, detail, summary, icon: Icon, accent, testId, compact }: {
     title: string;
     detail: string;
     summary?: InstanceTypeSummary;
     icon: React.ElementType;
     accent: string;
     testId: string;
+    compact?: boolean;
 }) {
     const formatCount = (value?: number) => (typeof value === 'number' ? value.toLocaleString('es') : '—');
+
+    if (compact) {
+        return (
+            <div className="min-w-0 space-y-2" data-testid={testId}>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${accent}`}><Icon className="size-4" aria-hidden="true" /></span>{title}</h3>
+                <p className="text-xs text-slate-600">{formatCount(summary?.total)} total</p>
+                <p className="flex items-center gap-2 text-xs text-slate-700"><span className={style.greenDot} />{formatCount(summary?.running)} <span>En ejecución</span></p>
+                <p className="flex items-center gap-2 text-xs text-slate-700"><span className={style.grayDot} />{formatCount(summary?.stopped)} <span>Detenidas</span></p>
+                {(summary?.paused ?? 0) > 0 && <p className="text-xs text-slate-600">{formatCount(summary?.paused)} pausadas</p>}
+            </div>
+        );
+    }
 
     return (
         <Card className={style.card} data-testid={testId}>
@@ -66,11 +80,11 @@ function TypeCard({ title, detail, summary, icon: Icon, accent, testId }: {
     );
 }
 
-export default function InstancesSummaryCards({ summary, isLoading }: InstancesSummaryCardsProps) {
+export default function InstancesSummaryCards({ summary, isLoading, compact = false }: InstancesSummaryCardsProps) {
     // Sin datos todavía: skeletons con el mismo grid responsivo que las tarjetas.
     if (isLoading && !summary) {
         return (
-            <div className={style.grid}>
+            <div className={compact ? 'grid grid-cols-1 gap-4 sm:grid-cols-2' : style.grid}>
                 <div className={style.skeleton} aria-label="Cargando conteo de máquinas virtuales" />
                 <div className={style.skeleton} aria-label="Cargando conteo de contenedores" />
             </div>
@@ -78,7 +92,7 @@ export default function InstancesSummaryCards({ summary, isLoading }: InstancesS
     }
 
     return (
-        <div className={style.grid}>
+        <div className={compact ? 'grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2 sm:divide-x sm:divide-slate-200' : style.grid}>
             <TypeCard
                 title="Máquinas virtuales (QEMU)"
                 detail="Instancias de tipo VM"
@@ -86,6 +100,7 @@ export default function InstancesSummaryCards({ summary, isLoading }: InstancesS
                 icon={Box}
                 accent="bg-emerald-50 text-emerald-700"
                 testId="summary-vms"
+                compact={compact}
             />
             <TypeCard
                 title="Contenedores (LXC)"
@@ -94,6 +109,7 @@ export default function InstancesSummaryCards({ summary, isLoading }: InstancesS
                 icon={Container}
                 accent="bg-blue-50 text-blue-600"
                 testId="summary-lxc"
+                compact={compact}
             />
         </div>
     );

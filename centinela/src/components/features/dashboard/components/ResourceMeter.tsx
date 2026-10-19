@@ -64,15 +64,48 @@ interface BaseMeterProps {
     // Relleno del área bajo la curva: el nivel se lee como una banda, no como una
     // línea suelta que puede confundirse con el cero.
     fillTheme: string;
+    gradientColor: string;
     samples?: Array<number | undefined>;
     timestamps?: number[];
+    compact?: boolean;
 }
 
-function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, samples, timestamps }: BaseMeterProps) {
+function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, gradientColor, samples, timestamps, compact }: BaseMeterProps) {
     const safePercent = Math.max(0, Math.min(100, percent));
     const theme = getThresholdClasses(safePercent);
     const displayedPercent = Number(safePercent.toFixed(2));
     const sparkline = buildSparklinePaths(samples ?? [], timestamps);
+
+    if (compact) {
+        return (
+            <div className="min-w-0" data-testid={testId} data-state={safePercent >= 70 ? 'warning' : 'normal'}>
+                <div className="flex items-center gap-2">
+                    <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconTheme}`}><Icon className="size-4" aria-hidden="true" /></span>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{title}</p>
+                        <p className="truncate text-xs text-slate-500" title={details}>{details}</p>
+                    </div>
+                    <span className={`text-sm font-semibold ${theme.text}`}>{displayedPercent}%</span>
+                </div>
+                <div className="relative mt-2">
+                    <svg data-testid={`${testId}-sparkline`} viewBox={`-2 0 ${SPARKLINE_WIDTH + 4} ${SPARKLINE_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={sparkline ? `Tendencia de uso de ${title} en la última hora` : `Sin historial de ${title}`} className="h-9 w-full">
+                        {sparkline && <>
+                            <defs>
+                                <linearGradient id={`${testId}-compact-gradient`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor={gradientColor} stopOpacity="0.25" />
+                                    <stop offset="100%" stopColor={gradientColor} stopOpacity="0.02" />
+                                </linearGradient>
+                            </defs>
+                            <line x1="0" x2={SPARKLINE_WIDTH} y1="25" y2="25" strokeDasharray="2 3" className="stroke-slate-300" />
+                            <polygon points={sparkline.area} stroke="none" fill={`url(#${testId}-compact-gradient)`} />
+                            <polyline points={sparkline.line} fill="none" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" className={strokeTheme} />
+                        </>}
+                    </svg>
+                    {!sparkline && <span className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">Sin historial</span>}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -130,7 +163,7 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
     );
 }
 
-export function CpuGauge({ percent, cores, samples, timestamps }: { percent: number; cores: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
+export function CpuGauge({ percent, cores, samples, timestamps, compact }: { percent: number; cores: number; samples?: Array<number | undefined>; timestamps?: number[]; compact?: boolean }) {
     return (
         <BaseMeter
             title="CPU"
@@ -141,8 +174,10 @@ export function CpuGauge({ percent, cores, samples, timestamps }: { percent: num
             iconTheme="bg-emerald-50 text-emerald-700" // Verde original
             strokeTheme="stroke-emerald-700"
             fillTheme="fill-emerald-700/15"
+            gradientColor="#047857"
             samples={samples}
             timestamps={timestamps}
+            compact={compact}
         />
     );
 }
@@ -151,7 +186,7 @@ function formatGb(value: number): string {
     return `${Number(value.toFixed(2))} GB`;
 }
 
-export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
+export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps, compact }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[]; compact?: boolean }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     return (
         <BaseMeter
@@ -163,15 +198,31 @@ export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps }:
             iconTheme="bg-blue-50 text-blue-600" // Azul original
             strokeTheme="stroke-blue-600"
             fillTheme="fill-blue-600/15"
+            gradientColor="#2563eb"
             samples={samples}
             timestamps={timestamps}
+            compact={compact}
         />
     );
 }
 
-export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamps }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[] }) {
+export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamps, variant }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[]; variant?: 'ring' }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     const formatStorage = (gb: number) => gb >= 1000 ? `${Number((gb / 1024).toFixed(2))} TB` : formatGb(gb);
+
+    if (variant === 'ring') {
+        const safePercent = Math.max(0, Math.min(100, percent));
+        const displayedPercent = Number(safePercent.toFixed(2));
+        return (
+            <div className="flex min-w-0 flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4" data-testid="storage-meter" data-state={safePercent >= 70 ? 'warning' : 'normal'}>
+                <div className="w-full text-left"><h4 className="text-sm font-semibold text-slate-900">Almacenamiento</h4><p className="text-xs text-slate-500">{formatStorage(usedGb)} / {formatStorage(totalGb)}</p></div>
+                <div role="progressbar" aria-label="Uso de almacenamiento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayedPercent} className="relative grid size-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#9333ea ${safePercent}%, #e9d5ff ${safePercent}% 100%)` }}>
+                    <span className="grid size-[84%] place-items-center rounded-full bg-white text-xl font-semibold text-slate-900">{displayedPercent}%</span>
+                </div>
+                <span className="text-center text-xs text-slate-600">{formatStorage(usedGb)} de {formatStorage(totalGb)}</span>
+            </div>
+        );
+    }
 
     return (
         <BaseMeter
@@ -183,6 +234,7 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamp
             iconTheme="bg-purple-50 text-purple-600" // Morado original
             strokeTheme="stroke-purple-600"
             fillTheme="fill-purple-600/15"
+            gradientColor="#9333ea"
             samples={samples}
             timestamps={timestamps}
         />
