@@ -16,37 +16,48 @@ const getThresholdClasses = (percent: number) => {
 
 const SPARKLINE_WIDTH = 100;
 const SPARKLINE_HEIGHT = 28;
+const SPARKLINE_PADDING = 3;
 
-// Convierte las muestras reales del sondeo en puntos SVG. La escala usa el rango
-// observado (mínimo y máximo de la ventana): con datos casi planos —el simulador
-// se mueve décimas— una escala absoluta deja la curva recta y no se ve la
-// tendencia. Cuando la serie no varía no hay tendencia que dibujar: la línea se
-// ubica al nivel real de la métrica (escala 0–100) y no al medio, para que una RAM
-// estable al 33% no se lea como si estuviera al 50%.
-function buildSparklinePoints(samples: number[]): string {
-    const safe = samples.map((value) => Math.max(0, Math.min(100, value)));
-    if (safe.length === 0) return `0,${SPARKLINE_HEIGHT} ${SPARKLINE_WIDTH},${SPARKLINE_HEIGHT}`;
+// Escala fija 0–100: la altura del gráfico siempre significa el mismo porcentaje.
+// Un 22% se lee bajo pero no en cero, y una suba real no se exagera como si la
+// métrica hubiera caído desde el 100%.
+function nivelY(percent: number): number {
+    const usable = SPARKLINE_HEIGHT - SPARKLINE_PADDING * 2;
+    return SPARKLINE_PADDING + (1 - Math.max(0, Math.min(100, percent)) / 100) * usable;
+}
 
-    const min = Math.min(...safe);
-    const max = Math.max(...safe);
-    const range = max - min;
-    // Margen vertical para que la curva no toque los bordes del gráfico.
-    const padding = 3;
-    const usable = SPARKLINE_HEIGHT - padding * 2;
+// Curva y área que la rellena. Las muestras sin dato se ignoran: el backend omite
+// ramPercent/storagePercent cuando el punto del RRD no trae su total, y una
+// muestra ausente no tiene que romper la curva.
+function buildSparklinePaths(samples: Array<number | undefined>): { line: string; area: string } {
+    const validas = samples.filter(
+        (value): value is number => typeof value === 'number' && Number.isFinite(value),
+    );
+    const piso = SPARKLINE_HEIGHT.toFixed(2);
 
-    if (range < 0.01) {
-        const level = (padding + (1 - safe[safe.length - 1] / 100) * usable).toFixed(2);
-        return `0,${level} ${SPARKLINE_WIDTH},${level}`;
+    if (validas.length === 0) {
+        const nivel = nivelY(0).toFixed(2);
+        return {
+            line: `0,${nivel} ${SPARKLINE_WIDTH},${nivel}`,
+            area: `0,${piso} ${SPARKLINE_WIDTH},${piso}`,
+        };
     }
 
-    const levelFor = (value: number) => padding + (1 - (value - min) / range) * usable;
+    if (validas.length === 1) {
+        const nivel = nivelY(validas[0]).toFixed(2);
+        return {
+            line: `0,${nivel} ${SPARKLINE_WIDTH},${nivel}`,
+            area: `0,${piso} 0,${nivel} ${SPARKLINE_WIDTH},${nivel} ${SPARKLINE_WIDTH},${piso}`,
+        };
+    }
 
-    return safe
-        .map((value, index) => {
-            const x = (index / (safe.length - 1)) * SPARKLINE_WIDTH;
-            return `${x.toFixed(2)},${levelFor(value).toFixed(2)}`;
-        })
-        .join(' ');
+    const puntos = validas.map((value, index) => ({
+        x: ((index / (validas.length - 1)) * SPARKLINE_WIDTH).toFixed(2),
+        y: nivelY(value).toFixed(2),
+    }));
+    const line = puntos.map((punto) => `${punto.x},${punto.y}`).join(' ');
+
+    return { line, area: `0,${piso} ${line} ${SPARKLINE_WIDTH},${piso}` };
 }
 
 interface BaseMeterProps {
@@ -59,13 +70,17 @@ interface BaseMeterProps {
     // Color del trazo: el mismo que el del ícono, para que la curva y el medidor
     // se lean como una sola pieza.
     strokeTheme: string;
-    samples?: number[];
+    // Relleno del área bajo la curva: el nivel se lee como una banda, no como una
+    // línea suelta que puede confundirse con el cero.
+    fillTheme: string;
+    samples?: Array<number | undefined>;
 }
 
-function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, samples }: BaseMeterProps) {
+function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, samples }: BaseMeterProps) {
     const safePercent = Math.max(0, Math.min(100, percent));
     const theme = getThresholdClasses(safePercent);
     const displayedPercent = Number(safePercent.toFixed(2));
+    const sparkline = buildSparklinePaths(samples ?? []);
 
     return (
         <div
@@ -97,8 +112,13 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
                     aria-label={`Tendencia de uso de ${title}`}
                     className="h-12 w-full flex-1"
                 >
+                    <polygon
+                        points={sparkline.area}
+                        stroke="none"
+                        className={`transition-all duration-500 ${fillTheme}`}
+                    />
                     <polyline
-                        points={buildSparklinePoints(samples ?? [])}
+                        points={sparkline.line}
                         fill="none"
                         strokeWidth="2"
                         vectorEffect="non-scaling-stroke"
@@ -116,7 +136,7 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
     );
 }
 
-export function CpuGauge({ percent, cores, samples }: { percent: number; cores: number; samples?: number[] }) {
+export function CpuGauge({ percent, cores, samples }: { percent: number; cores: number; samples?: Array<number | undefined> }) {
     return (
         <BaseMeter
             title="CPU"
@@ -126,6 +146,7 @@ export function CpuGauge({ percent, cores, samples }: { percent: number; cores: 
             testId="cpu-meter"
             iconTheme="bg-emerald-50 text-emerald-700" // Verde original
             strokeTheme="stroke-emerald-700"
+            fillTheme="fill-emerald-700/15"
             samples={samples}
         />
     );
@@ -135,7 +156,7 @@ function formatGb(value: number): string {
     return `${Number(value.toFixed(2))} GB`;
 }
 
-export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: number[] }) {
+export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined> }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     return (
         <BaseMeter
@@ -146,12 +167,13 @@ export function RamMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: n
             testId="ram-meter"
             iconTheme="bg-blue-50 text-blue-600" // Azul original
             strokeTheme="stroke-blue-600"
+            fillTheme="fill-blue-600/15"
             samples={samples}
         />
     );
 }
 
-export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: number[] }) {
+export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined> }) {
     const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
     const formatStorage = (gb: number) => gb >= 1000 ? `${Number((gb / 1024).toFixed(2))} TB` : formatGb(gb);
 
@@ -164,6 +186,7 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples }: { usedG
             testId="storage-meter"
             iconTheme="bg-purple-50 text-purple-600" // Morado original
             strokeTheme="stroke-purple-600"
+            fillTheme="fill-purple-600/15"
             samples={samples}
         />
     );

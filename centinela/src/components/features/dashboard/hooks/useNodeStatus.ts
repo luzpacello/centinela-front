@@ -14,8 +14,9 @@ const HISTORY_LIMIT = 120;
 
 export interface NodeStatusSample {
     cpu: number;
-    ram: number;
-    storage: number;
+    // Opcionales: el histórico del nodo no siempre trae RAM ni almacenamiento.
+    ram?: number;
+    storage?: number;
 }
 
 export function useNodeStatus() {
