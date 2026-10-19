@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { detalleCompleto, type AuditDetalles } from '@/utils/auditDetalle';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     DropdownMenu,
@@ -57,7 +58,7 @@ interface AuditoriaItemDTO {
     instanciaId?: string | null;
     instanciaNombre?: string | null;
     resultado?: string | null;
-    detalles?: string | null;
+    detalles?: AuditDetalles;
 }
 
 interface PaginaAuditoriaDTO {
@@ -409,7 +410,7 @@ export default function AuditoriaPage() {
                                     <TableCell className="p-4 text-secundario">{displayText(event.instanciaNombre)}</TableCell>
                                     <TableCell className="p-4">{getResultBadge(event.resultado)}</TableCell>
                                     <TableCell className="p-4 text-right">
-                                        <button aria-label={`Ver detalles de ${displayText(event.accion)}`} title={event.detalles || undefined} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+                                        <button aria-label={`Ver detalles de ${displayText(event.accion)}`} title={detalleCompleto(event.detalles)} className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
                                             <Eye className="size-4" />
                                         </button>
                                     </TableCell>

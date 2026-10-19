@@ -1,4 +1,5 @@
 import { apiClient } from '@/services/apiClient';
+import type { AuditDetalles } from '@/utils/auditDetalle';
 
 export interface ActivityItem {
     id: string;
@@ -9,7 +10,7 @@ export interface ActivityItem {
     instanciaId?: string | null;
     instanciaNombre?: string | null;
     resultado?: string | null;
-    detalles?: string | null;
+    detalles?: AuditDetalles;
 }
 
 export interface ActivityPage {
