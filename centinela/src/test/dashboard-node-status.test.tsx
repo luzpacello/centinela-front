@@ -260,6 +260,44 @@ describe('Dashboard node status', () => {
         expect(await screen.findByText('pantalla-auditoria')).toBeInTheDocument();
     });
 
+    it('muestra la actividad cuando los detalles vienen como objeto (contrato RF-08)', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        getMock.mockImplementation((path: unknown) => {
+            const route = String(path);
+            if (route.includes('instances')) return Promise.resolve(inventory);
+            if (route.includes('templates')) return Promise.resolve(templates);
+            if (route.includes('admin/audit')) {
+                return Promise.resolve({
+                    total: 1,
+                    pagina: 1,
+                    items: [{
+                        id: 'obj-1',
+                        nombreUsuario: 'Admin',
+                        fechaHora: new Date(Date.now() - 60_000).toISOString(),
+                        accion: 'VERIFICAR_2FA',
+                        instanciaNombre: null,
+                        resultado: 'FALLA',
+                        detalles: { razon: 'código TOTP incorrecto' },
+                    }],
+                });
+            }
+            return Promise.reject(new Error(`GET inesperado: ${route}`));
+        });
+
+        renderDashboard();
+
+        expect(await screen.findByText('Verificación 2FA')).toBeInTheDocument();
+        expect(screen.getByText('código TOTP incorrecto')).toBeInTheDocument();
+    });
+
+    it('sigue mostrando los detalles de texto del contrato viejo', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+
+        renderDashboard();
+
+        expect(await screen.findByText('usuario@ejemplo.com')).toBeInTheDocument();
+    });
+
     it('la Actividad reciente es solo para Admin', async () => {
         authState.isAdmin = false;
         vi.mocked(getNodeStatus).mockResolvedValue(status);

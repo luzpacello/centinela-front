@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getNodeStatus, type NodeStatusResponse } from '../services/nodeStatusService';
+import { getNodeHistory, getNodeStatus, type NodeStatusResponse } from '../services/nodeStatusService';
 
 const POLLING_INTERVAL_MS = 10_000;
 
 export type NodeHealth = 'loading' | 'healthy' | 'warning' | 'inaccessible';
 
-// Cantidad máxima de muestras que se conservan para las curvas de tendencia
-// (72 muestras × 10 s = 12 minutos de histórico en vivo). Cuantas más muestras
-// entren en el mismo ancho, más juntos quedan los puntos de la curva.
-const HISTORY_LIMIT = 72;
+// Cantidad máxima de muestras que se conservan para las curvas de tendencia.
+// Primero entra el histórico del backend (60 puntos, uno por minuto) y después el
+// sondeo de 10 s va agregando la cola viva: así el gráfico ya está formado al
+// entrar, en vez de arrancar como una línea plana y esperar minutos a que se
+// llene.
+const HISTORY_LIMIT = 120;
 
 export interface NodeStatusSample {
     cpu: number;
@@ -126,6 +128,34 @@ export function useNodeStatus() {
     // Revalidación silenciosa: vuelve a consultar el nodo sin mostrar skeletons
     // (el estado de carga solo aparece cuando todavía no hay datos).
     const refetch = useCallback(() => setRefetchCount((count) => count + 1), []);
+
+    // Al entrar, el gráfico arranca con el histórico real del host: el backend lo
+    // arma desde el RRD de Proxmox, así que no hay que esperar minutos a que el
+    // sondeo junte muestras. Si la serie no llega, el gráfico queda como estaba y
+    // se llena con el sondeo: no se rompe nada.
+    useEffect(() => {
+        const controller = new AbortController();
+
+        void (async () => {
+            try {
+                const serie = await getNodeHistory(controller.signal);
+                if (controller.signal.aborted || serie.length === 0) return;
+                setHistory((previous) => {
+                    // Las muestras vivas mandan: el histórico solo rellena el pasado.
+                    if (previous.length >= serie.length) return previous;
+                    return serie.map((punto) => ({
+                        cpu: punto.cpuPercent,
+                        ram: punto.ramPercent,
+                        storage: punto.storagePercent,
+                    }));
+                });
+            } catch {
+                // Sin histórico el gráfico sigue funcionando con el sondeo.
+            }
+        })();
+
+        return () => controller.abort();
+    }, []);
 
     return {
         data,

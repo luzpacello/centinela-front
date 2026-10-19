@@ -5,6 +5,7 @@ import { ArrowRight, CirclePlay, LogIn, Plus, Settings, Square, Trash2, UserRoun
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getRecentActivity, type ActivityItem } from '../services/activityService';
+import { detalleCorto } from '@/utils/auditDetalle';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 
 // Etiquetas legibles para los códigos de acción de la auditoría.
@@ -61,9 +62,7 @@ function activityTheme(accion?: string | null): { icon: ElementType; className: 
 
 function activitySubtitle(item: ActivityItem): string | null {
     if (item.instanciaNombre) return item.instanciaNombre;
-    const detalle = item.detalles?.trim();
-    if (!detalle || detalle.startsWith('{')) return null;
-    return detalle;
+    return detalleCorto(item.detalles);
 }
 
 // Panel "Actividad reciente" del Dashboard: los últimos movimientos reales de

@@ -27,3 +27,19 @@ export interface NodeStatusResponse {
 export function getNodeStatus(signal?: AbortSignal): Promise<NodeStatusResponse> {
     return apiClient.get<NodeStatusResponse>('node/status', { signal });
 }
+
+// Una muestra del histórico del host, ya normalizada a los tres porcentajes que
+// dibuja el gráfico del Dashboard.
+export interface NodeHistoryPoint {
+    timestamp: number;
+    cpuPercent: number;
+    ramPercent: number;
+    storagePercent: number;
+}
+
+// Serie histórica del host. El backend la arma desde el RRD de Proxmox y la
+// cachea en Redis, así que el gráfico del Dashboard ya está formado al entrar en
+// vez de arrancar de cero y esperar minutos a que se llene.
+export function getNodeHistory(signal?: AbortSignal): Promise<NodeHistoryPoint[]> {
+    return apiClient.get<NodeHistoryPoint[]>('node/history', { signal });
+}
