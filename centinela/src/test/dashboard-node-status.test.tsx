@@ -218,6 +218,25 @@ describe('Dashboard node status', () => {
         expect(getNodeHistory).toHaveBeenCalled();
     });
 
+    it('ignora el histórico que no trae RAM ni almacenamiento', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        vi.mocked(getNodeHistory).mockResolvedValue([
+            { timestamp: 1, cpuPercent: 12 },
+            { timestamp: 61, cpuPercent: 18 },
+        ]);
+
+        renderDashboard();
+
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+
+        for (const testId of ['ram-meter-sparkline', 'storage-meter-sparkline']) {
+            const points =
+                screen.getByTestId(testId).querySelector('polyline')?.getAttribute('points') ?? '';
+
+            expect(points).not.toContain('NaN');
+        }
+    });
+
     it('conecta Instancias recientes y la tarjeta de Plantillas, sin bloques simulados', async () => {
         vi.mocked(getNodeStatus).mockResolvedValue(status);
 

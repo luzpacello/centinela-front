@@ -33,8 +33,10 @@ export function getNodeStatus(signal?: AbortSignal): Promise<NodeStatusResponse>
 export interface NodeHistoryPoint {
     timestamp: number;
     cpuPercent: number;
-    ramPercent: number;
-    storagePercent: number;
+    // El backend omite estos campos cuando el punto del RRD no trae su total
+    // (maxmem/maxdisk): ausente significa "sin dato", no 0%.
+    ramPercent?: number;
+    storagePercent?: number;
 }
 
 // Serie histórica del host. El backend la arma desde el RRD de Proxmox y la

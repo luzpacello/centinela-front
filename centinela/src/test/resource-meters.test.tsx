@@ -105,4 +105,53 @@ describe('ResourceMeters', () => {
         expect(nivelBajo).toBeGreaterThan(0);
         expect(nivelAlto).toBeGreaterThan(0);
     });
+
+    function alturas(testId: string): number[] {
+        const points =
+            screen.getByTestId(testId).querySelector('polyline')?.getAttribute('points') ?? '';
+
+        return points
+            .trim()
+            .split(/\s+/)
+            .map((punto) => Number(punto.split(',')[1]));
+    }
+
+    it('no estira una serie de valores bajos contra el rango observado', () => {
+        render(<CpuGauge percent={0.2} cores={8} samples={[0.1, 0.2, 0.15]} />);
+
+        const alturasSerie = alturas('cpu-meter-sparkline');
+
+        // Con escala fija 0–100, valores por debajo del 1% quedan cerca del piso
+        // (y alto) y no se estiran de borde a borde.
+        expect(Math.min(...alturasSerie)).toBeGreaterThan(20);
+        expect(Math.max(...alturasSerie) - Math.min(...alturasSerie)).toBeLessThan(2);
+    });
+
+    it('ignora las muestras sin dato en vez de romper la curva', () => {
+        render(
+            <RamMeter
+                usedGb={3.35}
+                totalGb={15.3}
+                usagePercent={21.9}
+                samples={[undefined, 21.9, undefined, 21.8]}
+            />
+        );
+
+        const sparkline = screen.getByTestId('ram-meter-sparkline');
+        const points = sparkline.querySelector('polyline')?.getAttribute('points') ?? '';
+
+        expect(points).not.toContain('NaN');
+        expect(alturas('ram-meter-sparkline').every((y) => Number.isFinite(y))).toBe(true);
+    });
+
+    it('rellena el área bajo la curva para que el nivel se lea de un vistazo', () => {
+        render(<StorageMeter usedGb={10.73} totalGb={67.73} usagePercent={15.84} samples={[15.8, 15.84]} />);
+
+        const area = screen
+            .getByTestId('storage-meter-sparkline')
+            .querySelector('polygon');
+
+        expect(area).not.toBeNull();
+        expect(area?.getAttribute('points')).toContain('28');
+    });
 });
