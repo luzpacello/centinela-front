@@ -66,9 +66,14 @@ export interface SelectOption {
 export interface StorageOption extends SelectOption {
     availableGb: number;
     totalGb: number;
+    availableLabel: string;
+    totalLabel: string;
+    type: string;
+    contentTypes: string[];
 }
 
 export interface OperatingSystemTemplateOption extends SelectOption {
+    type: 'ISO' | 'LXC_TEMPLATE';
     templateName: string;
     distribution: string;
     operatingSystem: string;
