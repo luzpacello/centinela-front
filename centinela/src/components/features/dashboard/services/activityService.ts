@@ -1,4 +1,5 @@
 import { apiClient } from '@/services/apiClient';
+import { HIDDEN_AUDIT_ACTIONS } from '@/utils/auditActionLabels';
 import type { AuditDetalles } from '@/utils/auditDetalle';
 
 export interface ActivityItem {
@@ -27,7 +28,10 @@ export interface ActivityPage {
 // en que el backend todavía no aplique el parámetro.
 const ACTIVITY_SIZE = 5;
 const AUDIT_FETCH_SIZE = 50;
-const NOISE_ACTIONS = ['EVENTOS_CONEXION', 'EVENTOS_CIERRE'];
+// La auditoría guarda el despacho PENDIENTE y el resultado final como dos filas
+// de la misma tarea. El Dashboard muestra solo el resultado para no duplicar
+// cada acción; la vista completa de Auditoría conserva ambos registros.
+const PENDING_RESULTS = new Set(['PENDIENTE', 'PENDING']);
 
 export async function getRecentActivity(signal?: AbortSignal): Promise<ActivityPage> {
     const params = new URLSearchParams({
@@ -35,12 +39,13 @@ export async function getRecentActivity(signal?: AbortSignal): Promise<ActivityP
         tamano: String(AUDIT_FETCH_SIZE),
         ordenarPor: 'fechaHora',
         direccion: 'desc',
-        excluirAccion: NOISE_ACTIONS.join(','),
+        excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
     });
     const page = await apiClient.get<ActivityPage>(`/admin/audit?${params.toString()}`, { signal });
-    const ruido = new Set(NOISE_ACTIONS);
+    const ruido = new Set(HIDDEN_AUDIT_ACTIONS);
     const items = (page.items ?? [])
         .filter((item) => !ruido.has((item.accion ?? '').trim().toUpperCase()))
+        .filter((item) => !PENDING_RESULTS.has((item.resultado ?? '').trim().toUpperCase()))
         .slice(0, ACTIVITY_SIZE);
     return { ...page, items };
 }

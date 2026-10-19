@@ -5,37 +5,9 @@ import { ArrowRight, CirclePlay, LogIn, Plus, Settings, Square, Trash2, UserRoun
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getRecentActivity, type ActivityItem } from '../services/activityService';
+import { auditActionLabel } from '@/utils/auditActionLabels';
 import { detalleCorto } from '@/utils/auditDetalle';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
-
-// Etiquetas legibles para los códigos de acción de la auditoría.
-const ACTION_LABELS: Record<string, string> = {
-    LOGIN: 'Inicio de sesión',
-    LOGOUT: 'Cierre de sesión',
-    INICIAR_VM: 'Instancia iniciada',
-    DETENER_VM: 'Instancia detenida',
-    APAGAR_VM: 'Instancia apagada',
-    REINICIAR_VM: 'Instancia reiniciada',
-    ELIMINAR_VM: 'Instancia eliminada',
-    CREAR_VM: 'Nueva instancia creada',
-    CREAR_INSTANCIA: 'Nueva instancia creada',
-    CREAR_USUARIO: 'Usuario creado',
-    EDITAR_USUARIO: 'Usuario actualizado',
-    ELIMINAR_USUARIO: 'Usuario eliminado',
-    CREAR_ROL: 'Rol creado',
-    EDITAR_ROL: 'Rol actualizado',
-    EXPORTAR_AUDITORIA: 'Auditoría exportada',
-    VERIFICAR_2FA: 'Verificación 2FA',
-    CAMBIAR_CONTRASENA: 'Contraseña actualizada',
-};
-
-function activityLabel(accion?: string | null): string {
-    const code = (accion ?? '').trim().toUpperCase();
-    if (!code) return 'Actividad';
-    if (ACTION_LABELS[code]) return ACTION_LABELS[code];
-    const prettified = code.toLowerCase().replaceAll('_', ' ');
-    return prettified.charAt(0).toUpperCase() + prettified.slice(1);
-}
 
 function activityTheme(accion?: string | null): { icon: ElementType; className: string } {
     const code = (accion ?? '').toUpperCase();
@@ -148,7 +120,7 @@ export default function RecentActivityCard() {
                                     <Icon className={style.rowIconGlyph} />
                                 </span>
                                 <div className={style.rowBody}>
-                                    <span className={style.rowName}>{activityLabel(item.accion)}</span>
+                                    <span className={style.rowName}>{auditActionLabel(item.accion)}</span>
                                     {subtitle && <span className={style.rowMeta}>{subtitle}</span>}
                                 </div>
                                 <div className={style.rowSide}>
