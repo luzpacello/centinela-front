@@ -85,7 +85,9 @@ export async function requestInstancePowerAction(vmid: number, action: InstanceP
     method: 'POST', expectedStatus: 202,
   });
 
-  if (!response || typeof response.upid !== 'string' || !response.upid.trim()) {
+  // El backend expone el identificador público de la tarea; el UPID de Proxmox
+  // queda privado. Sin tareaId no hay forma de correlacionar el TASK_FINISHED.
+  if (!response || typeof response.tareaId !== 'string' || !response.tareaId.trim()) {
     throw new ApiRequestError('La orden fue aceptada, pero no se pudo interpretar su seguimiento. Verificá el estado de la instancia antes de repetirla.');
   }
 
@@ -98,8 +100,8 @@ export async function deleteInstance( vmid: number ): Promise<InstancePowerActio
     { method: 'DELETE', expectedStatus: 202,},
   );
 
-  if (!response || typeof response.upid !== 'string' || !response.upid.trim()) {
-    throw new ApiRequestError('La eliminación fue aceptada, peno no se pudo interpretar su seguimiento.');
+  if (!response || typeof response.tareaId !== 'string' || !response.tareaId.trim()) {
+    throw new ApiRequestError('La eliminación fue aceptada, pero no se pudo interpretar su seguimiento.');
   }
 
   return response;
@@ -147,15 +149,15 @@ export async function createInstance(payload: CreateInstancePayload): Promise<Cr
   }
 
   const creation = response as Record<string, unknown>;
+  // La creación también responde con el tareaId público; el UPID no se expone.
   if (typeof creation.vmid !== 'number'
     || typeof creation.tareaId !== 'string'
-    || typeof creation.upid !== 'string') {
+    || !creation.tareaId.trim()) {
     throw new ApiRequestError('La creación fue aceptada, pero no se pudo interpretar su seguimiento.');
   }
 
   return {
     vmid: creation.vmid,
     tareaId: creation.tareaId,
-    upid: creation.upid,
   };
 }

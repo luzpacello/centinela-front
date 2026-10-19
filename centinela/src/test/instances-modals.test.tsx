@@ -340,7 +340,6 @@ beforeEach(() => {
     Promise.resolve(
       new Response(
         JSON.stringify({
-          upid: 'UPID:pve:1:start:101:',
           tareaId: 't-1',
         }),
         {
@@ -407,6 +406,19 @@ async function cancel(
 describe(
   'FRN-15 - Modales de confirmación antierror para acciones operativas',
   () => {
+    it('no deja rastros de depuración al renderizar las acciones', async () => {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        renderInstances({ rol: 'ADMIN' });
+        await rowOf('servidor-web');
+
+        expect(log.mock.calls.some(([mensaje]) => String(mensaje).includes('InstanceAction DEBUG'))).toBe(false);
+      } finally {
+        log.mockRestore();
+      }
+    });
+
     it(
       'Start pide confirmación y cancelar no envía ninguna petición',
       async () => {

@@ -33,6 +33,5 @@ export interface InventoryInstance {
 export type InstancePowerAction = 'start' | 'shutdown' | 'reboot' | 'stop';
 
 export interface InstancePowerActionResponse {
-  upid: string;
-  tareaId?: string;
+  tareaId: string;
 }

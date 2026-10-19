@@ -50,7 +50,6 @@ export interface CreateInstancePayload {
 export interface CreateInstanceResponse {
     vmid: number;
     tareaId: string;
-    upid: string;
 }
 
 export interface InstanceTypeOption {
