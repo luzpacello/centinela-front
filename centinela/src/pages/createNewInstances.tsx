@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChevronRight, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Loader2, Play } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import ConfigureInstanceResources from '@/components/features/instances/componen
 import InstanceCreationSummary from '@/components/features/instances/components/InstanceCreationSummary';
 import ConfigureInstanceNetwork from '@/components/features/instances/components/wizard/configureInstanceNetwork';
 import SelectInstanceOperatingSystem from '@/components/features/instances/components/wizard/selectInstanceOperatingSystem';
+import ReviewInstanceConfiguration from '@/components/features/instances/components/wizard/reviewInstanceConfiguration';
 import { INSTANCE_CREATION_STEPS } from '@/components/features/instances/data/createInstanceOptions';
 import { useCreateInstanceWizard } from '@/components/features/instances/hooks/useCreateInstanceWizard';
 
@@ -16,9 +17,12 @@ export default function CreateNewInstances() {
     const {
         currentStep,
         draft,
+        isCreatingInstance,
         goToNextStep,
         goToPreviousStep,
+        goToStep,
         selectInstanceType,
+        submitInstanceCreation,
         updateField,
         updateNetworkField,
     } = useCreateInstanceWizard();
@@ -26,6 +30,13 @@ export default function CreateNewInstances() {
     function goBack() {
         navigate(-1);
     }
+
+    async function createNewInstance() {
+        const wasCreated = await submitInstanceCreation();
+        if (wasCreated) navigate('/instances');
+    }
+
+    const isReviewStep = currentStep === INSTANCE_CREATION_STEPS.length;
 
     return (
         <section className={styles.page}>
@@ -37,7 +48,11 @@ export default function CreateNewInstances() {
                         <span className={styles.currentPageName}>Crear instancia</span>
                     </nav>
                     <h1>Crear nueva instancia</h1>
-                    <p className="text-secundario">Configura los parámetros de la nueva máquina virtual o contenedor.</p>
+                    <p className="text-secundario">
+                        {isReviewStep
+                            ? 'Revisa la configuración antes de crear la instancia.'
+                            : 'Configura los parámetros de la nueva máquina virtual o contenedor.'}
+                    </p>
                 </div>
 
                 <div className={styles.headerActions}>
@@ -48,19 +63,21 @@ export default function CreateNewInstances() {
                         <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
                         Anterior
                     </Button>
-                    <Button type="button" onClick={goToNextStep} disabled={currentStep === INSTANCE_CREATION_STEPS.length}>
-                        Siguiente
-                        <ArrowRight className={styles.smallIcon} aria-hidden="true" />
-                    </Button>
+                    {isReviewStep ? (
+                        <Button type="button" onClick={createNewInstance} disabled={isCreatingInstance}>
+                            {isCreatingInstance
+                                ? <Loader2 className={styles.loadingIcon} aria-hidden="true" />
+                                : <Play className={styles.smallIcon} aria-hidden="true" />}
+                            {isCreatingInstance ? 'Creando instancia...' : 'Crear instancia'}
+                        </Button>
+                    ) : (
+                        <Button type="button" onClick={goToNextStep}>
+                            Siguiente
+                            <ArrowRight className={styles.smallIcon} aria-hidden="true" />
+                        </Button>
+                    )}
                 </div>
             </header>
-
-            {currentStep >= 5 && (
-                <div role="alert" className={styles.developmentNotice}>
-                    <TriangleAlert className={styles.developmentNoticeIcon} aria-hidden="true" />
-                    <span>Aprovisionamiento en desarrollo — Próximamente en Etapa 2</span>
-                </div>
-            )}
 
             <Card className={styles.stepperCard}>
                 <div className={styles.stepperContainer}>
@@ -99,6 +116,14 @@ export default function CreateNewInstances() {
                             onTemplateChange={(templateValue) => updateField('templateOso', templateValue)}
                         />
                     )}
+                    {currentStep === 5 && (
+                        <ReviewInstanceConfiguration
+                            draft={draft}
+                            isCreating={isCreatingInstance}
+                            onEditStep={goToStep}
+                            onCreateInstance={createNewInstance}
+                        />
+                    )}
                 </main>
                 <aside className={styles.summaryContainer}>
                     <InstanceCreationSummary draft={draft} />
@@ -117,8 +142,7 @@ const styles = {
     currentPageName: 'font-semibold text-slate-900',
     headerActions: 'flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end',
     smallIcon: 'size-4!',
-    developmentNotice: 'flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900',
-    developmentNoticeIcon: 'size-5 shrink-0 text-amber-600',
+    loadingIcon: 'size-4! animate-spin',
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
     creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',

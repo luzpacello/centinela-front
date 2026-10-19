@@ -25,6 +25,34 @@ export interface CreateInstanceDraft {
     tipo: InstanceType | null;
 }
 
+export interface CreateInstancePayload {
+    cores: number;
+    descripcion: string;
+    discoGb: number;
+    nodo: string;
+    nombre: string;
+    password: string;
+    ramMb: number;
+    red: {
+        bridge: string;
+        firewall: boolean;
+        gateway: string;
+        ip: string;
+        mascara: string;
+        modo: InstanceNetworkMode;
+        vlan: number;
+    };
+    storageId: string;
+    templateOso: string;
+    tipo: InstanceType;
+}
+
+export interface CreateInstanceResponse {
+    vmid: number;
+    tareaId: string;
+    upid: string;
+}
+
 export interface InstanceTypeOption {
     type: InstanceType;
     title: string;
