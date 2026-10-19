@@ -5,37 +5,29 @@ import {
     HardDrive,
     Info,
     MemoryStick,
-    Network,
-    Server,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import {
-    findOptionLabel,
-    INSTANCE_TYPE_OPTIONS,
-    NODE_OPTIONS,
-    TEMPLATE_OPTIONS,
-} from '@/components/features/instances/data/createInstanceOptions';
-import type { CreateInstanceDraft } from '@/components/features/instances/types/createInstance';
+import { INSTANCE_TYPE_OPTIONS } from '@/components/features/instances/data/createInstanceOptions';
+import type { CreateInstanceDraft, OperatingSystemTemplateOption } from '@/components/features/instances/types/createInstance';
 
 interface InstanceCreationSummaryProps {
     draft: CreateInstanceDraft;
+    templates: OperatingSystemTemplateOption[];
 }
 
-export default function InstanceCreationSummary({ draft }: InstanceCreationSummaryProps) {
+export default function InstanceCreationSummary({ draft, templates }: InstanceCreationSummaryProps) {
     const typeLabel = INSTANCE_TYPE_OPTIONS.find((option) => option.type === draft.tipo)?.title;
-    const nodeLabel = findOptionLabel(NODE_OPTIONS, draft.nodo);
     const templateLabel = draft.tipo
-        ? findOptionLabel(TEMPLATE_OPTIONS[draft.tipo], draft.templateOso)
+        ? templates.find((template) => template.value === draft.templateOso)?.label
         : undefined;
 
     return (
         <Card className={styles.summaryCard}>
-            <h2 className={styles.summaryTitle}>Resumen de la instancia</h2>
+            <h3>Resumen de la instancia</h3>
 
             <SummarySection title="General">
                 <SummaryRow icon={Box} label="Tipo" value={typeLabel} />
                 <SummaryRow label="Nombre" value={draft.nombre} />
-                <SummaryRow icon={Server} label="Nodo" value={nodeLabel} />
                 <SummaryRow icon={HardDrive} label="Plantilla" value={templateLabel} />
                 <SummaryRow icon={Database} label="Almacenamiento" value={draft.storageId} />
             </SummarySection>
@@ -47,7 +39,6 @@ export default function InstanceCreationSummary({ draft }: InstanceCreationSumma
             </SummarySection>
 
             <SummarySection title="Red">
-                <SummaryRow icon={Network} label="Puente" value={draft.red.bridge} />
                 <SummaryRow label="Modo" value={draft.red.modo?.toUpperCase()} />
                 <SummaryRow label="Dirección IP" value={draft.red.ip} />
             </SummarySection>
@@ -100,7 +91,6 @@ function SummaryRow({
 
 const styles = {
     summaryCard: 'gap-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-0',
-    summaryTitle: 'mb-5 text-sm font-semibold text-slate-950',
     summarySection: 'border-t border-slate-200 py-4 first:border-t-0 first:pt-0',
     summarySectionTitle: 'mb-3 text-xs font-semibold text-slate-900',
     summaryRows: 'grid gap-3',
