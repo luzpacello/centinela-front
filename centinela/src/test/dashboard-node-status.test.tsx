@@ -47,9 +47,15 @@ vi.mock('@/services/apiClient', () => ({
 
 vi.mock('@/components/features/dashboard/services/nodeStatusService', () => ({
     getNodeStatus: vi.fn(),
+    getNodeHistory: vi.fn(),
 }));
 
-import { getNodeStatus, type NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
+import {
+    getNodeHistory,
+    getNodeStatus,
+    type NodeHistoryPoint,
+    type NodeStatusResponse,
+} from '@/components/features/dashboard/services/nodeStatusService';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import Dashboard from '@/pages/Dashboard';
 
@@ -107,6 +113,8 @@ beforeEach(() => {
     eventChannel.filters.length = 0;
     eventChannel.callbacks.length = 0;
     vi.mocked(getNodeStatus).mockReset();
+    vi.mocked(getNodeHistory).mockReset();
+    vi.mocked(getNodeHistory).mockResolvedValue([]);
     getMock.mockReset();
     getMock.mockImplementation((path: unknown) => {
         const route = String(path);
@@ -195,6 +203,19 @@ describe('Dashboard node status', () => {
 
         expect(screen.getByLabelText('Cargando telemetría')).toBeInTheDocument();
         expect(screen.queryByText(/^Sin (instancias|novedades|alertas)$/)).not.toBeInTheDocument();
+    });
+
+    it('mantiene el Dashboard montado cuando el histórico llega con una forma inesperada', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+        vi.mocked(getNodeHistory).mockImplementation(() =>
+            Promise.resolve({ error: 'sin-historico' } as unknown as NodeHistoryPoint[]),
+        );
+
+        renderDashboard();
+
+        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Instancias totales' })).toBeInTheDocument();
+        expect(getNodeHistory).toHaveBeenCalled();
     });
 
     it('conecta Instancias recientes y la tarjeta de Plantillas, sin bloques simulados', async () => {

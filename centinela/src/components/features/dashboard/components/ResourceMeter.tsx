@@ -20,7 +20,9 @@ const SPARKLINE_HEIGHT = 28;
 // Convierte las muestras reales del sondeo en puntos SVG. La escala usa el rango
 // observado (mínimo y máximo de la ventana): con datos casi planos —el simulador
 // se mueve décimas— una escala absoluta deja la curva recta y no se ve la
-// tendencia. Sin variación real dibuja una línea al medio, sin inventar picos.
+// tendencia. Cuando la serie no varía no hay tendencia que dibujar: la línea se
+// ubica al nivel real de la métrica (escala 0–100) y no al medio, para que una RAM
+// estable al 33% no se lea como si estuviera al 50%.
 function buildSparklinePoints(samples: number[]): string {
     const safe = samples.map((value) => Math.max(0, Math.min(100, value)));
     if (safe.length === 0) return `0,${SPARKLINE_HEIGHT} ${SPARKLINE_WIDTH},${SPARKLINE_HEIGHT}`;
@@ -32,15 +34,12 @@ function buildSparklinePoints(samples: number[]): string {
     const padding = 3;
     const usable = SPARKLINE_HEIGHT - padding * 2;
 
-    const levelFor = (value: number) => {
-        if (range < 0.01) return SPARKLINE_HEIGHT / 2;
-        return padding + (1 - (value - min) / range) * usable;
-    };
-
-    if (safe.length === 1) {
-        const level = (SPARKLINE_HEIGHT / 2).toFixed(2);
+    if (range < 0.01) {
+        const level = (padding + (1 - safe[safe.length - 1] / 100) * usable).toFixed(2);
         return `0,${level} ${SPARKLINE_WIDTH},${level}`;
     }
+
+    const levelFor = (value: number) => padding + (1 - (value - min) / range) * usable;
 
     return safe
         .map((value, index) => {

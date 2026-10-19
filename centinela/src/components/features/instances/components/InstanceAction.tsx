@@ -219,19 +219,19 @@ export default function InstanceAction({ instance, transition: transitionProp, i
               {canOperate && (
                 <>
                   {instance.status === 'stopped' && (
-                    <Menu.Item render={<button type="button" arial-label="start" />} nativeButton
+                    <Menu.Item render={<button type="button" aria-label="Iniciar" />} nativeButton
                       onClick={() => {
                         setIsMenuOpen(false);
                         setPendingAction('start');
                       }}
                       className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                      <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Encender</Badge>
+                      <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><CirclePlay className="text-emerald-600" /> Iniciar</Badge>
                     </Menu.Item>
                   )}
 
                   {instance.status === 'running' && (
                     <>
-                      <Menu.Item render={<button type="button" arial-label="shutdown" />} nativeButton
+                      <Menu.Item render={<button type="button" aria-label="Apagar" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('shutdown');
@@ -240,7 +240,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                         <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Apagar</Badge>
                       </Menu.Item>
 
-                      <Menu.Item render={<button type="button" arial-label="reboot" />} nativeButton
+                      <Menu.Item render={<button type="button" aria-label="Reiniciar" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('reboot');
@@ -249,13 +249,13 @@ export default function InstanceAction({ instance, transition: transitionProp, i
                         <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><RotateCcw className="text-amber-600" /> Reiniciar</Badge>
                       </Menu.Item>
 
-                      <Menu.Item render={<button type="button" arial-label="stop" />} nativeButton
+                      <Menu.Item render={<button type="button" aria-label="Detener" />} nativeButton
                         onClick={() => {
                           setIsMenuOpen(false);
                           setPendingAction('stop');
                         }}
                         className="w-full px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 data-highlighted:bg-slate-50 flex items-center gap-2 outline-none data-disabled:opacity-50 data-disabled:cursor-not-allowed">
-                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Forzar apagado</Badge>
+                        <Badge variant="secondary" className="h-auto rounded-md px-2.5 py-1"><Square className="text-amber-600" /> Detener</Badge>
                       </Menu.Item>
                     </>
                   )}
@@ -263,7 +263,8 @@ export default function InstanceAction({ instance, transition: transitionProp, i
               )}
               <PermissionGate requiredRole="ADMIN">
                 <Menu.Item
-                  render={<button type="button" arial-label="delete" />}
+                  render={<button type="button" aria-label="Eliminar" />}
+                  nativeButton
                   onClick={() => {
                     setIsMenuOpen(false);
                     setDeleteVerification('');

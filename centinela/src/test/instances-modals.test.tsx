@@ -272,15 +272,16 @@ async function actionsOf(row: HTMLElement): Promise<HTMLElement[]> {
 
   await user.click(menuTrigger);
 
-  const items = await waitFor(() => {
-    const found = screen.queryAllByRole('menuitem');
-
-    expect(found.length).toBeGreaterThan(0);
-
-    return found;
+  // Un OPERATOR sobre una instancia READ_ONLY abre un menú sin opciones: hay que
+  // esperar la apertura del menú, no una cantidad mínima de ítems.
+  await waitFor(() => {
+    expect(
+      menuTrigger.getAttribute('aria-expanded'),
+      'El menú de acciones no se abrió',
+    ).toBe('true');
   });
 
-  return [...direct, ...items];
+  return [...direct, ...screen.queryAllByRole('menuitem')];
 }
 
 async function findAction(
@@ -613,3 +614,54 @@ describe(
     );
   },
 );
+
+// ============================================================
+// Accesibilidad de las acciones (1dfdzjea35b)
+// ============================================================
+
+describe('Accesibilidad de las acciones de instancia', () => {
+  it(
+    'nombra cada acción con aria-label canónico y no expone el atributo arial-label',
+    async () => {
+      renderInstances({ rol: 'ADMIN' });
+
+      await actionsOf(await rowOf('servidor-web'));
+
+      expect(
+        document.querySelector('[arial-label]'),
+        'El DOM expone el atributo tipografiado arial-label',
+      ).toBeNull();
+
+      for (const item of screen.getAllByRole('menuitem')) {
+        expect(
+          item.getAttribute('aria-label'),
+          'Un ítem del menú no declara aria-label',
+        ).toMatch(/^(iniciar|encender|apagar|detener|reiniciar|eliminar)\b/i);
+
+        const nombreAccesible = item.getAttribute('aria-label') ?? '';
+        const textoVisible = item.textContent?.trim() ?? '';
+
+        expect(
+          nombreAccesible.toLowerCase(),
+          `El nombre accesible "${nombreAccesible}" no contiene el texto visible "${textoVisible}"`,
+        ).toContain(textoVisible.toLowerCase());
+      }
+
+      expect(
+        screen.getByRole('menuitem', { name: /^apagar$/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('menuitem', { name: /^reiniciar$/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('menuitem', { name: /^detener$/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('menuitem', { name: /^eliminar$/i }),
+      ).toBeInTheDocument();
+    },
+  );
+});
