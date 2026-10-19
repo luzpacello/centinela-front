@@ -151,7 +151,7 @@ describe('Dashboard node status', () => {
         expect(screen.getByText('37.5%')).toBeInTheDocument();
         expect(screen.getByText('33.01%')).toBeInTheDocument();
         expect(screen.queryByText('1d')).not.toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Instancias totales' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Resumen de Instancias' })).toBeInTheDocument();
         // Los números consolidados aparecen también en las tarjetas por tipo.
         expect(screen.getAllByText('18').length).toBeGreaterThan(0);
         expect(screen.getAllByText('12').length).toBeGreaterThan(0);
@@ -166,6 +166,31 @@ describe('Dashboard node status', () => {
         expect(screen.getByRole('heading', { name: 'Alertas y estado' })).toBeInTheDocument();
         expect(screen.getByText('1 instancia detenida')).toBeInTheDocument();
         expect(screen.getByText('5 plantillas disponibles')).toBeInTheDocument();
+    });
+
+    it('agrupa el resumen y los recursos como en la referencia sin perder métricas', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue(status);
+
+        renderDashboard();
+        const overview = screen.getByTestId('dashboard-overview');
+        const summary = within(overview).getByTestId('instances-overview');
+        const resources = within(overview).getByTestId('resources-overview');
+
+        expect(await within(summary).findByText('18')).toBeInTheDocument();
+        expect(within(summary).getByText('12')).toBeInTheDocument();
+        expect(within(summary).getAllByText('6')).toHaveLength(3);
+        expect(within(summary).getByText('5 Plantillas')).toBeInTheDocument();
+        expect(within(summary).getByTestId('summary-vms')).toBeInTheDocument();
+        expect(within(summary).getByTestId('summary-lxc')).toBeInTheDocument();
+        for (const label of ['Totales', 'En ejecución (67%)', 'Detenidas o pausadas (33%)']) {
+            expect(within(summary).getByText(label).parentElement?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+        }
+        for (const testId of ['summary-vms', 'summary-lxc']) {
+            expect(within(summary).getByTestId(testId).querySelector('h3 svg[aria-hidden="true"]')).not.toBeNull();
+        }
+        expect(within(resources).getByTestId('cpu-meter-sparkline')).toBeInTheDocument();
+        expect(within(resources).getByTestId('ram-meter-sparkline')).toBeInTheDocument();
+        expect(within(resources).getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '70');
     });
 
     it('muestra inaccesible y permite reintentar sin recargar', async () => {
@@ -214,7 +239,7 @@ describe('Dashboard node status', () => {
         renderDashboard();
 
         expect(await screen.findByText('37.5%')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Instancias totales' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Resumen de Instancias' })).toBeInTheDocument();
         expect(getNodeHistory).toHaveBeenCalled();
     });
 
@@ -229,7 +254,7 @@ describe('Dashboard node status', () => {
 
         expect(await screen.findByText('37.5%')).toBeInTheDocument();
 
-        for (const testId of ['ram-meter-sparkline', 'storage-meter-sparkline']) {
+        for (const testId of ['cpu-meter-sparkline', 'ram-meter-sparkline']) {
             const points =
                 screen.getByTestId(testId).querySelector('polyline')?.getAttribute('points') ?? '';
 
@@ -237,7 +262,7 @@ describe('Dashboard node status', () => {
         }
     });
 
-    it('conecta Instancias recientes y la tarjeta de Plantillas, sin bloques simulados', async () => {
+    it('conecta Instancias recientes y la insignia de Plantillas, sin bloques simulados', async () => {
         vi.mocked(getNodeStatus).mockResolvedValue(status);
 
         renderDashboard();
@@ -251,9 +276,7 @@ describe('Dashboard node status', () => {
         expect(screen.getByRole('button', { name: 'Ver todas' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Ver todas las instancias' })).toBeInTheDocument();
 
-        expect(screen.getByRole('heading', { name: 'Plantillas' })).toBeInTheDocument();
-        expect(await screen.findByText('5')).toBeInTheDocument();
-        expect(screen.getByText('Disponibles para usar')).toBeInTheDocument();
+        expect(await screen.findByText('5 Plantillas')).toBeInTheDocument();
 
         for (const label of ['Sin instancias', 'Sin novedades', 'Sin alertas', 'Acciones rápidas']) {
             expect(screen.queryByText(label)).not.toBeInTheDocument();
@@ -280,14 +303,14 @@ describe('Dashboard node status', () => {
         expect(await screen.findByText('pantalla-instancias')).toBeInTheDocument();
     });
 
-    it('la tarjeta de Plantillas es solo para Admin', async () => {
+    it('la insignia de Plantillas es solo para Admin', async () => {
         authState.isAdmin = false;
         vi.mocked(getNodeStatus).mockResolvedValue(status);
 
         renderDashboard();
         expect(await screen.findByText('37.5%')).toBeInTheDocument();
 
-        expect(screen.queryByRole('heading', { name: 'Plantillas' })).not.toBeInTheDocument();
+        expect(screen.queryByText(/\d+ Plantillas/)).not.toBeInTheDocument();
         expect(getMock).not.toHaveBeenCalledWith('node/templates', expect.anything());
     });
 
@@ -473,7 +496,7 @@ describe('Dashboard node status', () => {
 
         const vms = screen.getByTestId('summary-vms');
         expect(vms).toHaveTextContent('Máquinas virtuales (QEMU)');
-        expect(within(vms).getByText('9')).toBeInTheDocument();
+        expect(vms).toHaveTextContent('9 total');
         expect(within(vms).getByText('6')).toBeInTheDocument();
         expect(within(vms).getByText('2')).toBeInTheDocument();
         expect(within(vms).getByText('En ejecución')).toBeInTheDocument();
@@ -481,7 +504,7 @@ describe('Dashboard node status', () => {
 
         const lxc = screen.getByTestId('summary-lxc');
         expect(lxc).toHaveTextContent('Contenedores (LXC)');
-        expect(within(lxc).getByText('9')).toBeInTheDocument();
+        expect(lxc).toHaveTextContent('9 total');
     });
 
     it('muestra skeletons del conteo por tipo mientras carga', () => {

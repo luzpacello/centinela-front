@@ -4,6 +4,36 @@ import { describe, expect, it } from 'vitest';
 import { CpuGauge, RamMeter, StorageMeter } from '@/components/features/dashboard/components/ResourceMeter';
 
 describe('ResourceMeters', () => {
+    it('dibuja la tendencia compacta sin círculos ni cambios de escala o tamaño', () => {
+        render(<CpuGauge percent={0.2} cores={8} samples={[0.1, 0.2, 0.15]} compact />);
+
+        const chart = screen.getByTestId('cpu-meter-sparkline');
+        const line = chart.querySelector('polyline');
+        const end = line?.getAttribute('points')?.trim().split(/\s+/).at(-1)?.split(',');
+
+        expect(chart).toHaveClass('h-9');
+        expect(line).toHaveAttribute('stroke-width', '2.5');
+        expect(chart.querySelector('polygon')).toHaveAttribute('fill', 'url(#cpu-meter-compact-gradient)');
+        expect(chart.querySelector('circle')).toBeNull();
+        expect(chart.querySelector('line')).toHaveAttribute('y1', '25');
+        expect(Number(end?.[1])).toBeGreaterThan(20);
+    });
+
+    it('no dibuja un punto de tendencia cuando el compacto no tiene historial', () => {
+        render(<RamMeter usedGb={3.35} totalGb={15.3} samples={[]} compact />);
+
+        expect(screen.getByTestId('ram-meter-sparkline').querySelector('circle')).toBeNull();
+        expect(screen.getByText('Sin historial')).toBeInTheDocument();
+    });
+
+    it('muestra el almacenamiento como anillo en el resumen compacto', () => {
+        render(<StorageMeter usedGb={10.74} totalGb={67.73} usagePercent={15.85} variant="ring" />);
+
+        expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '15.85');
+        expect(screen.getByText('15.85%')).toBeInTheDocument();
+        expect(screen.getByText('10.74 GB / 67.73 GB')).toBeInTheDocument();
+        expect(screen.queryByTestId('storage-meter-sparkline')).not.toBeInTheDocument();
+    });
     it('renderiza estado normal en 69%', () => {
         render(
             <CpuGauge
