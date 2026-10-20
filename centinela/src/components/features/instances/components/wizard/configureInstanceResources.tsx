@@ -126,6 +126,54 @@ export default function ConfigureInstanceResources({
                 </div>
             </Card>
 
+            <div className={styles.resourceValidationPanel}>
+                <span className={styles.validationIconContainer}>
+                    <Info className={styles.validationIcon} aria-hidden="true" />
+                </span>
+                <div className={styles.validationTextContainer}>
+                    <strong className={styles.validationTitle}>Verificación de recursos seleccionados</strong>
+                    <Badge variant={quotaAssessment.level === 'destructive' ? 'destructive' : quotaAssessment.level === 'warning' ? 'warning' : quotaAssessment.level === 'normal' ? 'success' : 'secondary'}>
+                        {quotaAssessment.level === 'normal' ? 'Dentro de cuota' : quotaAssessment.level === 'warning' ? 'Cerca del límite' : quotaAssessment.level === 'destructive' ? 'Cuota insuficiente' : 'Cuota no disponible'}
+                    </Badge>
+                    {quotaAssessment.message && <span role="status">{quotaAssessment.message}</span>}
+                    <span>El servidor comprobará la disponibilidad final al crear la instancia.</span>
+                </div>
+                <div className={styles.resourceSummary}>
+                    <strong>Resumen de recursos</strong>
+                    <span>
+                        CPU: {draft.cores ?? '—'} vCPU · RAM: {draft.ramMb == null ? '—' : `${draft.ramMb / 1024} GB`} · Disco: {draft.discoGb == null ? '—' : `${draft.discoGb} GB`}
+                    </span>
+                </div>
+                <div className={styles.quotaMetrics} aria-label="Capacidad solicitada del nodo">
+                    {quotaMetrics.map((metric) => (
+                        <div key={metric.label} className={styles.quotaMetric}>
+                            <div className={styles.quotaMetricHeader}>
+                                <strong>{metric.label}</strong>
+                                <span>{metric.percentage === null ? '—' : Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} %` : '>100 %'}</span>
+                            </div>
+                            <span>{metric.requested}</span>
+                            {metric.projected && <span>{metric.projected}</span>}
+                            {metric.percentage !== null && (
+                                <div
+                                    role="progressbar"
+                                    aria-label={`Cuota de ${metric.label}`}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-valuenow={Math.min(100, Math.max(0, Math.round(metric.percentage)))}
+                                    aria-valuetext={Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} % de la cuota asignable` : 'Más del 100 % de la cuota asignable'}
+                                    className={styles.progressTrack}
+                                >
+                                    <div
+                                        className={`${styles.quotaProgressValue} ${metric.percentage > 100 ? 'bg-destructive' : metric.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-600'}`}
+                                        style={{ width: `${Math.min(100, Math.max(0, metric.percentage))}%` }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <Card className={styles.instanceResourcesCard}>
                 <header className={styles.contentHeader}>
                     <h2 className={styles.pageTitle}>Recursos de la instancia</h2>
@@ -211,54 +259,6 @@ export default function ConfigureInstanceResources({
                         </div>
                     </Card>
                 </div>
-
-                <div className={styles.resourceValidationPanel}>
-                    <span className={styles.validationIconContainer}>
-                        <Info className={styles.validationIcon} aria-hidden="true" />
-                    </span>
-                    <div className={styles.validationTextContainer}>
-                        <strong className={styles.validationTitle}>Verificación de recursos</strong>
-                        <Badge variant={quotaAssessment.level === 'destructive' ? 'destructive' : quotaAssessment.level === 'warning' ? 'warning' : quotaAssessment.level === 'normal' ? 'success' : 'secondary'}>
-                            {quotaAssessment.level === 'normal' ? 'Dentro de cuota' : quotaAssessment.level === 'warning' ? 'Cerca del límite' : quotaAssessment.level === 'destructive' ? 'Cuota insuficiente' : 'Cuota no disponible'}
-                        </Badge>
-                        {quotaAssessment.message && <span role="status">{quotaAssessment.message}</span>}
-                        <span>El servidor comprobará la disponibilidad final al crear la instancia.</span>
-                    </div>
-                    <div className={styles.resourceSummary}>
-                        <strong>Resumen de recursos</strong>
-                        <span>
-                            CPU: {draft.cores ?? '—'} vCPU · RAM: {draft.ramMb == null ? '—' : `${draft.ramMb / 1024} GB`} · Disco: {draft.discoGb == null ? '—' : `${draft.discoGb} GB`}
-                        </span>
-                    </div>
-                    <div className={styles.quotaMetrics} aria-label="Capacidad solicitada del nodo">
-                        {quotaMetrics.map((metric) => (
-                            <div key={metric.label} className={styles.quotaMetric}>
-                                <div className={styles.quotaMetricHeader}>
-                                    <strong>{metric.label}</strong>
-                                    <span>{metric.percentage === null ? '—' : Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} %` : '>100 %'}</span>
-                                </div>
-                                <span>{metric.requested}</span>
-                                {metric.projected && <span>{metric.projected}</span>}
-                                {metric.percentage !== null && (
-                                    <div
-                                        role="progressbar"
-                                        aria-label={`Cuota de ${metric.label}`}
-                                        aria-valuemin={0}
-                                        aria-valuemax={100}
-                                        aria-valuenow={Math.min(100, Math.max(0, Math.round(metric.percentage)))}
-                                        aria-valuetext={Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} % de la cuota asignable` : 'Más del 100 % de la cuota asignable'}
-                                        className={styles.progressTrack}
-                                    >
-                                        <div
-                                            className={`${styles.quotaProgressValue} ${metric.percentage > 100 ? 'bg-destructive' : metric.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-600'}`}
-                                            style={{ width: `${Math.min(100, Math.max(0, metric.percentage))}%` }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
             </Card>
         </div>
     );
@@ -311,7 +311,6 @@ function ResourceManagerCard({
     unit,
     min,
     step,
-    sliderMax,
     isOverQuota,
     helperText,
     onDecrease,
@@ -341,24 +340,14 @@ function ResourceManagerCard({
                     aria-label={title}
                     aria-invalid={isOverQuota}
                     onChange={(event) => onValueChange(event.target.value === '' ? null : Number(event.target.value))}
-                    className={styles.numericControlInput}
+                    className={`${styles.numericControlInput} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                 />
                 <Button type="button" variant="outline" size="icon" className={styles.numericControlButton} onClick={onIncrease} aria-label={`Aumentar ${title}`}>
                     <Plus className={styles.numericControlIcon} aria-hidden="true" />
                 </Button>
                 <span className={styles.numericControlUnit}>{unit}</span>
             </div>
-            <Input
-                type="range"
-                min={min}
-                max={sliderMax}
-                step={step}
-                value={value ?? min}
-                aria-label={`Ajustar ${title}`}
-                onChange={(event) => onValueChange(Number(event.target.value))}
-                className={styles.resourceSlider}
-            />
-            <p className={styles.resourceHelperText}>{helperText}</p>
+            <p className="mt-5 text-caption">{helperText}</p>
         </Card>
     );
 }
@@ -393,15 +382,13 @@ const styles = {
     numericControlIcon: 'size-4!',
     numericControlInput: 'rounded-none border-x-0 text-center',
     numericControlUnit: 'pl-2 text-xs font-medium text-slate-900',
-    resourceHelperText: 'text-xs text-slate-500',
     storageAvailabilityRow: 'flex items-center justify-between gap-3 text-[11px] text-slate-500',
     storageProgressValue: 'h-full rounded-full bg-blue-800',
     resourceValidationPanel: 'grid gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-blue-950 md:grid-cols-[auto_minmax(0,1fr)]',
-    validationIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white',
+    validationIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-950',
     validationIcon: 'size-5',
     validationTextContainer: 'flex flex-1 flex-col gap-1',
     validationTitle: 'text-sm font-semibold',
-
     resourceSummary: 'flex flex-col gap-1 text-xs md:col-start-2',
     resourceSlider: 'h-2 cursor-pointer border-0 bg-transparent p-0 accent-blue-600',
     quotaMetrics: 'grid gap-4 md:col-start-2 md:grid-cols-3',
