@@ -71,6 +71,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, descriptions, currentSt
 
                 {/* Etiqueta / Título descriptivo debajo del círculo */}
                 <span
+                  aria-current={isCurrent ? 'step' : undefined}
                   className={`mt-2 max-w-[140px] whitespace-nowrap text-center text-xs font-medium transition-colors duration-200 ${
                     isCurrent || isCompleted
                       ? 'text-blue-500 font-semibold' // Texto destacado si el paso está activo o superado
