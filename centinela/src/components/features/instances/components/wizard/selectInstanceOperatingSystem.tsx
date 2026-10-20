@@ -10,7 +10,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { OPERATING_SYSTEM_TEMPLATE_OPTIONS } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
     OperatingSystemTemplateOption,
@@ -18,15 +17,23 @@ import type {
 
 interface SelectInstanceOperatingSystemProps {
     draft: CreateInstanceDraft;
+    templates: OperatingSystemTemplateOption[];
+    isLoadingCatalog: boolean;
+    catalogError: string | null;
     onTemplateChange: (templateValue: string) => void;
 }
 
 export default function SelectInstanceOperatingSystem({
     draft,
+    templates,
+    isLoadingCatalog,
+    catalogError,
     onTemplateChange,
 }: SelectInstanceOperatingSystemProps) {
     const [templateSearch, setTemplateSearch] = useState('');
-    const availableTemplates = draft.tipo ? OPERATING_SYSTEM_TEMPLATE_OPTIONS[draft.tipo] : [];
+    const availableTemplates = draft.tipo
+        ? templates.filter((template) => template.type === (draft.tipo === 'vm' ? 'ISO' : 'LXC_TEMPLATE'))
+        : [];
     const normalizedSearch = templateSearch.trim().toLowerCase();
     const filteredTemplates = availableTemplates.filter((template) => (
         `${template.templateName} ${template.distribution} ${template.operatingSystem} ${template.version}`
@@ -83,9 +90,11 @@ export default function SelectInstanceOperatingSystem({
                         {filteredTemplates.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={6} className={styles.emptyStateCell}>
-                                    {draft.tipo
-                                        ? 'No se encontraron templates para la búsqueda.'
-                                        : 'Selecciona primero el tipo de instancia.'}
+                                    {catalogError || (isLoadingCatalog
+                                        ? 'Cargando imágenes…'
+                                        : draft.tipo
+                                            ? 'No se encontraron templates para la búsqueda.'
+                                            : 'Selecciona primero el tipo de instancia.')}
                                 </TableCell>
                             </TableRow>
                         )}
