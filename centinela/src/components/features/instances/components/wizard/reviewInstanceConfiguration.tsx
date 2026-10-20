@@ -1,6 +1,5 @@
 import {
     Cpu,
-    Database,
     FileText,
     HardDrive,
     Loader2,
@@ -11,34 +10,38 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     INSTANCE_TYPE_OPTIONS,
-    NODE_OPTIONS,
-    OPERATING_SYSTEM_TEMPLATE_OPTIONS,
-    STORAGE_OPTIONS,
-    findOptionLabel,
 } from '@/components/features/instances/data/createInstanceOptions';
-import type { CreateInstanceDraft } from '@/components/features/instances/types/createInstance';
+import type { CreateInstanceDraft, OperatingSystemTemplateOption, StorageOption } from '@/components/features/instances/types/createInstance';
 
 interface ReviewInstanceConfigurationProps {
     draft: CreateInstanceDraft;
+    storages: StorageOption[];
+    templates: OperatingSystemTemplateOption[];
     isCreating: boolean;
+    canCreateInstance: boolean;
+    hasConfirmedConfiguration: boolean;
+    onConfirmationChange: (confirmed: boolean) => void;
     onEditStep: (step: number) => void;
     onCreateInstance: () => void;
 }
 
 export default function ReviewInstanceConfiguration({
     draft,
+    storages,
+    templates,
     isCreating,
+    canCreateInstance,
+    hasConfirmedConfiguration,
+    onConfirmationChange,
     onEditStep,
     onCreateInstance,
 }: ReviewInstanceConfigurationProps) {
     const instanceTypeLabel = INSTANCE_TYPE_OPTIONS.find((option) => option.type === draft.tipo)?.title;
-    const destinationNodeLabel = findOptionLabel(NODE_OPTIONS, draft.nodo);
-    const selectedStorage = STORAGE_OPTIONS.find((storage) => storage.value === draft.storageId);
-    const selectedTemplate = draft.tipo
-        ? OPERATING_SYSTEM_TEMPLATE_OPTIONS[draft.tipo].find((template) => template.value === draft.templateOso)
-        : undefined;
+    const selectedStorage = storages.find((storage) => storage.value === draft.storageId);
+    const selectedTemplate = templates.find((template) => template.value === draft.templateOso);
     const networkModeLabel = draft.red.modo === 'static' ? 'IP estática' : 'DHCP';
 
     return (
@@ -56,31 +59,29 @@ export default function ReviewInstanceConfiguration({
                 >
                     <ConfigurationValue label="Tipo de instancia" value={instanceTypeLabel} />
                     <ConfigurationValue label="Nombre" value={draft.nombre} />
-                    <ConfigurationValue label="Nodo" value={destinationNodeLabel} />
                     <ConfigurationValue label="Descripción" value={draft.descripcion} />
                 </ConfigurationSection>
 
                 <ConfigurationSection
                     icon={Cpu}
-                    title="Recursos"
+                    title="Hardware"
                     onEdit={() => onEditStep(2)}
                 >
                     <ConfigurationValue label="vCPU" value={draft.cores == null ? undefined : `${draft.cores} vCPU`} />
                     <ConfigurationValue label="Memoria RAM" value={formatMemory(draft.ramMb)} />
-                    <ConfigurationValue label="Disponibilidad del nodo" value="Suficiente" />
+                    <ConfigurationValue label="Tamaño de disco" value={draft.discoGb == null ? undefined : `${draft.discoGb} GB`} />
                 </ConfigurationSection>
 
                 <ConfigurationSection
                     icon={HardDrive}
-                    title="Disco"
+                    title="Almacenamiento e imagen"
                     onEdit={() => onEditStep(2)}
                 >
                     <ConfigurationValue label="Almacenamiento" value={draft.storageId} />
-                    <ConfigurationValue label="Tamaño" value={draft.discoGb == null ? undefined : `${draft.discoGb} GB`} />
-                    <ConfigurationValue
-                        label="Espacio disponible"
-                        value={selectedStorage ? `${selectedStorage.availableGb} GB` : undefined}
-                    />
+                    <ConfigurationValue label="Espacio disponible" value={selectedStorage?.availableLabel} />
+                    <ConfigurationValue label="Tipo de imagen" value={selectedTemplate?.type === 'ISO' ? 'ISO' : selectedTemplate?.type === 'LXC_TEMPLATE' ? 'Template LXC' : undefined} />
+                    <ConfigurationValue label="Imagen" value={selectedTemplate?.label} />
+                    <ConfigurationValue label="Tamaño de imagen" value={selectedTemplate?.size} />
                 </ConfigurationSection>
 
                 <ConfigurationSection
@@ -88,44 +89,33 @@ export default function ReviewInstanceConfiguration({
                     title="Red"
                     onEdit={() => onEditStep(3)}
                 >
-                    <ConfigurationValue label="Puente de red" value={draft.red.bridge} />
                     <ConfigurationValue label="Modo de configuración" value={networkModeLabel} />
                     <ConfigurationValue
                         label="Dirección IP"
-                        value={draft.red.modo === 'static' ? draft.red.ip : 'Asignación automática'}
+                        value={draft.red.modo === 'static' ? `${draft.red.ip}/${draft.red.mascara}` : 'Asignación automática'}
                     />
-                    <ConfigurationValue label="Prefijo de red (CIDR)" value={draft.red.mascara} />
-                    <ConfigurationValue label="Puerta de enlace" value={draft.red.gateway} />
-                </ConfigurationSection>
-
-                <ConfigurationSection
-                    icon={Database}
-                    title="Sistema operativo"
-                    onEdit={() => onEditStep(4)}
-                >
-                    <ConfigurationValue label="Tipo" value={draft.tipo === 'vm' ? 'ISO' : 'Template LXC'} />
-                    <ConfigurationValue label="Imagen" value={selectedTemplate?.label} />
-                    <ConfigurationValue label="Tamaño" value={selectedTemplate?.size} />
-                    <ConfigurationValue label="Sistema operativo" value={selectedTemplate?.operatingSystem} />
+                    {draft.red.modo === 'static' && <ConfigurationValue label="Puerta de enlace" value={draft.red.gateway} />}
                 </ConfigurationSection>
 
                 <Card className={styles.creationActionCard}>
                     <div>
                         <h3 className={styles.creationActionTitle}>¿Todo listo para crear la instancia?</h3>
-                        <p className={styles.creationActionDescription}>
-                            La solicitud se enviará con la configuración revisada y podrás seguir su progreso desde Instancias.
-                        </p>
+                        <p className={styles.creationActionDescription}>La creación iniciará una tarea en segundo plano en Proxmox. Podrá seguir el progreso desde el inventario.</p>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-slate-700">
+                        <Checkbox id="confirm-instance-configuration" checked={hasConfirmedConfiguration} disabled={isCreating} onCheckedChange={(checked) => onConfirmationChange(checked)} />
+                        <label htmlFor="confirm-instance-configuration">Confirmo la configuración de la instancia.</label>
                     </div>
                     <Button
                         type="button"
-                        disabled={isCreating}
+                        disabled={!canCreateInstance}
                         className={styles.createInstanceButton}
                         onClick={onCreateInstance}
                     >
                         {isCreating
                             ? <Loader2 className={styles.loadingIcon} aria-hidden="true" />
                             : <Play className={styles.buttonIcon} aria-hidden="true" />}
-                        {isCreating ? 'Creando instancia...' : 'Crear instancia'}
+                        {isCreating ? 'Creando instancia...' : 'Crear Instancia'}
                     </Button>
                 </Card>
             </div>
