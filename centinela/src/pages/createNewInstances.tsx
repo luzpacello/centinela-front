@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChevronRight, Loader2, Play, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Loader2, Play } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -18,6 +18,17 @@ export default function CreateNewInstances() {
         currentStep,
         draft,
         isCreatingInstance,
+        canCreateInstance,
+        currentStepError,
+        hasConfirmedConfiguration,
+        setHasConfirmedConfiguration,
+        storages,
+        templates,
+        isLoadingCatalog,
+        catalogError,
+        nodeStatus,
+        nodeStatusError,
+        isLoadingNodeStatus,
         goToNextStep,
         goToPreviousStep,
         goToStep,
@@ -33,18 +44,13 @@ export default function CreateNewInstances() {
 
     async function createNewInstance() {
         const wasCreated = await submitInstanceCreation();
-        if (wasCreated) navigate('/instances');
+        if (wasCreated) navigate('/instances', { replace: true });
     }
 
     const isReviewStep = currentStep === INSTANCE_CREATION_STEPS.length;
 
     return (
         <section className={styles.page}>
-            <div role="alert" className={styles.developmentNotice}>
-                <TriangleAlert className={styles.developmentNoticeIcon} aria-hidden="true" />
-                <span>Aprovisionamiento en desarrollo — Próximamente en Etapa 2</span>
-            </div>
-
             <header className={styles.pageHeader}>
                 <div className={styles.headingContainer}>
                     <nav className={styles.breadcrumb} aria-label="Navegación secundaria">
@@ -69,14 +75,14 @@ export default function CreateNewInstances() {
                         Anterior
                     </Button>
                     {isReviewStep ? (
-                        <Button type="button" onClick={createNewInstance} disabled={isCreatingInstance}>
+                        <Button type="button" onClick={createNewInstance} disabled={!canCreateInstance}>
                             {isCreatingInstance
                                 ? <Loader2 className={styles.loadingIcon} aria-hidden="true" />
                                 : <Play className={styles.smallIcon} aria-hidden="true" />}
-                            {isCreatingInstance ? 'Creando instancia...' : 'Crear instancia'}
+                            {isCreatingInstance ? 'Creando instancia...' : 'Crear Instancia'}
                         </Button>
                     ) : (
-                        <Button type="button" onClick={goToNextStep}>
+                        <Button type="button" onClick={goToNextStep} disabled={Boolean(currentStepError)}>
                             Siguiente
                             <ArrowRight className={styles.smallIcon} aria-hidden="true" />
                         </Button>
@@ -106,6 +112,12 @@ export default function CreateNewInstances() {
                     {currentStep === 2 && (
                         <ConfigureInstanceResources
                             draft={draft}
+                            storages={storages}
+                            isLoadingCatalog={isLoadingCatalog}
+                            catalogError={catalogError}
+                            nodeStatus={nodeStatus}
+                            nodeStatusError={nodeStatusError}
+                            isLoadingNodeStatus={isLoadingNodeStatus}
                             onFieldChange={updateField}
                         />
                     )}
@@ -118,20 +130,28 @@ export default function CreateNewInstances() {
                     {currentStep === 4 && (
                         <SelectInstanceOperatingSystem
                             draft={draft}
+                            templates={templates}
+                            isLoadingCatalog={isLoadingCatalog}
+                            catalogError={catalogError}
                             onTemplateChange={(templateValue) => updateField('templateOso', templateValue)}
                         />
                     )}
                     {currentStep === 5 && (
                         <ReviewInstanceConfiguration
                             draft={draft}
+                            storages={storages}
+                            templates={templates}
                             isCreating={isCreatingInstance}
+                            canCreateInstance={canCreateInstance}
+                            hasConfirmedConfiguration={hasConfirmedConfiguration}
+                            onConfirmationChange={setHasConfirmedConfiguration}
                             onEditStep={goToStep}
                             onCreateInstance={createNewInstance}
                         />
                     )}
                 </main>
                 <aside className={styles.summaryContainer}>
-                    <InstanceCreationSummary draft={draft} />
+                    <InstanceCreationSummary draft={draft} templates={templates} />
                 </aside>
             </div>
         </section>
@@ -148,8 +168,6 @@ const styles = {
     headerActions: 'flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end',
     smallIcon: 'size-4!',
     loadingIcon: 'size-4! animate-spin',
-    developmentNotice: 'flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900',
-    developmentNoticeIcon: 'size-5 shrink-0 text-amber-600',
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
     creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',
