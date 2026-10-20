@@ -4,6 +4,7 @@ import type {
     OperatingSystemTemplateOption,
     StorageOption,
 } from '../types/createInstance';
+import type { NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
 
 const IPV4_OCTET = '(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)';
 const IPV4_PATTERN = new RegExp(`^${IPV4_OCTET}(?:\\.${IPV4_OCTET}){3}$`);
@@ -25,6 +26,59 @@ interface CreationCatalog {
     templates: OperatingSystemTemplateOption[];
     isLoadingCatalog: boolean;
     catalogError: string | null;
+}
+
+export interface ResourceQuotaAssessment {
+    level: 'normal' | 'warning' | 'destructive' | 'unavailable';
+    percentages: { cores: number | null; ram: number | null; disk: number | null };
+    message: string | null;
+    blockingError: string | null;
+}
+
+function quotaPercentage(requested: number, available: number): number {
+    if (!Number.isFinite(requested) || requested < 0) return Infinity;
+    return available === 0 ? (requested > 0 ? Infinity : 0) : (requested / available) * 100;
+}
+
+export function assessResourceQuota(
+    draft: CreateInstanceDraft,
+    nodeStatus: NodeStatusResponse | null,
+    nodeStatusError: string | null,
+    isLoadingNodeStatus: boolean,
+): ResourceQuotaAssessment {
+    const unavailable = nodeStatusError
+        ?? (isLoadingNodeStatus ? 'Esperá a que se carguen las cuotas del nodo.' : 'No se pudieron verificar las cuotas del nodo.');
+    const quota = nodeStatus?.allocatable;
+    if (!nodeStatus || nodeStatus.stale || !quota
+        || ![quota.maxCpuCores, quota.freeRamMb, quota.freeStorageGb].every((value) => Number.isFinite(value) && value >= 0)) {
+        const message = nodeStatus?.stale ? 'La lectura del nodo está desactualizada. No se pueden verificar las cuotas.' : unavailable;
+        return {
+            level: 'unavailable',
+            percentages: { cores: null, ram: null, disk: null },
+            message,
+            blockingError: message,
+        };
+    }
+
+    const percentages = {
+        cores: quotaPercentage(draft.cores ?? 0, quota.maxCpuCores),
+        ram: quotaPercentage(draft.ramMb ?? 0, quota.freeRamMb),
+        disk: quotaPercentage(draft.discoGb ?? 0, quota.freeStorageGb),
+    };
+    const highestPercentage = Math.max(percentages.cores, percentages.ram, percentages.disk);
+    if (highestPercentage > 100) {
+        const message = 'Cuota insuficiente: Los recursos solicitados exceden la capacidad disponible en el nodo.';
+        return { level: 'destructive', percentages, message, blockingError: message };
+    }
+    if (highestPercentage >= 80) {
+        return {
+            level: 'warning',
+            percentages,
+            message: 'Atención: El recurso solicitado se acerca al límite de capacidad segura del host.',
+            blockingError: null,
+        };
+    }
+    return { level: 'normal', percentages, message: null, blockingError: null };
 }
 
 export function getCreateInstanceStepError(

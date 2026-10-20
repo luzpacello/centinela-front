@@ -9,6 +9,7 @@ import {
     Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
     Combobox,
@@ -27,6 +28,7 @@ import type {
     StorageOption,
     UpdateCreateInstanceField,
 } from '@/components/features/instances/types/createInstance';
+import { assessResourceQuota } from '@/components/features/instances/validation/createInstanceValidation';
 
 interface ConfigureInstanceResourcesProps {
     draft: CreateInstanceDraft;
@@ -55,16 +57,37 @@ export default function ConfigureInstanceResources({
     const storagePercentage = selectedStorage && selectedStorage.totalGb > 0
         ? Math.round((selectedStorage.availableGb / selectedStorage.totalGb) * 100)
         : 0;
+    const quotaAssessment = assessResourceQuota(draft, nodeStatus, nodeStatusError, isLoadingNodeStatus);
+    const allocatable = nodeStatus?.stale ? null : nodeStatus?.allocatable;
+    const quotaMetrics = [
+        {
+            label: 'vCPU',
+            percentage: quotaAssessment.percentages.cores,
+            requested: `${draft.cores ?? 0} de ${allocatable?.maxCpuCores ?? '—'} núcleos asignables`,
+        },
+        {
+            label: 'Memoria RAM',
+            percentage: quotaAssessment.percentages.ram,
+            requested: `${((draft.ramMb ?? 0) / 1024).toFixed(2)} GB de ${allocatable ? (allocatable.freeRamMb / 1024).toFixed(2) : '—'} GB asignables`,
+            projected: allocatable && nodeStatus ? `Uso previsto del host: ${(nodeStatus.ram.usedGb + (draft.ramMb ?? 0) / 1024).toFixed(2)} / ${nodeStatus.ram.totalGb} GB` : null,
+        },
+        {
+            label: 'Disco',
+            percentage: quotaAssessment.percentages.disk,
+            requested: `${draft.discoGb ?? 0} GB de ${allocatable?.freeStorageGb ?? '—'} GB asignables`,
+            projected: allocatable && nodeStatus ? `Uso previsto del host: ${(nodeStatus.storage.usedGb + (draft.discoGb ?? 0)).toFixed(2)} / ${nodeStatus.storage.totalGb} GB` : null,
+        },
+    ];
 
     function adjustResource(field: NumericResourceField, direction: -1 | 1) {
         const limits = RESOURCE_LIMITS[field];
         const currentValue = draft[field] ?? limits.min;
         const nextValue = Math.max(limits.min, currentValue + direction * limits.step);
         const availableMaximum = field === 'cores'
-            ? nodeStatus && !nodeStatus.stale ? nodeStatus.cpu.cores : null
+            ? allocatable?.maxCpuCores ?? null
             : field === 'ramMb'
-                ? nodeStatus && !nodeStatus.stale ? nodeStatus.allocatable?.freeRamMb ?? null : null
-                : selectedStorage ? Math.floor(selectedStorage.availableGb) : null;
+                ? allocatable?.freeRamMb ?? null
+                : Math.min(allocatable?.freeStorageGb ?? Infinity, selectedStorage?.availableGb ?? Infinity);
         if (direction === 1 && availableMaximum !== null && nextValue > availableMaximum) return;
         onFieldChange(field, nextValue);
     }
@@ -79,7 +102,7 @@ export default function ConfigureInstanceResources({
                     <div>
                         <h3 className={styles.availableResourcesTitle}>Estado del nodo de destino</h3>
                         <p className={styles.availableResourcesDescription}>
-                            {nodeStatusError || (isLoadingNodeStatus ? 'Cargando estado del nodo…' : nodeStatus?.stale ? 'Última lectura disponible del nodo configurado en el servidor.' : 'Recursos actuales del nodo configurado en el servidor.')}
+                            {nodeStatusError ? 'No se pudo cargar el estado del nodo.' : isLoadingNodeStatus ? 'Cargando estado del nodo…' : nodeStatus?.stale ? 'Última lectura disponible del nodo configurado en el servidor.' : 'Recursos actuales del nodo configurado en el servidor.'}
                         </p>
                     </div>
                 </div>
@@ -114,31 +137,46 @@ export default function ConfigureInstanceResources({
                         icon={Cpu}
                         title="CPU"
                         description="Cantidad de núcleos virtuales para la instancia."
-                        value={draft.cores ?? RESOURCE_LIMITS.cores.min}
+                        value={draft.cores}
                         unit="vCPU"
-                        helperText={`Capacidad del nodo: ${nodeStatus?.cpu.cores ?? '—'} vCPU`}
+                        min={RESOURCE_LIMITS.cores.min}
+                        step={RESOURCE_LIMITS.cores.step}
+                        sliderMax={Math.max(RESOURCE_LIMITS.cores.min * 2, (allocatable?.maxCpuCores ?? 0) * 2, draft.cores ?? 0)}
+                        isOverQuota={(quotaAssessment.percentages.cores ?? 0) > 100}
+                        helperText={`Cuota del nodo: ${allocatable?.maxCpuCores ?? '—'} vCPU`}
                         onDecrease={() => adjustResource('cores', -1)}
                         onIncrease={() => adjustResource('cores', 1)}
+                        onValueChange={(value) => onFieldChange('cores', value)}
                     />
                     <ResourceManagerCard
                         icon={MemoryStick}
                         title="Memoria RAM"
                         description="Memoria asignada para la instancia."
-                        value={(draft.ramMb ?? RESOURCE_LIMITS.ramMb.min) / 1024}
+                        value={draft.ramMb == null ? null : draft.ramMb / 1024}
                         unit="GB"
-                        helperText={`RAM asignable segura: ${nodeStatus?.allocatable ? `${(nodeStatus.allocatable.freeRamMb / 1024).toFixed(2)} GB` : '—'}`}
+                        min={RESOURCE_LIMITS.ramMb.min / 1024}
+                        step={RESOURCE_LIMITS.ramMb.step / 1024}
+                        sliderMax={Math.max(RESOURCE_LIMITS.ramMb.min * 2, (allocatable?.freeRamMb ?? 0) * 2, draft.ramMb ?? 0) / 1024}
+                        isOverQuota={(quotaAssessment.percentages.ram ?? 0) > 100}
+                        helperText={`RAM asignable segura: ${allocatable ? `${(allocatable.freeRamMb / 1024).toFixed(2)} GB` : '—'}`}
                         onDecrease={() => adjustResource('ramMb', -1)}
                         onIncrease={() => adjustResource('ramMb', 1)}
+                        onValueChange={(value) => onFieldChange('ramMb', value == null ? null : Math.round(value * 1024))}
                     />
                     <ResourceManagerCard
                         icon={Database}
                         title="Disco principal"
                         description="Tamaño del disco del sistema de la instancia."
-                        value={draft.discoGb ?? RESOURCE_LIMITS.discoGb.min}
+                        value={draft.discoGb}
                         unit="GB"
+                        min={RESOURCE_LIMITS.discoGb.min}
+                        step={RESOURCE_LIMITS.discoGb.step}
+                        sliderMax={Math.max(RESOURCE_LIMITS.discoGb.min * 2, (allocatable?.freeStorageGb ?? 0) * 2, draft.discoGb ?? 0)}
+                        isOverQuota={(quotaAssessment.percentages.disk ?? 0) > 100}
                         helperText={`Tamaño mínimo: ${RESOURCE_LIMITS.discoGb.min} GB`}
                         onDecrease={() => adjustResource('discoGb', -1)}
                         onIncrease={() => adjustResource('discoGb', 1)}
+                        onValueChange={(value) => onFieldChange('discoGb', value)}
                     />
 
                     <Card className={styles.resourceManagerCard}>
@@ -180,13 +218,45 @@ export default function ConfigureInstanceResources({
                     </span>
                     <div className={styles.validationTextContainer}>
                         <strong className={styles.validationTitle}>Verificación de recursos</strong>
-                        <span className="text-success">El servidor comprobará la disponibilidad final al crear la instancia.</span>
+                        <Badge variant={quotaAssessment.level === 'destructive' ? 'destructive' : quotaAssessment.level === 'warning' ? 'warning' : quotaAssessment.level === 'normal' ? 'success' : 'secondary'}>
+                            {quotaAssessment.level === 'normal' ? 'Dentro de cuota' : quotaAssessment.level === 'warning' ? 'Cerca del límite' : quotaAssessment.level === 'destructive' ? 'Cuota insuficiente' : 'Cuota no disponible'}
+                        </Badge>
+                        {quotaAssessment.message && <span role="status">{quotaAssessment.message}</span>}
+                        <span>El servidor comprobará la disponibilidad final al crear la instancia.</span>
                     </div>
                     <div className={styles.resourceSummary}>
                         <strong>Resumen de recursos</strong>
                         <span>
                             CPU: {draft.cores ?? '—'} vCPU · RAM: {draft.ramMb == null ? '—' : `${draft.ramMb / 1024} GB`} · Disco: {draft.discoGb == null ? '—' : `${draft.discoGb} GB`}
                         </span>
+                    </div>
+                    <div className={styles.quotaMetrics} aria-label="Capacidad solicitada del nodo">
+                        {quotaMetrics.map((metric) => (
+                            <div key={metric.label} className={styles.quotaMetric}>
+                                <div className={styles.quotaMetricHeader}>
+                                    <strong>{metric.label}</strong>
+                                    <span>{metric.percentage === null ? '—' : Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} %` : '>100 %'}</span>
+                                </div>
+                                <span>{metric.requested}</span>
+                                {metric.projected && <span>{metric.projected}</span>}
+                                {metric.percentage !== null && (
+                                    <div
+                                        role="progressbar"
+                                        aria-label={`Cuota de ${metric.label}`}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={Math.min(100, Math.max(0, Math.round(metric.percentage)))}
+                                        aria-valuetext={Number.isFinite(metric.percentage) ? `${Math.round(metric.percentage)} % de la cuota asignable` : 'Más del 100 % de la cuota asignable'}
+                                        className={styles.progressTrack}
+                                    >
+                                        <div
+                                            className={`${styles.quotaProgressValue} ${metric.percentage > 100 ? 'bg-destructive' : metric.percentage >= 80 ? 'bg-amber-500' : 'bg-emerald-600'}`}
+                                            style={{ width: `${Math.min(100, Math.max(0, metric.percentage))}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </Card>
@@ -221,11 +291,16 @@ interface ResourceManagerCardProps {
     icon: React.ComponentType<{ className?: string }>;
     title: string;
     description: string;
-    value: number;
+    value: number | null;
     unit: string;
+    min: number;
+    step: number;
+    sliderMax: number;
+    isOverQuota: boolean;
     helperText: string;
     onDecrease: () => void;
     onIncrease: () => void;
+    onValueChange: (value: number | null) => void;
 }
 
 function ResourceManagerCard({
@@ -234,9 +309,14 @@ function ResourceManagerCard({
     description,
     value,
     unit,
+    min,
+    step,
+    sliderMax,
+    isOverQuota,
     helperText,
     onDecrease,
     onIncrease,
+    onValueChange,
 }: ResourceManagerCardProps) {
     return (
         <Card className={styles.resourceManagerCard}>
@@ -253,12 +333,31 @@ function ResourceManagerCard({
                 <Button type="button" variant="outline" size="icon" className={styles.numericControlButton} onClick={onDecrease} aria-label={`Disminuir ${title}`}>
                     <Minus className={styles.numericControlIcon} aria-hidden="true" />
                 </Button>
-                <Input value={value} readOnly aria-label={title} className={styles.numericControlInput} />
+                <Input
+                    type="number"
+                    min={min}
+                    step={step}
+                    value={value ?? ''}
+                    aria-label={title}
+                    aria-invalid={isOverQuota}
+                    onChange={(event) => onValueChange(event.target.value === '' ? null : Number(event.target.value))}
+                    className={styles.numericControlInput}
+                />
                 <Button type="button" variant="outline" size="icon" className={styles.numericControlButton} onClick={onIncrease} aria-label={`Aumentar ${title}`}>
                     <Plus className={styles.numericControlIcon} aria-hidden="true" />
                 </Button>
                 <span className={styles.numericControlUnit}>{unit}</span>
             </div>
+            <Input
+                type="range"
+                min={min}
+                max={sliderMax}
+                step={step}
+                value={value ?? min}
+                aria-label={`Ajustar ${title}`}
+                onChange={(event) => onValueChange(Number(event.target.value))}
+                className={styles.resourceSlider}
+            />
             <p className={styles.resourceHelperText}>{helperText}</p>
         </Card>
     );
@@ -297,11 +396,16 @@ const styles = {
     resourceHelperText: 'text-xs text-slate-500',
     storageAvailabilityRow: 'flex items-center justify-between gap-3 text-[11px] text-slate-500',
     storageProgressValue: 'h-full rounded-full bg-blue-800',
-    resourceValidationPanel: 'flex flex-col gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-blue-950 md:flex-row md:items-center',
+    resourceValidationPanel: 'grid gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-blue-950 md:grid-cols-[auto_minmax(0,1fr)]',
     validationIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white',
     validationIcon: 'size-5',
     validationTextContainer: 'flex flex-1 flex-col gap-1',
     validationTitle: 'text-sm font-semibold',
 
-    resourceSummary: 'flex flex-col gap-1 border-emerald-200 text-xs md:border-l md:pl-6',
+    resourceSummary: 'flex flex-col gap-1 text-xs md:col-start-2',
+    resourceSlider: 'h-2 cursor-pointer border-0 bg-transparent p-0 accent-blue-600',
+    quotaMetrics: 'grid gap-4 md:col-start-2 md:grid-cols-3',
+    quotaMetric: 'flex min-w-0 flex-col gap-1 text-xs',
+    quotaMetricHeader: 'flex items-center justify-between gap-2',
+    quotaProgressValue: 'h-full rounded-full transition-[width] duration-200',
 };
