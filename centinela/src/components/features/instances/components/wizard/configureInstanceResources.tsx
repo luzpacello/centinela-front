@@ -1,5 +1,5 @@
 import {
-    CheckCircle2,
+    Info,
     Cpu,
     Database,
     HardDrive,
@@ -19,17 +19,23 @@ import {
 } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import {
-    NODE_RESOURCE_AVAILABILITY,
     RESOURCE_LIMITS,
-    STORAGE_OPTIONS,
 } from '@/components/features/instances/data/createInstanceOptions';
+import type { NodeStatusResponse } from '@/components/features/dashboard/services/nodeStatusService';
 import type {
     CreateInstanceDraft,
+    StorageOption,
     UpdateCreateInstanceField,
 } from '@/components/features/instances/types/createInstance';
 
 interface ConfigureInstanceResourcesProps {
     draft: CreateInstanceDraft;
+    storages: StorageOption[];
+    isLoadingCatalog: boolean;
+    catalogError: string | null;
+    nodeStatus: NodeStatusResponse | null;
+    nodeStatusError: string | null;
+    isLoadingNodeStatus: boolean;
     onFieldChange: UpdateCreateInstanceField;
 }
 
@@ -37,17 +43,29 @@ type NumericResourceField = 'cores' | 'ramMb' | 'discoGb';
 
 export default function ConfigureInstanceResources({
     draft,
+    storages,
+    isLoadingCatalog,
+    catalogError,
+    nodeStatus,
+    nodeStatusError,
+    isLoadingNodeStatus,
     onFieldChange,
 }: ConfigureInstanceResourcesProps) {
-    const selectedStorage = STORAGE_OPTIONS.find((storage) => storage.value === draft.storageId);
-    const storagePercentage = selectedStorage
+    const selectedStorage = storages.find((storage) => storage.value === draft.storageId);
+    const storagePercentage = selectedStorage && selectedStorage.totalGb > 0
         ? Math.round((selectedStorage.availableGb / selectedStorage.totalGb) * 100)
         : 0;
 
     function adjustResource(field: NumericResourceField, direction: -1 | 1) {
         const limits = RESOURCE_LIMITS[field];
         const currentValue = draft[field] ?? limits.min;
-        const nextValue = Math.min(limits.max, Math.max(limits.min, currentValue + direction * limits.step));
+        const nextValue = Math.max(limits.min, currentValue + direction * limits.step);
+        const availableMaximum = field === 'cores'
+            ? nodeStatus && !nodeStatus.stale ? nodeStatus.cpu.cores : null
+            : field === 'ramMb'
+                ? nodeStatus && !nodeStatus.stale ? nodeStatus.allocatable?.freeRamMb ?? null : null
+                : selectedStorage ? Math.floor(selectedStorage.availableGb) : null;
+        if (direction === 1 && availableMaximum !== null && nextValue > availableMaximum) return;
         onFieldChange(field, nextValue);
     }
 
@@ -59,9 +77,9 @@ export default function ConfigureInstanceResources({
                         <Server className={styles.availableResourcesIcon} aria-hidden="true" />
                     </span>
                     <div>
-                        <h3 className={styles.availableResourcesTitle}>Recursos disponibles en el nodo de destino</h3>
+                        <h3 className={styles.availableResourcesTitle}>Estado del nodo de destino</h3>
                         <p className={styles.availableResourcesDescription}>
-                            Resumen de los recursos actuales del nodo {draft.nodo || '—'}.
+                            {nodeStatusError || (isLoadingNodeStatus ? 'Cargando estado del nodo…' : nodeStatus?.stale ? 'Última lectura disponible del nodo configurado en el servidor.' : 'Recursos actuales del nodo configurado en el servidor.')}
                         </p>
                     </div>
                 </div>
@@ -69,18 +87,18 @@ export default function ConfigureInstanceResources({
                 <div className={styles.availableResourcesGrid}>
                     <AvailabilityMetric
                         label="CPU"
-                        value={`${NODE_RESOURCE_AVAILABILITY.cpu.used} / ${NODE_RESOURCE_AVAILABILITY.cpu.total} vCPU`}
-                        percentage={NODE_RESOURCE_AVAILABILITY.cpu.percentage}
+                        value={nodeStatus ? `${nodeStatus.cpu.cores} vCPU totales` : '—'}
+                        percentage={nodeStatus?.cpu.usagePercent ?? null}
                     />
                     <AvailabilityMetric
                         label="Memoria"
-                        value={`${NODE_RESOURCE_AVAILABILITY.memory.usedGb} / ${NODE_RESOURCE_AVAILABILITY.memory.totalGb} GB`}
-                        percentage={NODE_RESOURCE_AVAILABILITY.memory.percentage}
+                        value={nodeStatus ? `${nodeStatus.ram.usedGb} / ${nodeStatus.ram.totalGb} GB` : '—'}
+                        percentage={nodeStatus?.ram.usagePercent ?? null}
                     />
                     <AvailabilityMetric
-                        label="Almacenamiento"
-                        value={`${NODE_RESOURCE_AVAILABILITY.storage.usedTb} / ${NODE_RESOURCE_AVAILABILITY.storage.totalTb.toFixed(2)} TB`}
-                        percentage={NODE_RESOURCE_AVAILABILITY.storage.percentage}
+                        label="Disco del nodo"
+                        value={nodeStatus ? `${nodeStatus.storage.usedGb} / ${nodeStatus.storage.totalGb} GB` : '—'}
+                        percentage={nodeStatus?.storage.usagePercent ?? null}
                     />
                 </div>
             </Card>
@@ -98,7 +116,7 @@ export default function ConfigureInstanceResources({
                         description="Cantidad de núcleos virtuales para la instancia."
                         value={draft.cores ?? RESOURCE_LIMITS.cores.min}
                         unit="vCPU"
-                        helperText={`Disponibles: ${NODE_RESOURCE_AVAILABILITY.cpu.total} vCPU`}
+                        helperText={`Capacidad del nodo: ${nodeStatus?.cpu.cores ?? '—'} vCPU`}
                         onDecrease={() => adjustResource('cores', -1)}
                         onIncrease={() => adjustResource('cores', 1)}
                     />
@@ -108,7 +126,7 @@ export default function ConfigureInstanceResources({
                         description="Memoria asignada para la instancia."
                         value={(draft.ramMb ?? RESOURCE_LIMITS.ramMb.min) / 1024}
                         unit="GB"
-                        helperText={`Disponibles: ${NODE_RESOURCE_AVAILABILITY.memory.usedGb} GB`}
+                        helperText={`RAM asignable segura: ${nodeStatus?.allocatable ? `${(nodeStatus.allocatable.freeRamMb / 1024).toFixed(2)} GB` : '—'}`}
                         onDecrease={() => adjustResource('ramMb', -1)}
                         onIncrease={() => adjustResource('ramMb', 1)}
                     />
@@ -140,14 +158,14 @@ export default function ConfigureInstanceResources({
                             <ComboboxInput aria-label="Almacenamiento de destino" placeholder="Seleccionar almacenamiento" />
                             <ComboboxContent>
                                 <ComboboxList>
-                                    {STORAGE_OPTIONS.map((storage) => (
+                                    {storages.map((storage) => (
                                         <ComboboxItem key={storage.value} value={storage.value}>{storage.label}</ComboboxItem>
                                     ))}
                                 </ComboboxList>
                             </ComboboxContent>
                         </Combobox>
                         <div className={styles.storageAvailabilityRow}>
-                            <span>{selectedStorage ? `Disponibles: ${selectedStorage.availableGb} GB de ${(selectedStorage.totalGb / 1000).toFixed(2)} TB` : 'Disponibles: —'}</span>
+                            <span>{catalogError || (isLoadingCatalog ? 'Cargando almacenamientos…' : selectedStorage ? `Disponibles: ${selectedStorage.availableLabel} de ${selectedStorage.totalLabel}` : 'Disponibles: —')}</span>
                             <strong>{selectedStorage ? `${storagePercentage}%` : '—'}</strong>
                         </div>
                         <div className={styles.progressTrack}>
@@ -158,11 +176,11 @@ export default function ConfigureInstanceResources({
 
                 <div className={styles.resourceValidationPanel}>
                     <span className={styles.validationIconContainer}>
-                        <CheckCircle2 className={styles.validationIcon} aria-hidden="true" />
+                        <Info className={styles.validationIcon} aria-hidden="true" />
                     </span>
                     <div className={styles.validationTextContainer}>
-                        <strong className={styles.validationTitle}>Validación de recursos</strong>
-                        <span className={styles.validationDescription}>Recursos suficientes para crear la instancia.</span>
+                        <strong className={styles.validationTitle}>Verificación de recursos</strong>
+                        <span className="text-success">El servidor comprobará la disponibilidad final al crear la instancia.</span>
                     </div>
                     <div className={styles.resourceSummary}>
                         <strong>Resumen de recursos</strong>
@@ -183,17 +201,17 @@ function AvailabilityMetric({
 }: {
     label: string;
     value: string;
-    percentage: number;
+    percentage: number | null;
 }) {
     return (
         <div className={styles.availabilityMetric}>
             <div className={styles.availabilityMetricHeader}>
                 <strong>{label}</strong>
-                <span>{percentage}%</span>
+                <span>{percentage == null ? '—' : `${percentage}%`}</span>
             </div>
             <span className={styles.availabilityMetricValue}>{value}</span>
             <div className={styles.progressTrack}>
-                <div className={styles.availabilityProgressValue} style={{ width: `${percentage}%` }} />
+                <div className={styles.availabilityProgressValue} style={{ width: `${percentage ?? 0}%` }} />
             </div>
         </div>
     );
@@ -255,7 +273,7 @@ const styles = {
     availableResourcesHeader: 'flex items-start gap-3',
     availableResourcesIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-950',
     availableResourcesIcon: 'size-5',
-    availableResourcesTitle: 'mb-1 text-sm font-semibold text-blue-950',
+    availableResourcesTitle: 'text-blue-950',
     availableResourcesDescription: 'text-xs text-slate-600',
     availableResourcesGrid: 'grid grid-cols-1 gap-5 md:grid-cols-3',
     availabilityMetric: 'min-w-0 border-l border-blue-200 pl-4 first:border-l-0 first:pl-0',
@@ -279,11 +297,11 @@ const styles = {
     resourceHelperText: 'text-xs text-slate-500',
     storageAvailabilityRow: 'flex items-center justify-between gap-3 text-[11px] text-slate-500',
     storageProgressValue: 'h-full rounded-full bg-blue-800',
-    resourceValidationPanel: 'flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 text-emerald-950 md:flex-row md:items-center',
-    validationIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white',
+    resourceValidationPanel: 'flex flex-col gap-4 rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-blue-950 md:flex-row md:items-center',
+    validationIconContainer: 'flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white',
     validationIcon: 'size-5',
     validationTextContainer: 'flex flex-1 flex-col gap-1',
     validationTitle: 'text-sm font-semibold',
-    validationDescription: 'text-xs text-emerald-800',
+
     resourceSummary: 'flex flex-col gap-1 border-emerald-200 text-xs md:border-l md:pl-6',
 };

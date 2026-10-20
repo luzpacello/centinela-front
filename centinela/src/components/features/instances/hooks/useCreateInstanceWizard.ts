@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
 import { ApiRequestError } from '@/services/apiClient';
 import {
     buildCreateInstancePayload,
     createInstance,
+    fetchCreationStorages,
+    fetchCreationTemplates,
 } from '@/components/features/instances/services/instanceService';
 import {
     DEFAULT_RESOURCE_CONFIGURATION,
@@ -13,20 +15,52 @@ import {
 import type {
     CreateInstanceDraft,
     InstanceType,
+    OperatingSystemTemplateOption,
+    StorageOption,
     UpdateCreateInstanceField,
     UpdateInstanceNetworkField,
 } from '@/components/features/instances/types/createInstance';
+import { getCreateInstanceDraftError, getCreateInstanceStepError } from '@/components/features/instances/validation/createInstanceValidation';
+import { useCreationNodeStatus } from '@/components/features/instances/hooks/useCreationNodeStatus';
 
 export function useCreateInstanceWizard() {
     const [currentStep, setCurrentStep] = useState(1);
     const [draft, setDraft] = useState<CreateInstanceDraft>(INITIAL_INSTANCE_DRAFT);
     const [isCreatingInstance, setIsCreatingInstance] = useState(false);
+    const creationInProgress = useRef(false);
+    const [hasConfirmedConfiguration, setHasConfirmedConfiguration] = useState(false);
+    const [storages, setStorages] = useState<StorageOption[]>([]);
+    const [templates, setTemplates] = useState<OperatingSystemTemplateOption[]>([]);
+    const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
+    const { nodeStatus, nodeStatusError, isLoadingNodeStatus } = useCreationNodeStatus(currentStep === 2);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        void Promise.all([
+            fetchCreationStorages(controller.signal),
+            fetchCreationTemplates(controller.signal),
+        ]).then(([availableStorages, availableTemplates]) => {
+            if (controller.signal.aborted) return;
+            setStorages(availableStorages);
+            setTemplates(availableTemplates);
+            setCatalogError(null);
+        }).catch((error: unknown) => {
+            if (controller.signal.aborted) return;
+            setCatalogError(error instanceof Error ? error.message : 'No se pudieron cargar los recursos disponibles.');
+        }).finally(() => {
+            if (!controller.signal.aborted) setIsLoadingCatalog(false);
+        });
+        return () => controller.abort();
+    }, []);
 
     const updateField: UpdateCreateInstanceField = (field, value) => {
+        setHasConfirmedConfiguration(false);
         setDraft((currentDraft) => ({ ...currentDraft, [field]: value }));
     };
 
     const updateNetworkField: UpdateInstanceNetworkField = (field, value) => {
+        setHasConfirmedConfiguration(false);
         setDraft((currentDraft) => ({
             ...currentDraft,
             red: { ...currentDraft.red, [field]: value },
@@ -34,21 +68,28 @@ export function useCreateInstanceWizard() {
     };
 
     function selectInstanceType(type: InstanceType) {
+        setHasConfirmedConfiguration(false);
         setDraft((currentDraft) => ({
             ...currentDraft,
             tipo: type,
             templateOso: currentDraft.tipo === type ? currentDraft.templateOso : '',
+            storageId: currentDraft.tipo === type ? currentDraft.storageId : '',
         }));
     }
 
+    const catalog = { storages, templates, isLoadingCatalog, catalogError };
+    const currentStepError = getCreateInstanceStepError(currentStep, draft, catalog);
+    const draftError = getCreateInstanceDraftError(draft, catalog);
+    const canCreateInstance = !draftError && hasConfirmedConfiguration && !isCreatingInstance;
+
     function goToNextStep() {
+        if (currentStepError) return;
         if (currentStep === 1) {
             setDraft((currentDraft) => ({
                 ...currentDraft,
                 cores: currentDraft.cores ?? DEFAULT_RESOURCE_CONFIGURATION.cores,
                 ramMb: currentDraft.ramMb ?? DEFAULT_RESOURCE_CONFIGURATION.ramMb,
                 discoGb: currentDraft.discoGb ?? DEFAULT_RESOURCE_CONFIGURATION.discoGb,
-                storageId: currentDraft.storageId || DEFAULT_RESOURCE_CONFIGURATION.storageId,
             }));
         }
         setCurrentStep((step) => Math.min(step + 1, INSTANCE_CREATION_STEPS.length));
@@ -63,8 +104,9 @@ export function useCreateInstanceWizard() {
     }
 
     async function submitInstanceCreation(): Promise<boolean> {
-        if (isCreatingInstance) return false;
+        if (creationInProgress.current || draftError || !hasConfirmedConfiguration) return false;
 
+        creationInProgress.current = true;
         setIsCreatingInstance(true);
         try {
             const payload = buildCreateInstancePayload(draft);
@@ -88,6 +130,7 @@ export function useCreateInstanceWizard() {
             }
             return false;
         } finally {
+            creationInProgress.current = false;
             setIsCreatingInstance(false);
         }
     }
@@ -96,6 +139,17 @@ export function useCreateInstanceWizard() {
         currentStep,
         draft,
         isCreatingInstance,
+        canCreateInstance,
+        currentStepError,
+        hasConfirmedConfiguration,
+        setHasConfirmedConfiguration,
+        storages,
+        templates,
+        isLoadingCatalog,
+        catalogError,
+        nodeStatus,
+        nodeStatusError,
+        isLoadingNodeStatus,
         goToNextStep,
         goToPreviousStep,
         goToStep,

@@ -2,7 +2,6 @@ export type InstanceType = 'vm' | 'lxc';
 export type InstanceNetworkMode = 'dhcp' | 'static';
 
 export interface InstanceNetworkDraft {
-    bridge: string;
     firewall: boolean | null;
     gateway: string;
     ip: string;
@@ -15,7 +14,6 @@ export interface CreateInstanceDraft {
     cores: number | null;
     descripcion: string;
     discoGb: number | null;
-    nodo: string;
     nombre: string;
     password: string;
     ramMb: number | null;
@@ -29,12 +27,12 @@ export interface CreateInstancePayload {
     cores: number;
     descripcion: string;
     discoGb: number;
-    nodo: string;
+    nodo?: string;
     nombre: string;
     password: string;
     ramMb: number;
     red: {
-        bridge: string;
+        bridge?: string;
         firewall: boolean;
         gateway: string;
         ip: string;
@@ -66,9 +64,14 @@ export interface SelectOption {
 export interface StorageOption extends SelectOption {
     availableGb: number;
     totalGb: number;
+    availableLabel: string;
+    totalLabel: string;
+    type: string;
+    contentTypes: string[];
 }
 
 export interface OperatingSystemTemplateOption extends SelectOption {
+    type: 'ISO' | 'LXC_TEMPLATE';
     templateName: string;
     distribution: string;
     operatingSystem: string;

@@ -1,23 +1,15 @@
-import { Info, Network } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import {
-    Combobox,
-    ComboboxContent,
-    ComboboxInput,
-    ComboboxItem,
-    ComboboxList,
-} from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import NetworkModeOption from '@/components/features/instances/components/NetworkModeOption';
 import {
     DEFAULT_NETWORK_CONFIGURATION,
-    NETWORK_BRIDGE_OPTIONS,
 } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
     InstanceNetworkMode,
     UpdateInstanceNetworkField,
 } from '@/components/features/instances/types/createInstance';
+import { isValidStaticNetwork } from '@/components/features/instances/validation/createInstanceValidation';
 
 interface ConfigureInstanceNetworkProps {
     draft: CreateInstanceDraft;
@@ -37,35 +29,6 @@ export default function ConfigureInstanceNetwork({
 
     return (
         <Card className={styles.networkConfigurationCard}>
-            <div>
-                <h3 id="network-bridge-title">Brige</h3>
-                <p>Selecciona el puente de red al que se conectará la instancia.</p>
-            </div>
-
-            <Combobox
-                value={draft.red.bridge || null}
-                onValueChange={(bridge) => onNetworkFieldChange('bridge', bridge ?? '')}
-            >
-                <ComboboxInput aria-label="Puente de red" placeholder="Seleccionar puente de red" />
-                <ComboboxContent>
-                    <ComboboxList>
-                        {NETWORK_BRIDGE_OPTIONS.map((bridgeOption) => (
-                            <ComboboxItem key={bridgeOption.value} value={bridgeOption.value}>
-                                <Network aria-hidden="true" />
-                                {bridgeOption.label}
-                            </ComboboxItem>
-                        ))}
-                    </ComboboxList>
-                </ComboboxContent>
-            </Combobox>
-
-            <div className={styles.networkAvailabilityNotice}>
-                <Info aria-hidden="true" />
-                <span className="text-info">
-                    El puente seleccionado estará disponible en el nodo {draft.nodo || 'seleccionado'}.
-                </span>
-            </div>
-
             <section className={styles.ipv4ConfigurationSection} aria-labelledby="ipv4-configuration-title">
                 <div>
                     <h3 id="ipv4-configuration-title">Configuración IPv4</h3>
@@ -123,6 +86,11 @@ export default function ConfigureInstanceNetwork({
                         <p className="text-secundario mt-2">Dirección IP del router de la red.</p>
                     </div>
                 </div>
+                {isStaticIpMode && !isValidStaticNetwork(draft.red) && (
+                    <p className="text-xs text-error" role="alert">
+                        Ingresá una IP IPv4 válida, un prefijo CIDR entre 0 y 32 y una puerta de enlace válida.
+                    </p>
+                )}
             </section>
         </Card>
     );
@@ -130,8 +98,7 @@ export default function ConfigureInstanceNetwork({
 
 const styles = {
     networkConfigurationCard: 'gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-none ring-0',
-    networkAvailabilityNotice: 'flex items-center gap-3 rounded-lg bg-blue-50 px-4 py-3 text-xs text-blue-700',
-    ipv4ConfigurationSection: 'grid gap-4 border-t border-slate-200 pt-5',
+    ipv4ConfigurationSection: 'grid gap-4',
     networkModeGrid: 'grid grid-cols-1 gap-4 md:grid-cols-2',
     staticNetworkFieldsGrid: 'grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-3 mt-2',
     fieldContainer: 'min-w-0',
