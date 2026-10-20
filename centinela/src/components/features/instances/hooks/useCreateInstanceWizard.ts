@@ -20,7 +20,7 @@ import type {
     UpdateCreateInstanceField,
     UpdateInstanceNetworkField,
 } from '@/components/features/instances/types/createInstance';
-import { getCreateInstanceDraftError, getCreateInstanceStepError } from '@/components/features/instances/validation/createInstanceValidation';
+import { assessResourceQuota, getCreateInstanceDraftError, getCreateInstanceStepError } from '@/components/features/instances/validation/createInstanceValidation';
 import { useCreationNodeStatus } from '@/components/features/instances/hooks/useCreationNodeStatus';
 
 export function useCreateInstanceWizard() {
@@ -78,8 +78,10 @@ export function useCreateInstanceWizard() {
     }
 
     const catalog = { storages, templates, isLoadingCatalog, catalogError };
-    const currentStepError = getCreateInstanceStepError(currentStep, draft, catalog);
-    const draftError = getCreateInstanceDraftError(draft, catalog);
+    const quotaAssessment = assessResourceQuota(draft, nodeStatus, nodeStatusError, isLoadingNodeStatus);
+    const currentStepError = getCreateInstanceStepError(currentStep, draft, catalog)
+        ?? (currentStep === 2 ? quotaAssessment.blockingError : null);
+    const draftError = getCreateInstanceDraftError(draft, catalog) ?? quotaAssessment.blockingError;
     const canCreateInstance = !draftError && hasConfirmedConfiguration && !isCreatingInstance;
 
     function goToNextStep() {
