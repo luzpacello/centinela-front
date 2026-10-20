@@ -1,6 +1,12 @@
 import { apiClient } from '@/services/apiClient';
 
 export interface NodeStatusResponse {
+    allocatable?: {
+        maxCpuCores: number;
+        freeRamMb: number;
+        freeStorageGb: number;
+        headroomPercent: number;
+    };
     cpu: {
         usagePercent: number;
         cores: number;
