@@ -60,10 +60,14 @@ export default function Dashboard() {
     const inactiveInstances = instanceSummary
         ? instanceSummary.vms.stopped + instanceSummary.vms.paused + instanceSummary.lxc.stopped + instanceSummary.lxc.paused
         : null;
-    const formatCount = (value: number | null) => value === null ? '—' : value.toLocaleString('es');
-    const formatShare = (value: number | null) => value === null || !totalInstances
-        ? '—'
-        : `${Math.round((value / totalInstances) * 100)}%`;
+
+    const formatCount = (value: number | null | undefined): string =>
+        (typeof value !== 'number' || Number.isNaN(value)) ? '—' : value.toLocaleString('es');
+
+    const formatShare = (value: number | null | undefined): string =>
+        (typeof value !== 'number' || Number.isNaN(value) || !totalInstances)
+            ? '—'
+            : `${Math.round((value / totalInstances) * 100)}%`;
 
     return (
         <section className={style.page}>
@@ -108,42 +112,42 @@ export default function Dashboard() {
                 </Card>
 
                 <Card className={style.resourceCard} data-testid="resources-overview">
-                <div className={style.sectionHeader}>
-                    <div className={style.sectionHeading}>
-                        <h3>Uso total de recursos</h3>
-                        <Badge aria-label="Estado del nodo" role="status" variant="outline" className={nodeHealth.className}>
-                            {nodeHealth.label}
-                        </Badge>
-                    </div>
-                    {data?.stale && (
-                        <Badge variant="outline" className={style.staleBadge}>
-                            Datos desactualizados (el servidor opera con última telemetría conocida)
-                        </Badge>
-                    )}
-                </div>
-
-                {loading && !data ? (
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]" aria-label="Cargando telemetría">
-                        {[0, 1, 2].map((item) => <div key={item} className={style.meterSkeleton} />)}
-                    </div>
-                ) : data ? (
-                    <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]">
-                        <div className="flex min-w-0 flex-col justify-around gap-3">
-                            <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} timestamps={history.map((sample) => sample.timestamp)} compact />
-                            <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} timestamps={history.map((sample) => sample.timestamp)} compact />
+                    <div className={style.sectionHeader}>
+                        <div className={style.sectionHeading}>
+                            <h3>Uso total de recursos</h3>
+                            <Badge aria-label="Estado del nodo" role="status" variant="outline" className={nodeHealth.className}>
+                                {nodeHealth.label}
+                            </Badge>
                         </div>
-                        <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} variant="ring" />
+                        {data?.stale && (
+                            <Badge variant="outline" className={style.staleBadge}>
+                                Datos desactualizados (el servidor opera con última telemetría conocida)
+                            </Badge>
+                        )}
                     </div>
-                ) : null}
 
-                {error && (
-                    <div className={style.connectionError} role="alert">
-                        <span>No se pudo obtener la telemetría del nodo.</span>
-                        <Button type="button" variant="outline" onClick={retry}>
-                            <RefreshCw className={style.smallIcon} /> Reintentar conexión
-                        </Button>
-                    </div>
-                )}
+                    {loading && !data ? (
+                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]" aria-label="Cargando telemetría">
+                            {[0, 1, 2].map((item) => <div key={item} className={style.meterSkeleton} />)}
+                        </div>
+                    ) : data ? (
+                        <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]">
+                            <div className="flex min-w-0 flex-col justify-around gap-3">
+                                <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} timestamps={history.map((sample) => sample.timestamp)} compact />
+                                <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} timestamps={history.map((sample) => sample.timestamp)} compact />
+                            </div>
+                            <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} variant="ring" />
+                        </div>
+                    ) : null}
+
+                    {error && (
+                        <div className={style.connectionError} role="alert">
+                            <span>No se pudo obtener la telemetría del nodo.</span>
+                            <Button type="button" variant="outline" onClick={retry}>
+                                <RefreshCw className={style.smallIcon} /> Reintentar conexión
+                            </Button>
+                        </div>
+                    )}
                 </Card>
             </div>
 
