@@ -23,7 +23,7 @@ function validateChangePasswordFields(values: ChangePasswordFields): ChangePassw
   if (!values.contrasenaActual.trim()) {
     errors.contrasenaActual = 'Ingresá tu contraseña actual.';
   }
-  const passwordValidation = validatePasswordComplexity (values.contrasenaNueva);
+  const passwordValidation = validatePasswordComplexity(values.contrasenaNueva);
   if (!passwordValidation.isValid) {
     errors.contrasenaNueva = passwordValidation.missingConditions.join(' ');
   }
@@ -98,6 +98,7 @@ export default function ChangePasswordPage() {
         <AuthenticationInputField
           id="change-password-current" name="contrasenaActual" label="Contraseña actual" type="password"
           autoComplete="current-password" placeholder="Contraseña actual" required disabled={isSubmitting || isLoggingOut}
+          maxLength={128}
           value={values.contrasenaActual} error={fieldErrors.contrasenaActual}
           onChange={(event) => updateField('contrasenaActual', event.target.value)}
         />
@@ -107,7 +108,8 @@ export default function ChangePasswordPage() {
 
         <AuthenticationInputField
           id="change-password-new" name="contrasenaNueva" label="Contraseña nueva" type="password"
-          autoComplete="new-password" placeholder="Entre 8 y 12 caracteres" required disabled={isSubmitting || isLoggingOut}
+          autoComplete="new-password" placeholder="Entre 8 y 128 caracteres" required disabled={isSubmitting || isLoggingOut}
+          maxLength={128}
           value={values.contrasenaNueva} error={fieldErrors.contrasenaNueva}
           onChange={(event) => updateField('contrasenaNueva', event.target.value)}
         />
@@ -115,10 +117,10 @@ export default function ChangePasswordPage() {
         <AuthenticationInputField
           id="change-password-confirmation" name="confirmarContrasena" label="Confirmar contraseña nueva" type="password"
           autoComplete="new-password" placeholder="Repetí la contraseña nueva" required disabled={isSubmitting || isLoggingOut}
+          maxLength={128}
           value={values.confirmarContrasena} error={fieldErrors.confirmarContrasena}
           onChange={(event) => updateField('confirmarContrasena', event.target.value)}
         />
-
         {formError && <FieldError>{formError}</FieldError>}
 
         <Button type="submit" className="w-full" disabled={isSubmitting || isLoggingOut}>

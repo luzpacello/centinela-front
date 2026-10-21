@@ -47,18 +47,18 @@ export const RecoverPassword: React.FC = () => {
         setEmailError('');
         const normalizedEmail = email.trim();
         if (!normalizedEmail) {
-          setEmailError('Ingresá tu correo electrónico.');
-          return;
+            setEmailError('Ingresá tu correo electrónico.');
+            return;
         }
         if (!isValidEmail(normalizedEmail)) {
-          setEmailError('Ingresá un correo electrónico válido.');
-          return;
+            setEmailError('Ingresá un correo electrónico válido.');
+            return;
         }
         setIsSubmitting(true);
         try {
-          await apiClient.post('/auth/password/forgot', {
-            email: normalizedEmail,
-          });
+            await apiClient.post('/auth/password/forgot', {
+                email: normalizedEmail,
+            });
             setEmail(normalizedEmail);
             setCode(''); //seteado de estados anteriores
             setCodeError('');
@@ -68,7 +68,7 @@ export const RecoverPassword: React.FC = () => {
             setConfirmationError('');
             setFailedAttempts(0);
             setResetBlocked(false);
-              setCurrentStep(2);
+            setCurrentStep(2);
         } catch (error) {
             if (error instanceof ApiRequestError) {
                 setEmailError(
@@ -100,12 +100,12 @@ export const RecoverPassword: React.FC = () => {
         if (resetBlocked) return;
         const passwordValidation = validatePasswordComplexity(password);
         if (!passwordValidation.isValid) {
-          setPasswordError(passwordValidation.missingConditions.join(' '));
-          return;
+            setPasswordError(passwordValidation.missingConditions.join(' '));
+            return;
         }
         if (password !== passwordConfirmation) {
-          setConfirmationError('Las contraseñas no coinciden.');
-          return;
+            setConfirmationError('Las contraseñas no coinciden.');
+            return;
         }
         setIsSubmitting(true);
         try {
@@ -115,10 +115,10 @@ export const RecoverPassword: React.FC = () => {
                 nuevaContrasena: password,
             });
             toast.add({
-              title: 'Contraseña restablecida',
-              description: 'Contraseña restablecida con éxito.',
-              type: 'success',
-              priority: 'high',
+                title: 'Contraseña restablecida',
+                description: 'Contraseña restablecida con éxito.',
+                type: 'success',
+                priority: 'high',
             });
             setCode(''); //seteado se datos sensibles
             setPassword('');
@@ -130,7 +130,7 @@ export const RecoverPassword: React.FC = () => {
                 if (
                     error.errorCode === 'RESET_FAILED' ||
                     error.status === 400
-                    ) {
+                ) {
                     const nextAttempts = failedAttempts + 1;
                     const remainingAttempts = MAX_RESET_ATTEMPTS - nextAttempts;
 
@@ -144,11 +144,11 @@ export const RecoverPassword: React.FC = () => {
                         setResetBlocked(true);
 
                         toast.add({
-                        title: 'Proceso bloqueado',
-                        description:
-                            'El código fue rechazado 3 veces. El proceso de recuperación quedó bloqueado. Reiniciá el proceso para solicitar un nuevo código.',
-                        type: 'error',
-                        priority: 'high',
+                            title: 'Proceso bloqueado',
+                            description:
+                                'El código fue rechazado 3 veces. El proceso de recuperación quedó bloqueado. Reiniciá el proceso para solicitar un nuevo código.',
+                            type: 'error',
+                            priority: 'high',
                         });
 
                         return;
@@ -156,9 +156,8 @@ export const RecoverPassword: React.FC = () => {
 
                     toast.add({
                         title: 'Código inválido o expirado',
-                        description: `El código ingresado no es válido o expiró. Te quedan ${remainingAttempts} ${
-                        remainingAttempts === 1 ? 'intento' : 'intentos'
-                        } antes de bloquear el proceso.`,
+                        description: `El código ingresado no es válido o expiró. Te quedan ${remainingAttempts} ${remainingAttempts === 1 ? 'intento' : 'intentos'
+                            } antes de bloquear el proceso.`,
                         type: 'warning',
                         priority: 'high',
                     });
@@ -206,10 +205,10 @@ export const RecoverPassword: React.FC = () => {
                     <InfoCard>
                         <label>Te enviaremos un código de verificación a tu correo electrónico.</label>
                     </InfoCard>
-                    <form 
-                        className={styles.formulario} 
-                        onSubmit={(event) => { 
-                            event.preventDefault(); handleRequestCode(); 
+                    <form
+                        className={styles.formulario}
+                        onSubmit={(event) => {
+                            event.preventDefault(); handleRequestCode();
                         }}
                     >
                         <div className={styles.campo}>
@@ -219,16 +218,16 @@ export const RecoverPassword: React.FC = () => {
                                 type="email"
                                 value={email}
                                 onChange={(event) => {
-                                setEmail(event.target.value);
+                                    setEmail(event.target.value);
 
-                                if (emailError) {
-                                    setEmailError('');
-                                }
+                                    if (emailError) {
+                                        setEmailError('');
+                                    }
                                 }}
                                 placeholder="ejemplo@correo.com"
                                 aria-invalid={Boolean(emailError)}
                                 aria-describedby={
-                                emailError ? 'recover-email-error' : undefined
+                                    emailError ? 'recover-email-error' : undefined
                                 }
                                 disabled={isSubmitting}
                             />
@@ -242,8 +241,8 @@ export const RecoverPassword: React.FC = () => {
                                 </p>
                             )}
                         </div>
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="w-full"
                             disabled={isSubmitting}
                         >
@@ -264,11 +263,11 @@ export const RecoverPassword: React.FC = () => {
                         Te enviamos un código de verificación de 6 dígitos al correo{' '}
                         {email || 'tu correo electrónico'}. Ingresado para continuar.
                     </p>
-                    <form 
-                        className={styles.formulario} 
-                        onSubmit={(event) => { 
-                            event.preventDefault(); 
-                            handleVerifyCodeStep(); 
+                    <form
+                        className={styles.formulario}
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            handleVerifyCodeStep();
                         }}
                     >
                         <div className={styles.campo}>
@@ -300,7 +299,7 @@ export const RecoverPassword: React.FC = () => {
                                     </InputOTPGroup>
                                 </InputOTP>
                                 {codeError ? (
-                                    <p 
+                                    <p
                                         id="recover-code-error"
                                         role="alert"
                                         className='text-sm text-desctructive'
@@ -313,10 +312,10 @@ export const RecoverPassword: React.FC = () => {
                                     </p>
                                 )}
                             </div>
-                            
+
                         </div>
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="w-full"
                             disabled={code.length !== 6}
                         >
@@ -325,18 +324,18 @@ export const RecoverPassword: React.FC = () => {
                     </form>
                     {!resetBlocked && (
                         <div className='my-4 w-full h-full'>
-                            <Button 
-                                type="button" 
-                                variant="link" 
-                                disabled={isSubmitting} 
+                            <Button
+                                type="button"
+                                variant="link"
+                                disabled={isSubmitting}
                                 onClick={handlePrevious}
                                 className="py-2 mt-2 border rounded-xl text-center shadow-sm w-full h-full flex items-center justify-center"
                             >
                                 Volver al paso anterior
                             </Button>
                         </div>
-                    
-                )}
+
+                    )}
                 </>
             );
         }
@@ -360,10 +359,10 @@ export const RecoverPassword: React.FC = () => {
                         </p>
                     </div>
                 )}
-                <form 
-                    className={styles.formulario} 
-                    onSubmit={(event) => { 
-                        event.preventDefault(); 
+                <form
+                    className={styles.formulario}
+                    onSubmit={(event) => {
+                        event.preventDefault();
                         void handleResetPassword();
                     }}>
                     <div className={styles.campo}>
@@ -373,11 +372,12 @@ export const RecoverPassword: React.FC = () => {
                                 id="recover-password"
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
+                                maxLength={128}
                                 onChange={(event) => {
                                     setPassword(event.target.value);
                                     if (passwordError) setPasswordError('');
                                 }}
-                                placeholder="Entre 8 y 12 caracteres"
+                                placeholder="Entre 8 y 128 caracteres"
                                 className="pr-10"
                                 aria-invalid={Boolean(passwordError)}
                                 aria-describedby={
@@ -388,10 +388,10 @@ export const RecoverPassword: React.FC = () => {
                             <button
                                 type="button"
                                 aria-label={
-                                    showPassword 
-                                        ? 'Ocultar contraseña' 
+                                    showPassword
+                                        ? 'Ocultar contraseña'
                                         : 'Mostrar contraseña'
-                                    }
+                                }
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
                                 onClick={() => setShowPassword((visible) => !visible)}
                             >
@@ -404,25 +404,25 @@ export const RecoverPassword: React.FC = () => {
                                     <p>La contraseña debe cumplir con:</p>
                                     <ul className='ml-5 list-disc'>
                                         <li className={
-                                                password.length >= 8 && password.length <= 12
-                                                    ? 'text-green-600'
-                                                    : ''
-                                            }>Tener entre 8 y 12 caracteres.</li>
+                                            password.length >= 8 && password.length <= 128
+                                                ? 'text-green-600'
+                                                : ''
+                                        }>Tener entre 8 y 128 caracteres.</li>
                                         <li className={
-                                                /[A-Z]/.test(password)
-                                                    ? 'text-green-600'
-                                                    : ''
-                                            }>Contener al menos una letra mayúscula.</li>
+                                            /[A-Z]/.test(password)
+                                                ? 'text-green-600'
+                                                : ''
+                                        }>Contener al menos una letra mayúscula.</li>
                                         <li className={
-                                                /[0-9]/.test(password)
-                                                    ? 'text-green-600'
-                                                    : ''
-                                            }>Contener al menos un número</li>
+                                            /[0-9]/.test(password)
+                                                ? 'text-green-600'
+                                                : ''
+                                        }>Contener al menos un número</li>
                                         <li className={
-                                                /[!@#$%^&*\-_=+]/.test(password)
-                                                    ? 'text-green-600'
-                                                    : ''
-                                            }>Contener al menos un carácter especial (!@#$%^&-_=+).</li>
+                                            /[!@#$%^&*\-_=+]/.test(password)
+                                                ? 'text-green-600'
+                                                : ''
+                                        }>Contener al menos un carácter especial (!@#$%^&-_=+).</li>
                                     </ul>
                                 </>
                             )}
@@ -444,6 +444,7 @@ export const RecoverPassword: React.FC = () => {
                                 id="recover-confirmation"
                                 type={showConfirmation ? 'text' : 'password'}
                                 value={passwordConfirmation}
+                                maxLength={128}
                                 onChange={(event) => {
                                     setPasswordConfirmation(event.target.value);
                                     if (ConfirmationError) setConfirmationError('');
@@ -479,16 +480,16 @@ export const RecoverPassword: React.FC = () => {
                         )}
                     </div>
                     {resetBlocked ? (
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="w-full"
                             onClick={handleRestart}
                         >
                             Restablecer contraseña
                         </Button>
                     ) : (
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="w-full"
                             disabled={isSubmitting}
                         >
@@ -500,10 +501,10 @@ export const RecoverPassword: React.FC = () => {
                     )}
                 </form>
                 {!resetBlocked && (
-                    <Button 
-                        type="button" 
-                        variant="link" 
-                        disabled={isSubmitting} 
+                    <Button
+                        type="button"
+                        variant="link"
+                        disabled={isSubmitting}
                         onClick={handlePrevious}
                         className="p-3 mt-2 border rounded-xl text-center shadow-sm w-full h-full flex items-center justify-center"
                     >
@@ -520,8 +521,8 @@ export const RecoverPassword: React.FC = () => {
                 <div className="max-w-2xl mx-auto w-full">
                     <Stepper steps={steps} currentStep={currentStep} />
                     <div className="flex flex-col">
-                        {renderStep()} 
-                    </div>   
+                        {renderStep()}
+                    </div>
                 </div>
                 <div className="flex w-full justify-center gap-4 mt-4">
                     <MoveLeft className="size-5 text-[#2563eb]" />
@@ -529,7 +530,7 @@ export const RecoverPassword: React.FC = () => {
                 </div>
             </ContainerCard>
         </>
-        
+
     );
 };
 
