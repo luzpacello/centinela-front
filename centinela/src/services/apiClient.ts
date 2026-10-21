@@ -16,6 +16,8 @@ interface ApiRequestOptions {
   signal?: AbortSignal;
   bearer?: string;
   skipAuthorization?: boolean;
+  preserveSessionOnReauthFailure?: boolean;
+  allowEmptyResponse?: boolean;
   expectedStatus?: number;
 }
 
@@ -164,11 +166,16 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
   const originalAccessToken = readStoredAccessToken();
   const usedStoredAccessToken = !options.bearer && Boolean(originalAccessToken);
   let result = await performJsonRequest(path, options);
+  const initialError = result.response.status === 401
+    ? getErrorFromResponse(result.response, result.body)
+    : null;
+  const isReauthenticationFailure = options.preserveSessionOnReauthFailure
+    && (initialError?.errorCode === 'AUTH_FAILED' || initialError?.errorCode === 'INVALID_OTP_CODE');
   const tokenWasRevoked = result.response.status === 401
-    && getErrorFromResponse(result.response, result.body).errorCode === 'TOKEN_REVOKED';
+    && initialError?.errorCode === 'TOKEN_REVOKED';
 
   // Se intenta renovar una sola vez antes de invalidar una sesión autenticada.
-  if (result.response.status === 401 && !tokenWasRevoked && usedStoredAccessToken && !['/auth/refresh', '/auth/logout', '/auth/login'].includes(path)) {
+  if (result.response.status === 401 && !isReauthenticationFailure && !tokenWasRevoked && usedStoredAccessToken && !['/auth/refresh', '/auth/logout', '/auth/login'].includes(path)) {
     // Otra petición puede haber renovado el token antes de que llegue este 401.
     const sessionWasRenewed = readStoredAccessToken() !== originalAccessToken
       ? Boolean(readStoredAccessToken())
@@ -182,7 +189,9 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
 
   if (!result.response.ok) {
     const error = getErrorFromResponse(result.response, result.body);
-    reportHttpError(error);
+    const isReauthenticationCredentialFailure = options.preserveSessionOnReauthFailure
+      && (error.errorCode === 'AUTH_FAILED' || error.errorCode === 'INVALID_OTP_CODE');
+    if (!isReauthenticationCredentialFailure) reportHttpError(error);
     throw error;
   }
   if (options.expectedStatus && result.response.status !== options.expectedStatus) {
@@ -190,6 +199,7 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
   }
   if (result.response.status === 204) return null as T;
   if (result.body === null) {
+    if (options.allowEmptyResponse) return null as T;
     throw new ApiRequestError('El servidor devolvió una respuesta inesperada.', result.response.status);
   }
   return result.body as T;

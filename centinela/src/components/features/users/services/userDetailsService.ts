@@ -82,3 +82,17 @@ export async function updateUserDetails(
   }
   return fetchUserDetails(userId);
 }
+
+export async function requestAccountEmailChange(
+  emailUsuario: string,
+  contrasenaActual: string,
+  codigo2fa: string,
+): Promise<void> {
+  await apiClient.request<unknown>('/account/profile', {
+    method: 'PUT',
+    payload: { emailUsuario, contrasenaActual, codigo2fa },
+    expectedStatus: 200,
+    allowEmptyResponse: true,
+    preserveSessionOnReauthFailure: true,
+  });
+}

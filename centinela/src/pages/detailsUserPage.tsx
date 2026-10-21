@@ -3,7 +3,8 @@ import { deleteUserAccount } from '@/components/features/users/services/userDeac
 import { useUserInstanceAccess } from '@/components/features/users/hooks/useUserInstanceAccess';
 import { useUserRecentActivity } from '@/components/features/users/hooks/useUserRecentActivity';
 import { useRef, useState } from 'react';
-import { updateUserDetails } from '@/components/features/users/services/userDetailsService';
+import { requestAccountEmailChange, updateUserDetails } from '@/components/features/users/services/userDetailsService';
+import { SecurityReauthModal, type SecurityReauthCredentials } from '@/components/features/users/components/SecurityReauthModal';
 import { ApiRequestError } from '@/services/apiClient';
 import { isUserEmailConflict, userEmailConflictMessage, userDeletionMessage, userSuspensionMessage, userReactivationMessage } from '@/components/features/users/utils/userAccountMessages';
 import { toast } from '@/components/ui/toast';
@@ -74,10 +75,23 @@ export default function DetailsUserPage() {
         );
     }
 
-    return <DetailsUserContent key={user.id} user={user} goBack={goBack} />;
+    return <DetailsUserContent
+        key={user.id}
+        user={user}
+        goBack={goBack}
+        isCurrentUser={navigationState?.isCurrentUser === true}
+    />;
 }
 
-function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () => void }) {
+function DetailsUserContent({
+    user,
+    goBack,
+    isCurrentUser,
+}: {
+    user: UserDetails;
+    goBack: () => void;
+    isCurrentUser: boolean;
+}) {
     const navigate = useNavigate();
     const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
     const [pendingActiveStatus, setPendingActiveStatus] = useState<boolean | null>(null);
@@ -94,6 +108,8 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
     const instanceAccess = useUserInstanceAccess(confirmedUser);
     const [isSaving, setIsSaving] = useState(false);
     const [emailError, setEmailError] = useState<string | undefined>();
+    const [isReauthModalOpen, setIsReauthModalOpen] = useState(false);
+    const [emailChangeNotice, setEmailChangeNotice] = useState(false);
     const saveInProgress = useRef(false);
     const profileChanges: Partial<Pick<UserDetails, 'nombreCompleto' | 'emailUsuario' | 'rol' | 'activo'>> = {};
     if (values.nombreCompleto !== confirmedUser.nombreCompleto) profileChanges.nombreCompleto = values.nombreCompleto;
@@ -115,6 +131,10 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
 
     async function handleSaveChanges() {
         if (isDeleted || saveInProgress.current || (!hasProfileChanges && !hasPermissionChanges)) return;
+        if (isCurrentUser && values.emailUsuario !== confirmedUser.emailUsuario) {
+            setIsReauthModalOpen(true);
+            return;
+        }
         saveInProgress.current = true;
         setIsSaving(true);
         setEmailError(undefined);
@@ -147,8 +167,73 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
         }
     }
 
+    async function handleReauthenticatedEmailChange(credentials: SecurityReauthCredentials) {
+        if (isDeleted || saveInProgress.current) return;
+        saveInProgress.current = true;
+        setIsSaving(true);
+        setEmailError(undefined);
+        const originalEmail = confirmedUser.emailUsuario;
+        const nonEmailChanges = { ...profileChanges };
+        delete nonEmailChanges.emailUsuario;
+        let emailRequestSucceeded = false;
+        let savedUser = confirmedUser;
+
+        try {
+            await requestAccountEmailChange(values.emailUsuario, credentials.contrasenaActual, credentials.codigo2fa);
+            emailRequestSucceeded = true;
+
+            if (Object.keys(nonEmailChanges).length > 0) {
+                savedUser = await updateUserDetails(user.id, nonEmailChanges);
+            }
+            if (hasPermissionChanges) await instanceAccess.saveAssignments({ notify: false });
+
+            const userWithOriginalEmail = { ...savedUser, emailUsuario: originalEmail };
+            setConfirmedUser(userWithOriginalEmail);
+            reset(userWithOriginalEmail);
+            setIsReauthModalOpen(false);
+            setEmailChangeNotice(true);
+            toast.add({
+                title: 'Solicitud procesada',
+                description: 'Solicitud procesada. Enviamos un enlace de verificación a tu nueva dirección de correo para confirmar el cambio.',
+                type: 'success',
+                priority: 'high',
+            });
+        } catch (error) {
+            if (!emailRequestSucceeded) throw error;
+
+            const userWithOriginalEmail = { ...savedUser, emailUsuario: originalEmail };
+            setConfirmedUser(userWithOriginalEmail);
+            if (savedUser !== confirmedUser) {
+                reset(userWithOriginalEmail);
+            } else {
+                updateField('emailUsuario', originalEmail);
+            }
+            setIsReauthModalOpen(false);
+            setEmailChangeNotice(true);
+            toast.add({
+                title: 'Solicitud de cambio de correo procesada',
+                description: 'Enviamos un enlace de verificación a tu nueva dirección. No se pudieron guardar los demás cambios; intentá guardarlos nuevamente.',
+                type: 'warning',
+                priority: 'high',
+            });
+            toast.add({
+                title: 'No se pudieron guardar los demás cambios',
+                description: error instanceof Error ? error.message : 'Intentá nuevamente.',
+                type: 'error',
+            });
+        } finally {
+            saveInProgress.current = false;
+            setIsSaving(false);
+        }
+    }
+
     return (
         <section className={styles.pageContainer}>
+            {isReauthModalOpen && <SecurityReauthModal
+                emailUsuario={values.emailUsuario}
+                onConfirm={handleReauthenticatedEmailChange}
+                onCancel={() => setIsReauthModalOpen(false)}
+            />}
             {isDeleteConfirmationOpen && <ConfirmUserAction variant="destructive" onCompleted={() => { setIsDeleteConfirmationOpen(false); navigate('/users', { replace: true }); }} title="Eliminar usuario" description={userDeletionMessage} onConfirm={confirmUserDeletion} onCancel={() => setIsDeleteConfirmationOpen(false)} />}
             {pendingActiveStatus !== null && <ConfirmUserAction
                 variant={pendingActiveStatus ? 'confirmation' : 'destructive'}
@@ -190,6 +275,10 @@ function DetailsUserContent({ user, goBack }: { user: UserDetails; goBack: () =>
                     
                 </div>
             </header>
+
+            {emailChangeNotice && <p role="status" aria-live="polite" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                Solicitud procesada. Enviamos un enlace de verificación a tu nueva dirección de correo para confirmar el cambio.
+            </p>}
 
             <div className={styles.contentGrid}>
                 <main className={styles.mainColumn} inert={isSaving} aria-busy={isSaving}>
