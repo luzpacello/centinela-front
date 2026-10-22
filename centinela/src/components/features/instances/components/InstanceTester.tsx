@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import InstanceAction from './InstanceAction';
-import type { InventoryInstance, InstancePowerAction } from '../types/instance';
+import type { InventoryInstance, InstancePowerAction, InstanceRef } from '../types/instance';
 
 // Datos de prueba iniciales basados en tus tipos oficiales
 const INITIAL_INSTANCES: InventoryInstance[] = [
@@ -48,30 +48,30 @@ const INITIAL_INSTANCES: InventoryInstance[] = [
 export default function InstanceTester() {
   const [instances, setInstances] = useState<InventoryInstance[]>(INITIAL_INSTANCES);
   // Mapa para simular transiciones pendientes por ID de instancia
-  const [pendingActions, setPendingActions] = useState<Record<number, boolean>>({});
+  const [pendingActions, setPendingActions] = useState<Record<string, boolean>>({});
 
   // Simula la aceptación de una acción de energía (start, stop, reboot, shutdown)
-  const handleActionAccepted = (instanceId: number, action: InstancePowerAction) => {
-    setPendingActions((prev) => ({ ...prev, [instanceId]: true }));
+  const handleActionAccepted = (instanceId: InstanceRef, action: InstancePowerAction) => {
+    setPendingActions((prev) => ({ ...prev, [String(instanceId)]: true }));
 
     // Simulamos que el backend procesa la acción y cambia el estado después de 3 segundos
     setTimeout(() => {
       setInstances((prev) =>
         prev.map((inst) => {
-          if (inst.id === instanceId) {
+          if (String(inst.id) === String(instanceId)) {
             const newStatus = action === 'start' ? 'running' : 'stopped';
             return { ...inst, status: newStatus };
           }
           return inst;
         })
       );
-      setPendingActions((prev) => ({ ...prev, [instanceId]: false }));
+      setPendingActions((prev) => ({ ...prev, [String(instanceId)]: false }));
     }, 3000);
   };
 
   // Simula la eliminación de una instancia
-  const handleDeleteAccepted = (instanceId: number) => {
-    setInstances((prev) => prev.filter((inst) => inst.id !== instanceId));
+  const handleDeleteAccepted = (instanceId: InstanceRef) => {
+    setInstances((prev) => prev.filter((inst) => String(inst.id) !== String(instanceId)));
   };
 
   return (
