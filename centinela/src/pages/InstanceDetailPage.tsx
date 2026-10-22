@@ -138,18 +138,18 @@ export default function InstanceDetailPage() {
   const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
   const [accessDenied, setAccessDenied] = useState(false);
 
-  const vmid = Number(vmidParam);
-  const validVmid =
-    Boolean(vmidParam?.trim()) &&
-    Number.isSafeInteger(vmid) &&
-    vmid > 0;
+  const instanceRef = vmidParam?.trim() ?? '';
+  const legacyVmid = Number(instanceRef);
+  const validVmid = Boolean(instanceRef) && (
+    (Number.isSafeInteger(legacyVmid) && legacyVmid > 0) || instanceRef.startsWith('inst_')
+  );
 
-  const hasAccess = validVmid && canAccessInstance(vmid);
+  const hasAccess = validVmid && canAccessInstance(Number.isSafeInteger(legacyVmid) && legacyVmid > 0 ? legacyVmid : instanceRef);
 
   useEffect(() => {
     if (!validVmid) return;
 
-    if (!canAccessInstance(vmid)) {
+    if (!canAccessInstance(Number.isSafeInteger(legacyVmid) && legacyVmid > 0 ? legacyVmid : instanceRef)) {
       setAccessDenied(true);
       toast.add({
         title: 'Acceso denegado',
@@ -158,11 +158,11 @@ export default function InstanceDetailPage() {
       });
       navigate('/instances', { replace: true });
     }
-  }, [validVmid, vmid, canAccessInstance, navigate]);
+  }, [validVmid, instanceRef, legacyVmid, canAccessInstance, navigate]);
 
   const instance = useMemo(
-    () => instances.find((item) => item.id === vmid) ?? null,
-    [instances, vmid],
+    () => instances.find((item) => String(item.id) === instanceRef) ?? null,
+    [instances, instanceRef],
   );
 
   const transition = instance ? transitioningTasks[instance.id] : undefined;

@@ -1,6 +1,9 @@
 export type InstanceType = 'VM' | 'LXC';
 export type InstanceStatusFilter = 'all' | 'running' | 'stopped';
 export type InstancePermissionLevel = 'FULL_ACCESS' | 'READ_ONLY';
+// La API actual expone referencias opacas (inst_...), mientras que versiones
+// anteriores del backend y algunos datos de prueba usan VMID numérico.
+export type InstanceRef = string | number;
 
 export interface InstanceActiveTask {
   tareaId: string;
@@ -17,7 +20,7 @@ export interface InstanceTransition {
 }
 
 export interface InventoryInstance {
-  id: number;
+  id: InstanceRef;
   name: string;
   type: InstanceType;
   node: string;

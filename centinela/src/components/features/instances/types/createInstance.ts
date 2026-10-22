@@ -46,7 +46,7 @@ export interface CreateInstancePayload {
 }
 
 export interface CreateInstanceResponse {
-    vmid: number;
+    vmid: import('./instance').InstanceRef;
     tareaId: string;
 }
 

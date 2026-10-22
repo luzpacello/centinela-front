@@ -1,4 +1,5 @@
 import type { UserInstancePermission } from '../../users/services/userInstanceService';
+import type { InstanceRef } from '../../instances/types/instance';
 
 // Roles canónicos para guards y controles de visibilidad; READ_ONLY es un nivel de acceso por instancia.
 export type UserRole = 'ADMIN' | 'OPERATOR';
@@ -18,7 +19,7 @@ export interface UserSession {
   nombreCompleto: string;
   email: string;
   rol: string;
-  instanciasPermitidas: number[];
+  instanciasPermitidas: InstanceRef[];
   permisos?: UserInstancePermission[];
   tiene2FA: boolean;
 }
@@ -55,7 +56,7 @@ export interface PerfilResponse {
   activo: boolean;
   totpVinculado: boolean;
   cambioContrasenaRequerido: boolean;
-  instanciasPermitidas: number[] | null;
+  instanciasPermitidas: InstanceRef[] | null;
   permisos?: UserInstancePermission[] | null;
 }
 

@@ -19,7 +19,7 @@ import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface InstanceAccess {
-    id: string;
+    id: import('../../instances/types/instance').InstanceRef;
     name: string;
     type: 'VM' | 'LXC';
     access: AccessLevel;

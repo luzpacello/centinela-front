@@ -53,9 +53,11 @@ export function isPerfilResponse(value: unknown): value is PerfilResponse {
     && isUserRole(value.rol)
     && typeof value.totpVinculado === 'boolean'
     && (permissions == null || (Array.isArray(permissions) && permissions.every((permission) =>
-      isRecord(permission) && Number.isSafeInteger(permission.vmid) && Number(permission.vmid) > 0
+      isRecord(permission) && ((typeof permission.vmid === 'number' && Number.isSafeInteger(permission.vmid) && permission.vmid > 0)
+        || (typeof permission.vmid === 'string' && permission.vmid.trim().length > 0))
       && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))))
-    && (instancias === null || (Array.isArray(instancias) && instancias.every((v) => typeof v === 'number')));
+    && (instancias === null || (Array.isArray(instancias) && instancias.every((v) =>
+      (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) || (typeof v === 'string' && v.trim().length > 0))));
 }
 
 // Traduce el perfil del backend a la sesión que usa la aplicación.

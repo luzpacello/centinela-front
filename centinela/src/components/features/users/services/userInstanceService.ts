@@ -1,7 +1,8 @@
 import { ApiRequestError, apiClient } from '@/services/apiClient';
+import type { InstanceRef } from '../../instances/types/instance';
 
 export interface UserInstance {
-  id: string;
+  id: InstanceRef;
   name: string;
   type: 'VM' | 'LXC';
   node?: string | null;
@@ -11,17 +12,14 @@ export interface UserInstance {
 export type InstancePermissionLevel = 'FULL_ACCESS' | 'READ_ONLY';
 
 export interface UserInstancePermission {
-  vmid: number;
+  vmid: InstanceRef;
   nivelAcceso: InstancePermissionLevel;
 }
 
-export function instanceVmid(id: string | number): number {
-  const value = String(id).replace(/^(qemu|lxc)\//, '');
-  const vmid = /^\d+$/.test(value) ? Number(value) : NaN;
-  if (!Number.isSafeInteger(vmid) || vmid <= 0) {
-    throw new ApiRequestError('La instancia no tiene un VMID válido.');
-  }
-  return vmid;
+export function instanceVmid(id: string | number): InstanceRef {
+  if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) return id;
+  if (typeof id === 'string' && id.trim()) return id.trim().replace(/^(qemu|lxc)\//, '');
+  throw new ApiRequestError('La instancia no tiene una referencia válida.');
 }
 
 export async function fetchUserInstanceInventory(signal?: AbortSignal): Promise<UserInstance[]> {
@@ -32,7 +30,7 @@ export async function fetchUserInstanceInventory(signal?: AbortSignal): Promise<
     throw new ApiRequestError('No se pudo interpretar el inventario de instancias.');
   }
   return response.map((instance): UserInstance => {
-    if (!instance || typeof instance.id !== 'number' || typeof instance.name !== 'string'
+    if (!instance || (typeof instance.id !== 'number' && typeof instance.id !== 'string') || typeof instance.name !== 'string'
       || typeof instance.type !== 'string') {
       throw new ApiRequestError('No se pudo interpretar el inventario de instancias.');
     }
@@ -42,7 +40,7 @@ export async function fetchUserInstanceInventory(signal?: AbortSignal): Promise<
       throw new ApiRequestError('El inventario contiene un tipo de instancia desconocido.');
     }
     return {
-      id: String(instanceVmid(instance.id)),
+      id: instanceVmid(instance.id),
       name: instance.name,
       type: instanceType,
       node: typeof instance.node === 'string' ? instance.node : null,
@@ -58,7 +56,7 @@ export async function fetchUserInstancePermissions(userId: string, signal?: Abor
   );
   if (!Array.isArray(response?.permisos) || !response.permisos.every((permission) =>
     permission
-    && typeof permission.vmid === 'number'
+    && (typeof permission.vmid === 'number' || typeof permission.vmid === 'string')
     && (permission.nivelAcceso === 'FULL_ACCESS' || permission.nivelAcceso === 'READ_ONLY'))) {
     throw new ApiRequestError('No se pudieron interpretar los permisos de instancias del usuario.');
   }
@@ -67,7 +65,7 @@ export async function fetchUserInstancePermissions(userId: string, signal?: Abor
       vmid: instanceVmid(permission.vmid),
       nivelAcceso: permission.nivelAcceso,
     };
-    return [normalizedPermission.vmid, normalizedPermission];
+    return [String(normalizedPermission.vmid), normalizedPermission];
   })).values()];
 }
 
@@ -77,7 +75,7 @@ export async function assignUserInstances(userId: string, permissions: UserInsta
       vmid: instanceVmid(permission.vmid),
       nivelAcceso: permission.nivelAcceso,
     };
-    return [normalizedPermission.vmid, normalizedPermission];
+    return [String(normalizedPermission.vmid), normalizedPermission];
   })).values()];
   await apiClient.request(`/admin/users/${encodeURIComponent(userId)}/permissions`, {
     method: 'PUT',
