@@ -69,13 +69,13 @@ export default function ConfigureInstanceResources({
             label: 'Memoria RAM',
             percentage: quotaAssessment.percentages.ram,
             requested: `${((draft.ramMb ?? 0) / 1024).toFixed(2)} GB de ${allocatable ? (allocatable.freeRamMb / 1024).toFixed(2) : '—'} GB asignables`,
-            projected: allocatable && nodeStatus ? `Uso previsto del host: ${(nodeStatus.ram.usedGb + (draft.ramMb ?? 0) / 1024).toFixed(2)} / ${nodeStatus.ram.totalGb} GB` : null,
+            projected: allocatable && nodeStatus?.ram ? `Uso previsto del host: ${(nodeStatus.ram.usedGb + (draft.ramMb ?? 0) / 1024).toFixed(2)} / ${nodeStatus.ram.totalGb} GB` : null,
         },
         {
             label: 'Disco',
             percentage: quotaAssessment.percentages.disk,
             requested: `${draft.discoGb ?? 0} GB de ${allocatable?.freeStorageGb ?? '—'} GB asignables`,
-            projected: allocatable && nodeStatus ? `Uso previsto del host: ${(nodeStatus.storage.usedGb + (draft.discoGb ?? 0)).toFixed(2)} / ${nodeStatus.storage.totalGb} GB` : null,
+            projected: allocatable && nodeStatus?.storage ? `Uso previsto del host: ${(nodeStatus.storage.usedGb + (draft.discoGb ?? 0)).toFixed(2)} / ${nodeStatus.storage.totalGb} GB` : null,
         },
     ];
 
@@ -110,18 +110,18 @@ export default function ConfigureInstanceResources({
                 <div className={styles.availableResourcesGrid}>
                     <AvailabilityMetric
                         label="CPU"
-                        value={nodeStatus ? `${nodeStatus.cpu.cores} vCPU totales` : '—'}
-                        percentage={nodeStatus?.cpu.usagePercent ?? null}
+                        value={nodeStatus?.cpu ? `${nodeStatus.cpu.cores} vCPU totales` : '—'}
+                        percentage={nodeStatus?.cpu?.usagePercent ?? null}
                     />
                     <AvailabilityMetric
                         label="Memoria"
-                        value={nodeStatus ? `${nodeStatus.ram.usedGb} / ${nodeStatus.ram.totalGb} GB` : '—'}
-                        percentage={nodeStatus?.ram.usagePercent ?? null}
+                        value={nodeStatus?.ram ? `${nodeStatus.ram.usedGb} / ${nodeStatus.ram.totalGb} GB` : '—'}
+                        percentage={nodeStatus?.ram?.usagePercent ?? null}
                     />
                     <AvailabilityMetric
                         label="Disco del nodo"
-                        value={nodeStatus ? `${nodeStatus.storage.usedGb} / ${nodeStatus.storage.totalGb} GB` : '—'}
-                        percentage={nodeStatus?.storage.usagePercent ?? null}
+                        value={nodeStatus?.storage ? `${nodeStatus.storage.usedGb} / ${nodeStatus.storage.totalGb} GB` : '—'}
+                        percentage={nodeStatus?.storage?.usagePercent ?? null}
                     />
                 </div>
             </Card>

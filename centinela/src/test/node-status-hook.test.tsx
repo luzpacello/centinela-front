@@ -95,7 +95,10 @@ describe('useNodeStatus', () => {
     it('marca advertencia desde 70% y permite reintentar después de un error', async () => {
         vi.useFakeTimers();
         vi.mocked(getNodeStatus)
-            .mockResolvedValueOnce({ ...status, ram: { ...status.ram, usagePercent: 70 } })
+            .mockResolvedValueOnce({
+                ...status,
+                ram: { ...status.ram, usedGb: status.ram?.usedGb ?? 0, totalGb: status.ram?.totalGb ?? 0, usagePercent: 70 },
+            })
             .mockRejectedValueOnce(new Error('Sin conexión'))
             .mockResolvedValueOnce(status);
 
