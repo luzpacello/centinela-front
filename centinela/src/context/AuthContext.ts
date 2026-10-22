@@ -5,14 +5,15 @@ import { toast } from '@/components/ui/toast';
 import { applicationRouter } from '@/routes/router';
 import type { UserRole } from '@/components/features/auth/types/authentication';
 import { canUserAccessInstance } from '@/components/features/auth/utils/instanceAccess';
+import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 interface AuthContextValue {
   user: StoredSessionUser | null;
   hasRole: (role: UserRole) => boolean;
   isAdmin: () => boolean;
   isOperator: () => boolean;
-  canAccessInstance: (vmid: number) => boolean;
-  canOperateInstance: (vmid: number) => boolean;
+  canAccessInstance: (vmid: InstanceRef) => boolean;
+  canOperateInstance: (vmid: InstanceRef) => boolean;
 }
 
 interface AuthProviderProps { children: ReactNode; }
@@ -65,10 +66,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAdmin = (): boolean => hasRole('ADMIN');
   const isOperator = (): boolean => hasRole('OPERATOR');
 
-  const canAccessInstance = (vmid: number): boolean =>
+  const canAccessInstance = (vmid: InstanceRef): boolean =>
     canUserAccessInstance(user, vmid);
 
-  const canOperateInstance = (vmid: number): boolean =>
+  const canOperateInstance = (vmid: InstanceRef): boolean =>
     isAdmin() || (isOperator() && (user?.permisos ?? []).some((permission) =>
       permission.vmid === vmid && permission.nivelAcceso === 'FULL_ACCESS'
     ));

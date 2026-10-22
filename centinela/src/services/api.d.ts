@@ -12,7 +12,7 @@ export interface StoredSessionUser {
   nombreCompleto: string;
   email: string;
   rol: string;
-  instanciasPermitidas: number[];
+  instanciasPermitidas: Array<string | number>;
   permisos?: UserInstancePermission[];
   tiene2FA: boolean;
 }
