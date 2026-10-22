@@ -35,7 +35,7 @@ export default function Instances() {
     const { user, isAdmin, canAccessInstance } = useAuth();
     const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = useMemo(
-        () => instances.filter((instance) => canAccessInstance(instance.id)),
+        () => instances.filter((instance) => canAccessInstance(instance.id) || instance.nivelAcceso != null),
         [instances, canAccessInstance],
     );
     const vmInstanceCount = visibleInstances.filter((instance) => instance.type === 'VM').length;
