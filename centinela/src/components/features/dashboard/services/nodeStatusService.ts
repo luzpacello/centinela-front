@@ -7,16 +7,16 @@ export interface NodeStatusResponse {
         freeStorageGb: number;
         headroomPercent: number;
     };
-    cpu: {
+    cpu?: {
         usagePercent: number;
         cores: number;
     };
-    ram: {
+    ram?: {
         usedGb: number;
         totalGb: number;
         usagePercent: number;
     };
-    storage: {
+    storage?: {
         usedGb: number;
         totalGb: number;
         usagePercent: number;

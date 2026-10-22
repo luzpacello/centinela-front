@@ -91,16 +91,16 @@ export default function Dashboard() {
                         <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
                             <Bell className={style.smallIcon} />
                         </Button>
-
                     </div>
-
                 </div>
             </header>
 
             <div className={style.overview} data-testid="dashboard-overview">
                 <Card className={style.summaryCard} data-testid="instances-overview">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 className="text-base font-semibold text-slate-900">Resumen de Instancias</h2>
+                        <h2 className="text-base font-semibold text-slate-900">
+                            {admin ? 'Resumen de Instancias' : 'Tus instancias activas'}
+                        </h2>
                         {admin && <Badge className="gap-1 rounded-full bg-purple-600 text-white"><Box className="size-3" />{formatCount(templates.loading ? null : templates.count)} Plantillas</Badge>}
                     </div>
                     <div className="grid grid-cols-1 gap-2 py-4 sm:grid-cols-3">
@@ -111,44 +111,46 @@ export default function Dashboard() {
                     <InstancesSummaryCards summary={instanceSummary} isLoading={loading} compact />
                 </Card>
 
-                <Card className={style.resourceCard} data-testid="resources-overview">
-                    <div className={style.sectionHeader}>
-                        <div className={style.sectionHeading}>
-                            <h3>Uso total de recursos</h3>
-                            <Badge aria-label="Estado del nodo" role="status" variant="outline" className={nodeHealth.className}>
-                                {nodeHealth.label}
-                            </Badge>
-                        </div>
-                        {data?.stale && (
-                            <Badge variant="outline" className={style.staleBadge}>
-                                Datos desactualizados (el servidor opera con última telemetría conocida)
-                            </Badge>
-                        )}
-                    </div>
-
-                    {loading && !data ? (
-                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]" aria-label="Cargando telemetría">
-                            {[0, 1, 2].map((item) => <div key={item} className={style.meterSkeleton} />)}
-                        </div>
-                    ) : data ? (
-                        <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]">
-                            <div className="flex min-w-0 flex-col justify-around gap-3">
-                                <CpuGauge percent={data.cpu.usagePercent} cores={data.cpu.cores} samples={history.map((sample) => sample.cpu)} timestamps={history.map((sample) => sample.timestamp)} compact />
-                                <RamMeter usedGb={data.ram.usedGb} totalGb={data.ram.totalGb} usagePercent={data.ram.usagePercent} samples={history.map((sample) => sample.ram)} timestamps={history.map((sample) => sample.timestamp)} compact />
+                {admin && (
+                    <Card className={style.resourceCard} data-testid="resources-overview">
+                        <div className={style.sectionHeader}>
+                            <div className={style.sectionHeading}>
+                                <h3>Uso total de recursos</h3>
+                                <Badge aria-label="Estado del nodo" role="status" variant="outline" className={nodeHealth.className}>
+                                    {nodeHealth.label}
+                                </Badge>
                             </div>
-                            <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} variant="ring" />
+                            {data?.stale && (
+                                <Badge variant="outline" className={style.staleBadge}>
+                                    Datos desactualizados (el servidor opera con última telemetría conocida)
+                                </Badge>
+                            )}
                         </div>
-                    ) : null}
 
-                    {error && (
-                        <div className={style.connectionError} role="alert">
-                            <span>No se pudo obtener la telemetría del nodo.</span>
-                            <Button type="button" variant="outline" onClick={retry}>
-                                <RefreshCw className={style.smallIcon} /> Reintentar conexión
-                            </Button>
-                        </div>
-                    )}
-                </Card>
+                        {loading && !data ? (
+                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]" aria-label="Cargando telemetría">
+                                {[0, 1, 2].map((item) => <div key={item} className={style.meterSkeleton} />)}
+                            </div>
+                        ) : data ? (
+                            <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]">
+                                <div className="flex min-w-0 flex-col justify-around gap-3">
+                                    <CpuGauge percent={data?.cpu?.usagePercent ?? 0} cores={data?.cpu?.cores ?? 0} samples={history.map((sample) => sample?.cpu ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
+                                    <RamMeter usedGb={data?.ram?.usedGb ?? 0} totalGb={data?.ram?.totalGb ?? 0} usagePercent={data?.ram?.usagePercent ?? 0} samples={history.map((sample) => sample?.ram ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
+                                </div>
+                                <StorageMeter usedGb={data?.storage?.usedGb ?? 0} totalGb={data?.storage?.totalGb ?? 0} usagePercent={data?.storage?.usagePercent ?? 0} variant="ring" />
+                            </div>
+                        ) : null}
+
+                        {error && (
+                            <div className={style.connectionError} role="alert">
+                                <span>No se pudo obtener la telemetría del nodo.</span>
+                                <Button type="button" variant="outline" onClick={retry}>
+                                    <RefreshCw className={style.smallIcon} /> Reintentar conexión
+                                </Button>
+                            </div>
+                        )}
+                    </Card>
+                )}
             </div>
 
             <div className={style.details}>
@@ -188,7 +190,7 @@ export default function Dashboard() {
                     <div>
                         <h2 className="text-destacado">Estado del sistema</h2>
                         <p className="text-caption" data-testid="node-footer-status">
-                            Tiempo de ejecución: {data ? formatUptime(data.uptimeSeconds) : '—'}
+                            Tiempo de ejecución: {data?.uptimeSeconds ? formatUptime(data.uptimeSeconds) : '—'}
                         </p>
                     </div>
                 </div>
@@ -196,7 +198,6 @@ export default function Dashboard() {
         </section>
     );
 }
-
 const style = {
     page: 'flex min-w-0 flex-col gap-5 text-slate-900',
     header: 'flex flex-wrap items-start justify-between gap-4 pb-1',

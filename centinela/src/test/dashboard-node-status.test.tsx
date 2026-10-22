@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-const authState = vi.hoisted(() => ({ isAdmin: true }));
+const authState = vi.hoisted(() => ({ role: 'ADMIN' as 'ADMIN' | 'OPERATOR' }));
 
 // Los componentes se suscriben al canal por tipo; el test guarda los callbacks
 // registrados para poder emitir el evento a mano.
@@ -25,10 +25,10 @@ vi.mock('@/context/EventsContext', () => ({
 
 vi.mock('@/context/AuthContext', () => ({
     useAuth: () => ({
-        user: null,
-        hasRole: () => true,
-        isAdmin: () => authState.isAdmin,
-        isOperator: () => false,
+        user: { rol: authState.role },
+        hasRole: (role: string) => authState.role === role,
+        isAdmin: () => authState.role === 'ADMIN',
+        isOperator: () => authState.role === 'OPERATOR',
         canAccessInstance: () => true,
         canOperateInstance: () => true,
     }),
@@ -74,6 +74,18 @@ const status: NodeStatusResponse = {
     fetchedAt: '2026-10-03T14:30:05Z',
 };
 
+const operatorStatus: NodeStatusResponse = {
+    cpu: { usagePercent: 37.5, cores: 16 },
+    // A los operadores no se les manda ram ni storage
+    uptimeSeconds: 86400,
+    instancesSummary: {
+        vms: { running: 6, stopped: 2, paused: 1, total: 9 },
+        lxc: { running: 6, stopped: 2, paused: 1, total: 9 },
+    },
+    stale: false,
+    fetchedAt: '2026-10-03T14:30:05Z',
+};
+
 const inventory = [
     { id: 101, name: 'Ubuntu Server', type: 'VM', node: 'pve01', status: 'running', ip: '192.168.1.101', cpuUsage: 0.32, ramUsage: 1073741824, maxRam: 4294967296, activeTask: null },
     { id: 201, name: 'Docker Host', type: 'LXC', node: 'pve01', status: 'stopped', ip: null, cpuUsage: null, ramUsage: null, maxRam: 2147483648, activeTask: null },
@@ -109,7 +121,7 @@ function renderDashboard() {
 }
 
 beforeEach(() => {
-    authState.isAdmin = true;
+    authState.role = 'ADMIN';
     eventChannel.filters.length = 0;
     eventChannel.callbacks.length = 0;
     vi.mocked(getNodeStatus).mockReset();
@@ -196,7 +208,10 @@ describe('Dashboard node status', () => {
     it('muestra inaccesible y permite reintentar sin recargar', async () => {
         vi.mocked(getNodeStatus)
             .mockRejectedValueOnce(new Error('Sin conexión'))
-            .mockResolvedValueOnce({ ...status, storage: { ...status.storage, usagePercent: 69 } });
+            .mockResolvedValueOnce({
+                ...status,
+                storage: { ...status.storage, usedGb: status.storage?.usedGb ?? 0, totalGb: status.storage?.totalGb ?? 0, usagePercent: 69 },
+            });
 
         renderDashboard();
         expect(await screen.findByRole('alert')).toBeInTheDocument();
@@ -222,7 +237,7 @@ describe('Dashboard node status', () => {
     });
 
     it('mantiene la carga real sin estados vacíos simulados', () => {
-        vi.mocked(getNodeStatus).mockReturnValue(new Promise(() => {}));
+        vi.mocked(getNodeStatus).mockReturnValue(new Promise(() => { }));
 
         renderDashboard();
 
@@ -303,15 +318,33 @@ describe('Dashboard node status', () => {
         expect(await screen.findByText('pantalla-instancias')).toBeInTheDocument();
     });
 
-    it('la insignia de Plantillas es solo para Admin', async () => {
-        authState.isAdmin = false;
-        vi.mocked(getNodeStatus).mockResolvedValue(status);
+    it('carga fluidamente para el Operador sin métricas globales ni plantillas', async () => {
+        authState.role = 'OPERATOR';
+        // Le pasamos el mock SIN storage ni ram, como lo manda el backend real
+        vi.mocked(getNodeStatus).mockResolvedValue(operatorStatus);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-        renderDashboard();
-        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+        try {
+            renderDashboard();
 
-        expect(screen.queryByText(/\d+ Plantillas/)).not.toBeInTheDocument();
-        expect(getMock).not.toHaveBeenCalledWith('node/templates', expect.anything());
+            // Verifica que el dashboard adaptó los textos y cargó sin errores
+            expect(await screen.findByText('Tus instancias activas')).toBeInTheDocument();
+            expect(await screen.findByText('Ubuntu Server')).toBeInTheDocument();
+            expect(screen.queryByRole('heading', { name: 'Resumen de Instancias' })).not.toBeInTheDocument();
+
+            // Verifica que las tarjetas de recursos físicos están ocultas
+            expect(screen.queryByTestId('resources-overview')).not.toBeInTheDocument();
+
+            // Verifica que no se ven plantillas ni errores de consola
+            expect(screen.queryByText(/\d+ Plantillas/)).not.toBeInTheDocument();
+            expect(getMock).not.toHaveBeenCalledWith('node/templates', expect.anything());
+            expect(consoleError).not.toHaveBeenCalled();
+            expect(consoleWarn).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+            consoleWarn.mockRestore();
+        }
     });
 
     it('navega a auditoría desde Actividad reciente', async () => {
@@ -362,13 +395,14 @@ describe('Dashboard node status', () => {
     });
 
     it('la Actividad reciente es solo para Admin', async () => {
-        authState.isAdmin = false;
+        authState.role = 'OPERATOR';
         vi.mocked(getNodeStatus).mockResolvedValue(status);
 
         renderDashboard();
-        expect(await screen.findByText('37.5%')).toBeInTheDocument();
+        expect(await screen.findByText('Tus instancias activas')).toBeInTheDocument();
 
         expect(screen.queryByRole('heading', { name: 'Actividad reciente' })).not.toBeInTheDocument();
+        expect(screen.queryByTestId('resources-overview')).not.toBeInTheDocument();
         expect(getMock).not.toHaveBeenCalledWith(expect.stringContaining('admin/audit'), expect.anything());
         expect(screen.getByRole('heading', { name: 'Alertas y estado' })).toBeInTheDocument();
         expect(screen.queryByText('5 plantillas disponibles')).not.toBeInTheDocument();
@@ -392,7 +426,10 @@ describe('Dashboard node status', () => {
 
     it('el pie muestra Conexión, Última sincronización y Estado del sistema, sin bloques viejos', async () => {
         // Nodo saludable: el estado va en verde al lado del título.
-        vi.mocked(getNodeStatus).mockResolvedValue({ ...status, storage: { ...status.storage, usagePercent: 69 } });
+        vi.mocked(getNodeStatus).mockResolvedValue({
+            ...status,
+            storage: { ...status.storage, usedGb: status.storage?.usedGb ?? 0, totalGb: status.storage?.totalGb ?? 0, usagePercent: 69 },
+        });
 
         renderDashboard();
         expect(await screen.findByText('37.5%')).toBeInTheDocument();
@@ -508,7 +545,7 @@ describe('Dashboard node status', () => {
     });
 
     it('muestra skeletons del conteo por tipo mientras carga', () => {
-        vi.mocked(getNodeStatus).mockReturnValue(new Promise(() => {}));
+        vi.mocked(getNodeStatus).mockReturnValue(new Promise(() => { }));
 
         renderDashboard();
 

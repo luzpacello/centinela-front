@@ -63,7 +63,7 @@ export function useNodeStatus() {
                     const time = Date.parse(nextData.fetchedAt);
                     setHistory((previous) => [
                         ...previous.filter((sample) => sample.timestamp !== time),
-                        { timestamp: Number.isFinite(time) ? time : Date.now(), cpu: nextData.cpu.usagePercent, ram: nextData.ram.usagePercent, storage: nextData.storage.usagePercent },
+                        { timestamp: Number.isFinite(time) ? time : Date.now(), cpu: nextData?.cpu?.usagePercent ?? 0, ram: nextData?.ram?.usagePercent, storage: nextData?.storage?.usagePercent },
                     ].sort((a, b) => a.timestamp - b.timestamp).slice(-HISTORY_LIMIT));
                 }
             } catch (requestError) {
@@ -118,7 +118,7 @@ export function useNodeStatus() {
         ? 'inaccessible'
         : !data
             ? 'loading'
-            : data.cpu.usagePercent >= 70 || data.ram.usagePercent >= 70 || data.storage.usagePercent >= 70
+            : (data?.cpu?.usagePercent ?? 0) >= 70 || (data?.ram?.usagePercent ?? 0) >= 70 || (data?.storage?.usagePercent ?? 0) >= 70
                 ? 'warning'
                 : 'healthy';
 
