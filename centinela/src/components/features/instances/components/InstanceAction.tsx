@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Menu } from '@base-ui/react/menu';
-import { CirclePlay, Loader2, MoreVertical, Square, RotateCcw, Trash } from 'lucide-react';
+import { CirclePlay, Loader2, MoreVertical, Power, Square, RotateCcw, Trash } from 'lucide-react';
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
 import PermissionGate from '@/context/PermissionGate';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 
 interface InstanceActionProps {
+  variant?: 'menu' | 'header';
+  disabled?: boolean;
   instance: InventoryInstance;
   // Estado de transición resuelto por la página (null = sin transición). Si no
   // se pasa, se deriva del activeTask del inventario.
@@ -75,7 +77,7 @@ const POWER_ACTION_CONFIG: Record<InstancePowerAction, {
   },
 };
 
-export default function InstanceAction({ instance, transition: transitionProp, isPowerActionPending, onActionAccepted, onDeleteAccepted }: InstanceActionProps) {
+export default function InstanceAction({ instance, transition: transitionProp, isPowerActionPending, onActionAccepted, onDeleteAccepted, variant = 'menu', disabled = false }: InstanceActionProps) {
   const { canOperateInstance, isAdmin } = useAuth();
   const [pendingAction, setPendingAction] = useState<InstancePowerAction | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -102,6 +104,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   async function confirmPowerAction() {
     // Volver a validar si los permisos cambiaron mientras el modal estaba abierto.
     if (!pendingAction) return;
+    if (!canOperate || disabled) throw new ApiRequestError('La acción no está disponible en este momento.');
     // Asegura que el admin pueda disparar la acción sin restricciones de nivel de acceso
     if (!isAdmin() && instance.nivelAcceso === 'READ_ONLY') {
       throw new ApiRequestError('No tenés permiso para operar esta instancia.');
@@ -198,7 +201,24 @@ export default function InstanceAction({ instance, transition: transitionProp, i
 
   return (
     <>
-      <Menu.Root open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
+      {variant === 'header' ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {instance.status === 'stopped' ? (
+            <Button type="button" variant="outline" disabled={!canOperate || disabled} onClick={() => setPendingAction('start')}>
+              <CirclePlay className="size-4! text-emerald-600" aria-hidden="true" />Encender
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" className="border-red-200 text-red-600" disabled={!canOperate || disabled || instance.status !== 'running'} onClick={() => setPendingAction('shutdown')}>
+                <Power className="size-4!" aria-hidden="true" />Apagar
+              </Button>
+              <Button type="button" variant="outline" className="border-amber-200 text-amber-600" disabled={!canOperate || disabled || instance.status !== 'running'} onClick={() => setPendingAction('reboot')}>
+                <RotateCcw className="size-4!" aria-hidden="true" />Reiniciar
+              </Button>
+            </>
+          )}
+        </div>
+      ) : <Menu.Root open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
         <Menu.Trigger type="button" aria-label={`Acciones para ${instance.name}`}
           className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors inline-flex items-center justify-center">
           <MoreVertical className="size-4" />
@@ -269,7 +289,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
-      </Menu.Root>
+      </Menu.Root>}
       {pendingAction && canOperate && createPortal(
         <ConfirmUserAction
           variant={POWER_ACTION_CONFIG[pendingAction].variant}
