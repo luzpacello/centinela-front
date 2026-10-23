@@ -1,231 +1,60 @@
-import type { ComponentType } from 'react';
-import {
-    CircleCheck,
-    Cpu,
-    Database,
-    HardDrive,
-    MemoryStick,
-    Minus,
-    Plus,
-    Server,
-} from 'lucide-react';
+import { Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-    Combobox,
-    ComboboxContent,
-    ComboboxInput,
-    ComboboxItem,
-    ComboboxList,
-} from '@/components/ui/combobox';
-import { Input } from '@/components/ui/input';
+import type { InstanceConfigEditor } from '../../hooks/useEditInstanceConfig';
+import type { InstanceResourceConfiguration } from '../../types/instanceDetail';
+import type { InstanceResourceValues } from '../../validation/editInstanceConfigValidation';
+import InstanceResourceFields from '../InstanceResourceFields';
 
-const availableNodeResources = [
-    { label: 'CPU', value: '4.4 / 20 vCPU', percentage: 22 },
-    { label: 'Memoria RAM', value: '28.6 / 64 GB', percentage: 45 },
-    { label: 'Almacenamiento', value: '1.22 / 2.00 TB', percentage: 61 },
-];
+interface InstanceResourcesPanelProps {
+    values: InstanceResourceValues;
+    current: InstanceResourceValues;
+    editor: InstanceConfigEditor;
+    status: string;
+    canEdit: boolean;
+    isSaving: boolean;
+    onChange: (field: keyof InstanceResourceConfiguration, value: number) => void;
+    onEditResources: () => void;
+}
 
-const destinationStorageOptions = [
-    { value: 'local-lvm', label: 'local-lvm (LVM-Thin)' },
-    { value: 'local', label: 'local (Directory)' },
-];
-
-export default function InstanceResourcesPanel() {
-    return (
-        <div className={styles.pageContent}>
-            <Card className={styles.availableResourcesCard}>
-                <div className={styles.availableResourcesHeader}>
-                    <span className={styles.availableResourcesIconContainer}>
-                        <Server className={styles.availableResourcesIcon} aria-hidden="true" />
-                    </span>
-                    <div>
-                        <h2 className={styles.availableResourcesTitle}>Recursos disponibles en el nodo de destino</h2>
-                        <p className={styles.availableResourcesDescription}>Resumen de los recursos actuales del nodo pve01.</p>
-                    </div>
-                </div>
-
-                <div className={styles.availableResourcesGrid}>
-                    {availableNodeResources.map((resource) => (
-                        <AvailabilityMetric key={resource.label} {...resource} />
-                    ))}
-                </div>
-            </Card>
-
-            <Card className={styles.instanceResourcesCard}>
-                <header className={styles.contentHeader}>
-                    <h2 className={styles.pageTitle}>Recursos de la instancia</h2>
-                    <p className={styles.pageDescription}>Define los recursos de CPU, memoria y disco para la instancia.</p>
-                </header>
-
-                <div className={styles.resourceManagersGrid}>
-                    <StaticResourceManagerCard
-                        inputId="instance-detail-cpu"
-                        icon={Cpu}
-                        title="CPU"
-                        description="Cantidad de núcleos virtuales para la instancia."
-                        defaultValue={2}
-                        unit="vCPU"
-                        min={1}
-                        step={1}
-                        helperText="Disponibles: 8 vCPU"
-                    />
-                    <StaticResourceManagerCard
-                        inputId="instance-detail-memory"
-                        icon={MemoryStick}
-                        title="Memoria RAM"
-                        description="Memoria asignada para la instancia."
-                        defaultValue={4}
-                        unit="GB"
-                        min={1}
-                        step={1}
-                        helperText="Disponibles: 28.6 GB"
-                    />
-
-                    <Card className={styles.resourceManagerCard}>
-                        <ResourceManagerHeader
-                            icon={HardDrive}
-                            title="Almacenamiento de destino"
-                            description="Seleccioná el almacenamiento donde se encuentra el disco."
-                        />
-                        <Combobox defaultValue="local-lvm">
-                            <ComboboxInput aria-label="Almacenamiento de destino" />
-                            <ComboboxContent>
-                                <ComboboxList>
-                                    {destinationStorageOptions.map((storage) => (
-                                        <ComboboxItem key={storage.value} value={storage.value}>{storage.label}</ComboboxItem>
-                                    ))}
-                                </ComboboxList>
-                            </ComboboxContent>
-                        </Combobox>
-                        <div className={styles.storageAvailabilityRow}>
-                            <span>Disponible: 722.5 GB de 1.85 TB</span>
-                            <strong>39%</strong>
-                        </div>
-                        <div className={styles.progressTrack}>
-                            <div className={styles.storageProgressValue} style={{ width: '39%' }} />
-                        </div>
-                    </Card>
-
-                    <StaticResourceManagerCard
-                        inputId="instance-detail-disk"
-                        icon={Database}
-                        title="Disco principal"
-                        description="Tamaño del disco del sistema de la instancia."
-                        defaultValue={32}
-                        unit="GB"
-                        min={20}
-                        step={1}
-                        helperText="Tamaño mínimo: 20 GB"
-                    />
-                </div>
-            </Card>
-
-            <div className={styles.resourceValidationPanel} role="status">
-                <span className={styles.validationIconContainer}>
-                    <CircleCheck className={styles.validationIcon} aria-hidden="true" />
-                </span>
-                <div className={styles.validationTextContainer}>
-                    <strong className={styles.validationTitle}>Validación de recursos</strong>
-                    <span>Los recursos seleccionados son suficientes para aplicar los cambios.</span>
+export default function InstanceResourcesPanel({ values, current, editor, status, canEdit, isSaving, onChange, onEditResources }: InstanceResourcesPanelProps) {
+    const node = editor.nodeStatus;
+    const resources = [
+        { label: 'CPU', value: node?.cpu ? `${node.cpu.usagePercent}% de uso` : '—', percentage: node?.cpu?.usagePercent },
+        { label: 'Memoria RAM', value: node?.ram ? `${node.ram.usedGb} / ${node.ram.totalGb} GB` : '—', percentage: node?.ram?.usagePercent },
+        { label: 'Almacenamiento', value: node?.storage ? `${node.storage.usedGb} / ${node.storage.totalGb} GB` : '—', percentage: node?.storage?.usagePercent },
+    ];
+    return <div className={styles.pageContent}>
+        <Card className={styles.availableResourcesCard}>
+            <div className={styles.availableResourcesHeader}>
+                <span className={styles.availableResourcesIconContainer}><Server className={styles.availableResourcesIcon} aria-hidden="true" /></span>
+                <div>
+                    <h2 className={styles.availableResourcesTitle}>Recursos disponibles en el nodo de destino</h2>
+                    <p className={styles.availableResourcesDescription}>Recursos actuales del host de la instancia.</p>
                 </div>
             </div>
-        </div>
-    );
-}
-
-interface AvailabilityMetricProps {
-    label: string;
-    value: string;
-    percentage: number;
-}
-
-function AvailabilityMetric({ label, value, percentage }: AvailabilityMetricProps) {
-    return (
-        <div className={styles.availabilityMetric}>
-            <div className={styles.availabilityMetricHeader}>
-                <strong>{label}</strong>
-                <span>{percentage}%</span>
+            <div className={styles.availableResourcesGrid}>
+                {resources.map((resource) => <div key={resource.label} className={styles.availabilityMetric}>
+                    <strong className={styles.availabilityMetricHeader}>{resource.label}</strong>
+                    <span className={styles.availabilityMetricValue}>{resource.value}</span>
+                    {resource.percentage !== undefined && <div className={styles.progressTrack} role="progressbar" aria-label={`Uso de ${resource.label}`}
+                        aria-valuemin={0} aria-valuemax={100} aria-valuenow={resource.percentage}>
+                        <div className={styles.availabilityProgressValue} style={{ width: `${Math.min(100, Math.max(0, resource.percentage))}%` }} />
+                    </div>}
+                </div>)}
             </div>
-            <span className={styles.availabilityMetricValue}>{value}</span>
-            <div
-                className={styles.progressTrack}
-                role="progressbar"
-                aria-label={`Uso de ${label}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percentage}
-            >
-                <div className={styles.availabilityProgressValue} style={{ width: `${percentage}%` }} />
-            </div>
-        </div>
-    );
-}
-
-interface ResourceManagerHeaderProps {
-    icon: ComponentType<{ className?: string }>;
-    title: string;
-    description: string;
-}
-
-function ResourceManagerHeader({ icon: Icon, title, description }: ResourceManagerHeaderProps) {
-    return (
-        <div className={styles.resourceManagerHeader}>
-            <span className={styles.resourceManagerIconContainer}>
-                <Icon className={styles.resourceManagerIcon} aria-hidden="true" />
-            </span>
-            <div>
-                <h3 className={styles.resourceManagerTitle}>{title}</h3>
-                <p className={styles.resourceManagerDescription}>{description}</p>
-            </div>
-        </div>
-    );
-}
-
-interface StaticResourceManagerCardProps extends ResourceManagerHeaderProps {
-    inputId: string;
-    defaultValue: number;
-    unit: string;
-    min: number;
-    step: number;
-    helperText: string;
-}
-
-function StaticResourceManagerCard({
-    inputId,
-    icon,
-    title,
-    description,
-    defaultValue,
-    unit,
-    min,
-    step,
-    helperText,
-}: StaticResourceManagerCardProps) {
-    return (
-        <Card className={styles.resourceManagerCard}>
-            <ResourceManagerHeader icon={icon} title={title} description={description} />
-            <div className={styles.numericControlContainer}>
-                <Button type="button" variant="outline" size="icon" className={styles.numericControlButton} aria-label={`Disminuir ${title}`}>
-                    <Minus className={styles.numericControlIcon} aria-hidden="true" />
-                </Button>
-                <Input
-                    id={inputId}
-                    type="number"
-                    min={min}
-                    step={step}
-                    defaultValue={defaultValue}
-                    aria-label={title}
-                    className={styles.numericControlInput}
-                />
-                <Button type="button" variant="outline" size="icon" className={styles.numericControlButton} aria-label={`Aumentar ${title}`}>
-                    <Plus className={styles.numericControlIcon} aria-hidden="true" />
-                </Button>
-                <span className={styles.numericControlUnit}>{unit}</span>
-            </div>
-            <p className={styles.resourceHelperText}>{helperText}</p>
         </Card>
-    );
+        <Card className={styles.instanceResourcesCard}>
+            <header className="flex flex-wrap items-start justify-between gap-3">
+                <div className={styles.contentHeader}>
+                    <h2 className={styles.pageTitle}>Recursos de la instancia</h2>
+                    <p className={styles.pageDescription}>Define los recursos de CPU y memoria para la instancia.</p>
+                </div>
+                {canEdit && <Button type="button" variant="outline" disabled={isSaving} onClick={onEditResources}>Editar recursos</Button>}
+            </header>
+            <InstanceResourceFields values={values} current={current} editor={editor} status={status} disabled={!canEdit || isSaving} onChange={onChange} />
+        </Card>
+    </div>;
 }
 
 const styles = {
