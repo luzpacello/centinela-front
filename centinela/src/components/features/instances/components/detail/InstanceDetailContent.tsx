@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useInstanceDetail } from '../../hooks/useInstanceDetail';
+import { useEditInstanceConfig } from '../../hooks/useEditInstanceConfig';
 import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../../types/instance';
 import type { InstanceDetailTab } from '../../types/instanceDetail';
 import InstanceAction from '../InstanceAction';
@@ -15,6 +16,7 @@ import InstanceDetailFeedback from './InstanceDetailFeedback';
 import InstanceIdentityCard from './InstanceIdentityCard';
 import InstanceInformationRow from './InstanceInformationRow';
 import InstanceResourcesPanel from './InstanceResourcesPanel';
+import EditInstanceConfigModal from '../EditInstanceConfigModal';
 
 interface InstanceDetailContentProps {
     instance: InventoryInstance;
@@ -27,9 +29,18 @@ interface InstanceDetailContentProps {
 export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted }: InstanceDetailContentProps) {
     const { canOperateInstance, isAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<InstanceDetailTab>('resumen');
+    const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
     const data = useInstanceDetail(String(instance.id), instance.status);
     const canEdit = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
     const isBusy = isPowerActionPending || transition?.isTransitioning === true || instance.activeTask?.status === 'RUNNING';
+    const editor = useEditInstanceConfig({
+        enabled: Boolean(data.detail) && (activeTab === 'recursos' || editModalMode !== null || data.hasChanges),
+        values: data.editableConfiguration,
+        current: data.appliedConfiguration,
+        canEdit: canEdit && !isBusy && !data.isSaving,
+        onSave: () => data.saveChanges(canEdit && !isBusy),
+    });
+    const isSavingResources = data.isSaving || editor.isCheckingCapacity;
     const displayedInstance = {
         ...instance,
         name: data.detail?.name ?? instance.name,
@@ -51,17 +62,23 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                 </div>
             </div>
             <div className={styles.headerActions}>
-                <InstanceAction variant="header" disabled={data.isSaving} instance={displayedInstance} transition={transition}
+                <InstanceAction variant="header" disabled={isSavingResources} instance={displayedInstance} transition={transition}
                     isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
-                <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || data.isSaving || !data.detail}
-                    onClick={() => void data.saveChanges(canEdit && !isBusy)}>
-                    {data.isSaving ? <Loader2 className={styles.loadingIcon} aria-hidden="true" /> : <Save className={styles.smallIcon} aria-hidden="true" />}
-                    {data.isSaving ? 'Guardando…' : 'Guardar cambios'}
+                <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
+                    onClick={() => setEditModalMode('confirm')}>
+                    {isSavingResources ? <Loader2 className={styles.loadingIcon} aria-hidden="true" /> : <Save className={styles.smallIcon} aria-hidden="true" />}
+                    {isSavingResources ? 'Guardando…' : 'Guardar cambios'}
                 </Button>
             </div>
         </header>
 
         <InstanceIdentityCard instance={displayedInstance} />
+
+        {editModalMode && data.detail && <EditInstanceConfigModal instanceName={displayedInstance.name}
+            status={instance.status} values={data.editableConfiguration} current={data.appliedConfiguration} editor={editor}
+            canEdit={canEdit && !isBusy} hasChanges={data.hasChanges} isSaving={data.isSaving} saveError={data.saveError}
+            confirmInitially={editModalMode === 'confirm'} onChange={data.updateResource}
+            onCancel={() => { data.resetResources(); setEditModalMode(null); }} onSaved={() => setEditModalMode(null)} />}
 
         {data.requiresReboot && <div role="status" className={styles.rebootNotice}>
             <Info className={styles.smallIcon} aria-hidden="true" />Los recursos guardados se aplicarán al reiniciar la instancia.
@@ -87,10 +104,12 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                     <GeneralDataOfInstance instance={displayedInstance} detail={data.detail} metrics={data.metrics}
                         timeframe={data.timeframe} onTimeframeChange={data.setTimeframe}
                         metricsLoading={data.metricsLoading} metricsError={data.metricsError} onRetry={data.refresh}
-                        canEdit={canEdit && !isBusy && !data.isSaving} onEditResources={() => setActiveTab('recursos')} onViewNetwork={() => setActiveTab('red')} />
+                        canEdit={canEdit && !isBusy && !isSavingResources} onEditResources={() => setActiveTab('recursos')} onViewNetwork={() => setActiveTab('red')} />
                 </TabsContent>
                 <TabsContent value="recursos">
-                    <InstanceResourcesPanel configuration={data.editableConfiguration} onChange={data.updateResource} disabled={!canEdit || isBusy || data.isSaving} />
+                    <InstanceResourcesPanel values={data.editableConfiguration} current={data.appliedConfiguration} editor={editor}
+                        status={instance.status} canEdit={canEdit && !isBusy} isSaving={isSavingResources}
+                        onChange={data.updateResource} onEditResources={() => setEditModalMode('edit')} />
                 </TabsContent>
                 <TabsContent value="red">
                     <Card className={styles.contentCard}>
