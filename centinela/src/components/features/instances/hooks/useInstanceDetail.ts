@@ -23,6 +23,7 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
     const [pendingConfiguration, setPendingConfiguration] = useState<Partial<InstanceResourceConfiguration>>({});
     const [requiresReboot, setRequiresReboot] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const savingInProgress = useRef(false);
     const pendingConfigurationRef = useRef<Partial<InstanceResourceConfiguration>>({});
 
@@ -97,6 +98,7 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
         || editableConfiguration.ramMb !== appliedConfiguration.ramMb;
 
     function updateResource(field: keyof InstanceResourceConfiguration, value: number) {
+        setSaveError(null);
         setResourceDraft((draft) => ({ ...draft, [field]: value }));
     }
 
@@ -109,9 +111,10 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
     }
 
     async function saveChanges(canSave: boolean) {
-        if (!canSave || !hasChanges || savingInProgress.current || !detail) return;
+        if (!canSave || !hasChanges || savingInProgress.current || !detail) return false;
         savingInProgress.current = true;
         setIsSaving(true);
+        setSaveError(null);
         try {
             const changes: Partial<InstanceResourceConfiguration> = {};
             if (editableConfiguration.cores !== appliedConfiguration.cores) changes.cores = editableConfiguration.cores!;
@@ -129,8 +132,12 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
                 type: result.requiresReboot ? 'warning' : 'success',
             });
             refresh();
+            return true;
         } catch (error) {
-            toast.add({ title: 'No se pudieron guardar los cambios', description: getErrorMessage(error), type: 'error' });
+            const message = getErrorMessage(error);
+            setSaveError(message);
+            toast.add({ title: 'No se pudieron guardar los cambios', description: message, type: 'error' });
+            return false;
         } finally {
             savingInProgress.current = false;
             setIsSaving(false);
@@ -140,6 +147,7 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
     return {
         detail, isLoading, errorMessage, metrics, metricsError, metricsLoading, timeframe,
         setTimeframe: changeTimeframe, refresh, editableConfiguration, updateResource, hasChanges, isSaving,
-        saveChanges, requiresReboot,
+        saveChanges, saveError, requiresReboot, appliedConfiguration,
+        resetResources: () => { setResourceDraft({}); setSaveError(null); },
     };
 }
