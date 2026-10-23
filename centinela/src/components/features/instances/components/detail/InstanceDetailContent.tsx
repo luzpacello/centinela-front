@@ -90,7 +90,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                         canEdit={canEdit && !isBusy && !data.isSaving} onEditResources={() => setActiveTab('recursos')} onViewNetwork={() => setActiveTab('red')} />
                 </TabsContent>
                 <TabsContent value="recursos">
-                    <InstanceResourcesPanel configuration={data.editableConfiguration} onChange={data.updateResource} disabled={!canEdit || isBusy || data.isSaving} />
+                    <InstanceResourcesPanel />
                 </TabsContent>
                 <TabsContent value="red">
                     <Card className={styles.contentCard}>
