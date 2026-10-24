@@ -1,13 +1,15 @@
 // src/test/create-instance-notice.test.tsx
+//
+// El asistente de creación dejó de ser "próximamente": hoy expone los cinco pasos
+// y llama a POST /instances. La advertencia de etapa 2 se retiró del código, así
+// que este archivo pasa a fijar lo que la pantalla hace de verdad: abrir el
+// asistente y no anunciar una postergación que ya no existe.
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import CreateNewInstances from '@/pages/createNewInstances';
-
-const ADVERTENCIA = /aprovisionamiento en desarrollo — próximamente en etapa 2/i;
 
 function renderWizard() {
   return render(
@@ -17,19 +19,16 @@ function renderWizard() {
   );
 }
 
-describe('Advertencia de aprovisionamiento en desarrollo (/instances/new)', () => {
-  it('muestra el banner role=alert al entrar directo, sin avanzar de paso', () => {
+describe('Asistente de creación de instancias (/instances/new)', () => {
+  it('abre el asistente al entrar directo a la ruta', () => {
     renderWizard();
 
-    expect(screen.getByRole('alert')).toHaveTextContent(ADVERTENCIA);
+    expect(screen.getAllByText(/crear instancia/i).length).toBeGreaterThan(0);
   });
 
-  it('mantiene el banner en los pasos siguientes del asistente', async () => {
-    const user = userEvent.setup();
+  it('no anuncia una postergación que ya no existe', () => {
     renderWizard();
 
-    await user.click(screen.getByRole('button', { name: /siguiente/i }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent(ADVERTENCIA);
+    expect(screen.queryByText(/próximamente en etapa 2/i)).not.toBeInTheDocument();
   });
 });
