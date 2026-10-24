@@ -146,13 +146,28 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        await user.click(screen.getByRole('tab', { name: /detenidas/i }));
+        // El estado se elige desde el desplegable "Filtros" de la barra.
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Detenidas' }));
 
         expect(screen.getByText('base-datos')).toBeInTheDocument();
         expect(screen.getByText('vm-pausada')).toBeInTheDocument();
         expect(screen.queryByText('vm-produccion')).not.toBeInTheDocument();
         expect(getSummary()).toHaveTextContent('Mostrando 2 de 3 instancias');
-        expect(screen.getByText('Detenidas').parentElement).toHaveTextContent('2');
+        expect(getMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('filtra solo las instancias en ejecución y sincroniza el contador', async () => {
+        const { user } = renderInstances();
+        await screen.findByText('vm-produccion');
+
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Encendidas' }));
+
+        expect(screen.getByText('vm-produccion')).toBeInTheDocument();
+        expect(screen.queryByText('base-datos')).not.toBeInTheDocument();
+        expect(screen.queryByText('vm-pausada')).not.toBeInTheDocument();
+        expect(getSummary()).toHaveTextContent('Mostrando 1 de 3 instancias');
         expect(getMock).toHaveBeenCalledTimes(1);
     });
 
@@ -176,8 +191,8 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        // Clic directo al botón visible de VM
-        await user.click(screen.getByRole('button', { name: /^vm\b/i }));
+        // El tipo se elige desde las pestañas de la cabecera.
+        await user.click(screen.getByRole('tab', { name: /Maquina virtual \(VM\)/i }));
 
         expect(screen.getByText('vm-produccion')).toBeInTheDocument();
         expect(screen.getByText('vm-pausada')).toBeInTheDocument();
@@ -190,8 +205,8 @@ describe('Filtros del inventario de instancias', () => {
         const { user } = renderInstances();
         await screen.findByText('vm-produccion');
 
-        // Clic directo al botón visible de LXC
-        await user.click(screen.getByRole('button', { name: /^lxc\b/i }));
+        // El tipo se elige desde las pestañas de la cabecera.
+        await user.click(screen.getByRole('tab', { name: /Contenedor \(LXC\)/i }));
 
         expect(screen.getByText('base-datos')).toBeInTheDocument();
         expect(screen.queryByText('vm-produccion')).not.toBeInTheDocument();

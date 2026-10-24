@@ -47,7 +47,7 @@ describe('InstanceFiltersBar', () => {
     expect(onSearchChange).toHaveBeenCalled();
   });
 
-  it('permite cambiar el filtro de estado a encendidas', async () => {
+  it('permite cambiar el filtro de estado a en ejecución', async () => {
     const user = userEvent.setup();
     const onStatusFilterChange = vi.fn();
 

@@ -1,10 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-undef */
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { format, startOfDay, subMonths } from 'date-fns';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from '@/services/apiClient';
 import AuditoriaPage from '@/pages/Auditoria';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
+import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel } from '@/utils/auditActionLabels';
 
 // 1. Mock de las dependencias de tu proyecto
 vi.mock('@/services/apiClient', () => {
@@ -31,12 +33,33 @@ vi.mock('@/storage/tokenStorage', () => {
 // Mockeamos el router para espiar si la app intenta cambiar de página
 vi.mock('react-router', () => ({
     useNavigate: vi.fn(),
+    // La página lee el estado de navegación para llegar con un usuario prefiltrarlo.
+    useLocation: vi.fn(),
 }));
 
 // Mockeamos el contexto de usuario
 vi.mock('@/hooks/useAuth', () => ({
     useAuth: vi.fn(),
 }));
+
+
+// La página abre con el rango por defecto (último mes) y arma la consulta en este
+// orden: pagina, tamano, acciones excluidas, filtros y por último el rango de fechas.
+// Se replica con URLSearchParams para no duplicar el escapado: la coma de la lista
+// de acciones excluidas viaja como %2C.
+function urlAuditoria({ accion = '', resultado = '' }: { accion?: string; resultado?: string } = {}) {
+    const hoy = startOfDay(new Date());
+    const params = new URLSearchParams({
+        pagina: '1',
+        tamano: '10',
+        excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
+    });
+    if (accion) params.set('accion', accion);
+    if (resultado) params.set('resultado', resultado);
+    params.set('desde', format(subMonths(hoy, 1), 'yyyy-MM-dd'));
+    params.set('hasta', format(hoy, 'yyyy-MM-dd'));
+    return `/admin/audit?${params.toString()}`;
+}
 
 describe('AuditoriaPage', () => {
     const mockNavigate = vi.fn();
@@ -45,6 +68,13 @@ describe('AuditoriaPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+        vi.mocked(useLocation).mockReturnValue({
+            pathname: '/auditoria',
+            search: '',
+            hash: '',
+            state: null,
+            key: 'default',
+        } as unknown as ReturnType<typeof useLocation>);
 
         window.sessionStorage.clear();
         window.sessionStorage.setItem('centinela_user', JSON.stringify({ nombre: 'Admin Test', rol: 'ADMIN' }));
@@ -73,7 +103,7 @@ describe('AuditoriaPage', () => {
 
         // Verifica que llamó a la API en el useEffect (página 1, tamaño 10)
         expect(apiClient.get).toHaveBeenCalledWith(
-            '/admin/audit?pagina=1&tamano=10',
+            urlAuditoria(),
             expect.any(Object)
         );
 
@@ -109,7 +139,7 @@ describe('AuditoriaPage', () => {
         // Nota: El token Bearer se asume configurado dentro de la implementación real de apiClient,
         // por lo que aquí validamos que el componente consuma la ruta exacta.
         expect(apiClient.get).toHaveBeenCalledWith(
-            '/admin/audit?pagina=1&tamano=10',
+            urlAuditoria(),
             expect.objectContaining({
                 signal: expect.any(AbortSignal) // Verificamos que también pase el controller para cancelar peticiones
             })
@@ -119,70 +149,30 @@ describe('AuditoriaPage', () => {
         // Buscamos elementos clave que confirmen que la fila está en el DOM
         const usuarioRenderizado = await screen.findByText('Carlos Admin');
         expect(usuarioRenderizado).toBeInTheDocument();
-        expect(screen.getByText('CREAR_ROL')).toBeInTheDocument();
+        // La tabla muestra la etiqueta legible de la acción, no el código crudo.
+        expect(screen.getByText(auditActionLabel('CREAR_ROL'))).toBeInTheDocument();
         expect(screen.getByText('Roles')).toBeInTheDocument();
     });
 
-    it('Reactividad de Filtros: debe invocar al endpoint con los query params al cambiar los filtros', async () => {
+    it('Reactividad de Filtros: rearma la consulta al elegir acción y resultado', async () => {
+        const user = userEvent.setup();
         render(<AuditoriaPage />);
+        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
 
-        // 1. Obtenemos los inputs mediante el aria-label que Nico les configuró
-        const inputDesde = screen.getByLabelText('Desde');
-        const inputHasta = screen.getByLabelText('Hasta');
-        const inputAccion = screen.getByLabelText('Acción');
-        const selectResultado = screen.getByLabelText('Resultado');
-
-        // Limpiamos el registro del mock para ignorar la llamada inicial del montaje
         vi.mocked(apiClient.get).mockClear();
 
-        // 2. Simulamos que el usuario completa los filtros
-        fireEvent.change(inputDesde, { target: { value: '2023-10-01' } });
-        fireEvent.change(inputHasta, { target: { value: '2023-10-31' } });
-        fireEvent.change(inputAccion, { target: { value: 'LOGIN' } });
-        fireEvent.change(selectResultado, { target: { value: 'EXITO' } });
+        // La acción sale del desplegable "Filtros" y el resultado de las pestañas.
+        // El texto del desplegable es la etiqueta de AUDIT_ACTION_OPTIONS, así que se
+        // toma de ahí para no duplicar el texto en el test.
+        const opcionLogin = AUDIT_ACTION_OPTIONS.find((opcion) => opcion.value === 'LOGIN');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: opcionLogin?.label ?? 'LOGIN' }));
+        await user.click(screen.getByRole('tab', { name: /exitosos/i }));
 
-        // 3. Verificamos que la URL se arme correctamente con todos los parámetros
-        // Usamos waitFor porque los cambios de estado en React son asíncronos y 
-        // pueden agruparse (batching) antes de disparar el useEffect.
         await waitFor(() => {
-            // El orden de los parámetros coincide con cómo se hace el "params.set" en tu componente
             expect(apiClient.get).toHaveBeenCalledWith(
-                '/admin/audit?pagina=1&tamano=10&accion=LOGIN&resultado=EXITO&desde=2023-10-01&hasta=2023-10-31',
-                expect.objectContaining({
-                    signal: expect.any(AbortSignal)
-                })
-            );
-        });
-    });
-
-    it('Reactividad de Filtros: debe invocar al endpoint con los query params al cambiar los filtros', async () => {
-        render(<AuditoriaPage />);
-
-        // 1. Obtenemos los inputs mediante el aria-label que Nico les configuró
-        const inputDesde = screen.getByLabelText('Desde');
-        const inputHasta = screen.getByLabelText('Hasta');
-        const inputAccion = screen.getByLabelText('Acción');
-        const selectResultado = screen.getByLabelText('Resultado');
-
-        // Limpiamos el registro del mock para ignorar la llamada inicial del montaje
-        vi.mocked(apiClient.get).mockClear();
-
-        // 2. Simulamos que el usuario completa los filtros
-        fireEvent.change(inputDesde, { target: { value: '2023-10-01' } });
-        fireEvent.change(inputHasta, { target: { value: '2023-10-31' } });
-        fireEvent.change(inputAccion, { target: { value: 'LOGIN' } });
-        fireEvent.change(selectResultado, { target: { value: 'EXITO' } });
-
-        // 3. Verificamos que la URL se arme correctamente con todos los parámetros
-        // Usamos waitFor porque los cambios de estado en React son asíncronos y 
-        // pueden agruparse (batching) antes de disparar el useEffect.
-        await waitFor(() => {
-            // El orden de los parámetros coincide con cómo se hace el "params.set" en tu componente
-            expect(apiClient.get).toHaveBeenCalledWith(
-                '/admin/audit?pagina=1&tamano=10&accion=LOGIN&resultado=EXITO&desde=2023-10-01&hasta=2023-10-31',
-                expect.objectContaining({
-                    signal: expect.any(AbortSignal)
-                })
+                urlAuditoria({ accion: 'LOGIN', resultado: 'EXITO' }),
+                expect.objectContaining({ signal: expect.any(AbortSignal) }),
             );
         });
     });
@@ -222,6 +212,28 @@ describe('AuditoriaPage', () => {
         // 6. Verificamos que NO haya aparecido el mensaje de error de exportación en pantalla
         // queryByText devuelve null si no lo encuentra (a diferencia de getByText que tira error)
         expect(screen.queryByText('No se pudo exportar la auditoría. Intentá nuevamente.')).not.toBeInTheDocument();
+    });
+
+    it('prefiltra el usuario que llega desde el listado de usuarios', async () => {
+        // Llegar con estado de navegación es lo que motivó useLocation en la página.
+        vi.mocked(useLocation).mockReturnValue({
+            pathname: '/auditoria',
+            search: '',
+            hash: '',
+            state: { auditUser: { id: 'u-7', label: 'Carlos Admin' } },
+            key: 'default',
+        } as unknown as ReturnType<typeof useLocation>);
+
+        render(<AuditoriaPage />);
+
+        expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('Carlos Admin');
+
+        await waitFor(() => {
+            expect(apiClient.get).toHaveBeenCalledWith(
+                expect.stringContaining('usuarioId=u-7'),
+                expect.anything(),
+            );
+        });
     });
 
     it('Seguridad (Guardias): debe redireccionar a /dashboard y no llamar a la API si el rol es OPERATOR', () => {
