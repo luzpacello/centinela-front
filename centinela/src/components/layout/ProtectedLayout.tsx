@@ -1,6 +1,7 @@
 import { Outlet, useLoaderData } from 'react-router';
 import MainLayout from './MainLayout';
 import { EventsProvider } from '@/context/EventsContext';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 
 // Raíz protegida: garantiza sesión activa y muestra el usuario logueado + logout.
@@ -12,7 +13,9 @@ export default function ProtectedLayout() {
   return (
     <MainLayout user={user}>
       <EventsProvider>
-        <Outlet />
+        <PendingInstanceCreationsProvider>
+          <Outlet />
+        </PendingInstanceCreationsProvider>
       </EventsProvider>
     </MainLayout>
   );

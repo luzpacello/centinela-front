@@ -57,6 +57,7 @@ import {
     type NodeStatusResponse,
 } from '@/components/features/dashboard/services/nodeStatusService';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 import Dashboard from '@/pages/Dashboard';
 
 const getMock = apiClient.get as unknown as Mock;
@@ -110,13 +111,15 @@ const auditPage = {
 
 function renderDashboard() {
     return render(
-        <MemoryRouter initialEntries={['/']}>
-            <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/instances" element={<div>pantalla-instancias</div>} />
-                <Route path="/auditoria" element={<div>pantalla-auditoria</div>} />
-            </Routes>
-        </MemoryRouter>,
+        <PendingInstanceCreationsProvider>
+            <MemoryRouter initialEntries={['/']}>
+                <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/instances" element={<div>pantalla-instancias</div>} />
+                    <Route path="/auditoria" element={<div>pantalla-auditoria</div>} />
+                </Routes>
+            </MemoryRouter>
+        </PendingInstanceCreationsProvider>,
     );
 }
 

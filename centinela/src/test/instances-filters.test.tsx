@@ -45,6 +45,7 @@ vi.mock('@/services/apiClient', () => ({
 }));
 
 import { apiClient } from '@/services/apiClient';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 import Instances from '@/pages/Instances';
 
 const getMock = apiClient.get as unknown as Mock;
@@ -95,7 +96,9 @@ function renderInstances() {
         user: userEvent.setup(),
         ...render(
             <MemoryRouter>
-                <Instances />
+                <PendingInstanceCreationsProvider>
+                    <Instances />
+                </PendingInstanceCreationsProvider>
             </MemoryRouter>,
         ),
     };

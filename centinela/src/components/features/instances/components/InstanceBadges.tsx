@@ -23,6 +23,14 @@ export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
   activeTask?: InstanceActiveTask | null;
   pendingAction?: InstancePowerAction;
 }) {
+  if (activeTask?.status === 'RUNNING' && ['CREATE', 'CREATION', 'PROVISION'].includes(activeTask.action.toUpperCase())) {
+    return (
+      <Badge variant="secondary" className="border-0 bg-blue-50 text-blue-700">
+        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+        Creando…
+      </Badge>
+    );
+  }
   const action = pendingAction ?? (activeTask?.status === 'RUNNING' ? activeTask.action.toLowerCase() : null);
   const targetStatus = action === 'start' ? 'running' : action === 'stop' ? 'stopped' : null;
   if (targetStatus && status.toLowerCase() !== targetStatus) {

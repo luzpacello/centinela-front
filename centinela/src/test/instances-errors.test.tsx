@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { MemoryRouter } from 'react-router';
 import { getErrorMessage } from '@/utils/errorMapper';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 
 vi.mock('@/context/EventsContext', () => ({
   useEventsContext: () => ({ estado: 'open', ultimoMensaje: null, error: null, motivoCierre: null }),
@@ -115,7 +116,9 @@ describe('Mapeo de errores específicos en modales operativos', () => {
       const user = userEvent.setup();
       render(
         <MemoryRouter>
-          <Instances />
+          <PendingInstanceCreationsProvider>
+            <Instances />
+          </PendingInstanceCreationsProvider>
         </MemoryRouter>
       );
 

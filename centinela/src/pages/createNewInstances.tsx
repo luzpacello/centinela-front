@@ -20,6 +20,7 @@ export default function CreateNewInstances() {
         isCreatingInstance,
         canCreateInstance,
         currentStepError,
+        submissionError,
         hasConfirmedConfiguration,
         setHasConfirmedConfiguration,
         storages,
@@ -39,6 +40,7 @@ export default function CreateNewInstances() {
     } = useCreateInstanceWizard();
 
     function goBack() {
+        if (isCreatingInstance) return;
         navigate(-1);
     }
 
@@ -67,28 +69,34 @@ export default function CreateNewInstances() {
                 </div>
 
                 <div className={styles.headerActions}>
-                    <Button type="button" variant="outline" onClick={goBack}>
+                    <Button type="button" variant="outline" onClick={goBack} disabled={isCreatingInstance}>
                         Cancelar
                     </Button>                    
-                    <Button type="button" variant="outline" onClick={goToPreviousStep} disabled={currentStep === 1}>
+                    <Button type="button" variant="outline" onClick={goToPreviousStep} disabled={currentStep === 1 || isCreatingInstance}>
                         <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
                         Anterior
                     </Button>
                     {isReviewStep ? (
-                        <Button type="button" onClick={createNewInstance} disabled={!canCreateInstance}>
+                        <Button type="button" onClick={createNewInstance} disabled={!canCreateInstance || isCreatingInstance}>
                             {isCreatingInstance
                                 ? <Loader2 className={styles.loadingIcon} aria-hidden="true" />
                                 : <Play className={styles.smallIcon} aria-hidden="true" />}
                             {isCreatingInstance ? 'Creando instancia...' : 'Crear Instancia'}
                         </Button>
                     ) : (
-                        <Button type="button" onClick={goToNextStep} disabled={Boolean(currentStepError)}>
+                        <Button type="button" onClick={goToNextStep} disabled={Boolean(currentStepError) || isCreatingInstance}>
                             Siguiente
                             <ArrowRight className={styles.smallIcon} aria-hidden="true" />
                         </Button>
                     )}
                 </div>
             </header>
+
+            {submissionError && (
+                <div role="alert" className={styles.submissionError}>
+                    {submissionError}
+                </div>
+            )}
 
             <Card className={styles.stepperCard}>
                 <div className={styles.stepperContainer}>
@@ -168,6 +176,7 @@ const styles = {
     headerActions: 'flex w-full flex-wrap gap-3 lg:w-auto lg:justify-end',
     smallIcon: 'size-4!',
     loadingIcon: 'size-4! animate-spin',
+    submissionError: 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800',
     stepperCard: 'overflow-x-auto rounded-xl border-slate-100 px-5 py-4 shadow-sm ring-0',
     stepperContainer: 'min-w-[48rem]',
     creationContentGrid: 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]',

@@ -40,6 +40,10 @@ function describeTransitionAction(action: string): string {
       return 'Reiniciando…';
     case 'DELETE':
       return 'Eliminando…';
+    case 'CREATE':
+    case 'CREATION':
+    case 'PROVISION':
+      return 'Creando…';
     default:
       return 'Operación en progreso…';
   }
