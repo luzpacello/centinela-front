@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchInstanceInventory } from '../services/instanceService';
-import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../types/instance';
+import type { InventoryInstance, InstancePowerAction, InstanceRef, InstanceTransition } from '../types/instance';
 import { useEventsContext } from '@/context/EventsContext';
 import { toast } from '@/components/ui/toast';
 import type { CentinelaEventsMessage } from '@/services/eventsClient';
@@ -75,17 +75,17 @@ function getTargetStatus(action: InstancePowerAction): InventoryInstance['status
 // estado objetivo. Devuelve el mismo mapa si nada convergió, para no forzar
 // renders ni re-ejecutar el efecto de polling sin necesidad.
 function convergePendingPowerActions(
-  previous: Record<number, PendingPowerAction>,
+  previous: Record<string, PendingPowerAction>,
   inventory: InventoryInstance[],
-): Record<number, PendingPowerAction> {
+): Record<string, PendingPowerAction> {
   let changed = false;
   const next = { ...previous };
   for (const [vmid, pending] of Object.entries(previous)) {
-    const instance = inventory.find((item) => item.id === Number(vmid));
+    const instance = inventory.find((item) => String(item.id) === vmid);
     if (!instance) continue;
     const targetStatus = getTargetStatus(pending.action);
     if (instance.status === targetStatus) {
-      delete next[Number(vmid)];
+      delete next[vmid];
       changed = true;
     }
   }
@@ -98,7 +98,7 @@ export function useInstances() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
-  const [pendingPowerActions, setPendingPowerActions] = useState<Record<number, PendingPowerAction>>({});
+  const [pendingPowerActions, setPendingPowerActions] = useState<Record<string, PendingPowerAction>>({});
   // Cuenta separada para la revalidación silenciosa: actualiza la tabla sin
   // activar el loader general de pantalla.
   const [silentReloadCount, setSilentReloadCount] = useState(0);
@@ -107,25 +107,26 @@ export function useInstances() {
   const [finishedTaskIds, setFinishedTaskIds] = useState<ReadonlySet<string>>(() => new Set());
   const showRefreshError = useRef(true);
   const hadRunningTask = useRef(false);
-  const deletedInstanceIds = useRef(new Set<number>());
+  const deletedInstanceIds = useRef(new Set<string>());
   const { ultimoMensaje, estado } = useEventsContext();
 
   // Espejo de las acciones pendientes para leerlas desde los efectos silencioso
   // y de eventos sin depender del estado (evita closures obsoletos).
-  const pendingPowerActionsRef = useRef<Record<number, PendingPowerAction>>({});
+  const pendingPowerActionsRef = useRef<Record<string, PendingPowerAction>>({});
   useEffect(() => {
     pendingPowerActionsRef.current = pendingPowerActions;
   }, [pendingPowerActions]);
 
   const displayInstances = useMemo(() => {
-    const byId = new Map(instances.map((instance) => [instance.id, instance]));
+    const byId = new Map(instances.map((instance) => [String(instance.id), instance]));
     for (const creation of creations) {
-        const serverInstance = byId.get(creation.instance.id);
+        const creationId = String(creation.instance.id);
+        const serverInstance = byId.get(creationId);
         if (!serverInstance) {
-            byId.set(creation.instance.id, creation.instance);
+            byId.set(creationId, creation.instance);
             continue;
         }
-        byId.set(creation.instance.id, creation.status === 'creating'
+        byId.set(creationId, creation.status === 'creating'
             ? {
                 ...creation.instance,
                 ...serverInstance,
@@ -139,18 +140,19 @@ export function useInstances() {
 
   useEffect(() => {
     for (const creation of creations) {
-        const serverInstance = instances.find((instance) => instance.id === creation.instance.id);
+        const serverInstance = instances.find((instance) => String(instance.id) === String(creation.instance.id));
         const serverHasCreationTask = serverInstance?.activeTask?.tareaId === creation.tareaId;
         const serverHasFinalState = creation.status === 'stopped' && serverInstance?.status === 'stopped';
         if (serverHasCreationTask || serverHasFinalState) removeCreation(creation.instance.id);
     }
   }, [creations, instances, removeCreation]);
 
-  const clearPendingPowerAction = useCallback((vmid: number) => {
+  const clearPendingPowerAction = useCallback((vmid: InstanceRef) => {
+    const key = String(vmid);
     setPendingPowerActions((previous) => {
-      if (!previous[vmid]) return previous;
+      if (!previous[key]) return previous;
       const next = { ...previous };
-      delete next[vmid];
+      delete next[key];
       return next;
     });
   }, []);
@@ -161,12 +163,12 @@ export function useInstances() {
   // Devuelve el mapa de acciones aún pendientes para decidir si seguir el poll.
   const settleInventory = useCallback((
     inventory: InventoryInstance[],
-    currentPending: Record<number, PendingPowerAction>,
-  ): Record<number, PendingPowerAction> => {
-    for (const vmid of deletedInstanceIds.current) {
-      if (!inventory.some((instance) => instance.id === vmid)) deletedInstanceIds.current.delete(vmid);
+    currentPending: Record<string, PendingPowerAction>,
+  ): Record<string, PendingPowerAction> => {
+    for (const id of deletedInstanceIds.current) {
+      if (!inventory.some((instance) => String(instance.id) === id)) deletedInstanceIds.current.delete(id);
     }
-    const visibleInventory = inventory.filter((instance) => !deletedInstanceIds.current.has(instance.id));
+    const visibleInventory = inventory.filter((instance) => !deletedInstanceIds.current.has(String(instance.id)));
     setInstances(visibleInventory);
     setErrorMessage(null);
     showRefreshError.current = false;
@@ -183,10 +185,10 @@ export function useInstances() {
     setReloadCount((previousCount) => previousCount + 1);
   }, []);
 
-  const markPowerActionAccepted = useCallback((vmid: number, action: InstancePowerAction) => {
+  const markPowerActionAccepted = useCallback((vmid: InstanceRef, action: InstancePowerAction) => {
     setPendingPowerActions((previous) => ({
       ...previous,
-      [vmid]: { action },
+      [String(vmid)]: { action },
     }));
   }, []);
 
@@ -284,11 +286,11 @@ export function useInstances() {
     const isCompletedDeletion = ultimoMensaje.tipo === 'TASK_FINISHED'
       && action?.toLowerCase() === 'delete'
       && readDetalleString(ultimoMensaje.detalles, 'estado') === 'COMPLETED';
-    const deletedVmid = Number(ultimoMensaje.recursoId);
-    if (isCompletedDeletion && Number.isSafeInteger(deletedVmid) && deletedVmid > 0) {
-      deletedInstanceIds.current.add(deletedVmid);
+    const deletedRef = ultimoMensaje.recursoId.trim();
+    if (isCompletedDeletion && deletedRef) {
+      deletedInstanceIds.current.add(deletedRef);
       queueMicrotask(() => {
-        setInstances((current) => current.filter((instance) => instance.id !== deletedVmid));
+        setInstances((current) => current.filter((instance) => String(instance.id) !== deletedRef));
         revalidateInventory();
       });
       return;
@@ -314,11 +316,11 @@ export function useInstances() {
   // Estado de transición por fila: se deriva del inventario vigente y descarta
   // las tareas ya cerradas por evento. Es la "tarea guardada en la fila".
   const transitioningTasks = useMemo(() => {
-    const transitions: Record<number, InstanceTransition> = {};
+    const transitions: Record<string, InstanceTransition> = {};
     for (const instance of displayInstances) {
       const activeTask = instance.activeTask;
       if (activeTask?.status === 'RUNNING' && !finishedTaskIds.has(activeTask.tareaId)) {
-        transitions[instance.id] = {
+        transitions[String(instance.id)] = {
           isTransitioning: true,
           tareaId: activeTask.tareaId,
           action: activeTask.action,

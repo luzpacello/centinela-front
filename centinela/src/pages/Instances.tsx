@@ -32,12 +32,9 @@ import { Link } from 'react-router';
 
 export default function Instances() {
     const navigate = useNavigate();
-    const { user, isAdmin, canAccessInstance } = useAuth();
+    const { user, isAdmin } = useAuth();
     const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
-    const visibleInstances = useMemo(
-        () => instances.filter((instance) => canAccessInstance(instance.id)),
-        [instances, canAccessInstance],
-    );
+    const visibleInstances = instances;
     const vmInstanceCount = visibleInstances.filter((instance) => instance.type === 'VM').length;
     const lxcInstanceCount = visibleInstances.filter((instance) => instance.type === 'LXC').length;
     const [search, setSearch] = useState('');

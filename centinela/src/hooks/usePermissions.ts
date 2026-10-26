@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { getStoredUserSession, AUTH_SESSION_CHANGED_EVENT, type StoredSessionUser } from '@/services/api';
 import { canUserAccessInstance } from '@/components/features/auth/utils/instanceAccess';
+import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 function subscribeToSessionChanges(onSessionChange: () => void) {
   window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionChange);
@@ -22,11 +23,11 @@ export function usePermissions() {
   const isAdmin = user?.rol === 'ADMIN';
   const userPermissions = Array.isArray(user?.permisos) ? user.permisos : [];
 
-  function canAccessInstance(vmid: number): boolean {
+  function canAccessInstance(vmid: InstanceRef): boolean {
     return canUserAccessInstance(user, vmid);
   }
 
-  function canOperateInstance(vmid: number): boolean {
+  function canOperateInstance(vmid: InstanceRef): boolean {
     if (isAdmin) return true;
     if (user?.rol !== 'OPERATOR') return false;
     // Una asignación antigua sin nivel permite consultar, pero nunca operar.

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from '@/components/ui/toast';
 import { useEventsContext } from '@/context/EventsContext';
-import type { InventoryInstance } from '../types/instance';
+import type { InstanceRef, InventoryInstance } from '../types/instance';
 
 export interface PendingInstanceCreation {
     instance: InventoryInstance;
@@ -11,8 +11,8 @@ export interface PendingInstanceCreation {
 
 interface PendingInstanceCreationsContextValue {
     creations: PendingInstanceCreation[];
-    addCreation: (vmid: number, tareaId: string, name: string, type: 'vm' | 'lxc') => void;
-    removeCreation: (vmid: number) => void;
+    addCreation: (vmid: InstanceRef, tareaId: string, name: string, type: 'vm' | 'lxc') => void;
+    removeCreation: (vmid: InstanceRef) => void;
 }
 
 const PendingInstanceCreationsContext = createContext<PendingInstanceCreationsContextValue | null>(null);
@@ -22,7 +22,7 @@ export function PendingInstanceCreationsProvider({ children }: { children: React
     const { ultimoMensaje } = useEventsContext();
     const handledEvents = useRef(new Set<string>());
 
-    const addCreation = useCallback((vmid: number, tareaId: string, name: string, type: 'vm' | 'lxc') => {
+    const addCreation = useCallback((vmid: InstanceRef, tareaId: string, name: string, type: 'vm' | 'lxc') => {
         const instance: InventoryInstance = {
             id: vmid,
             name,
@@ -32,13 +32,13 @@ export function PendingInstanceCreationsProvider({ children }: { children: React
             activeTask: { tareaId, action: 'CREATE', status: 'RUNNING' },
         };
         setCreations((current) => [
-            ...current.filter((creation) => creation.instance.id !== vmid),
+            ...current.filter((creation) => String(creation.instance.id) !== String(vmid)),
             { instance, tareaId, status: 'creating' },
         ]);
     }, []);
 
-    const removeCreation = useCallback((vmid: number) => {
-        setCreations((current) => current.filter((creation) => creation.instance.id !== vmid));
+    const removeCreation = useCallback((vmid: InstanceRef) => {
+        setCreations((current) => current.filter((creation) => String(creation.instance.id) !== String(vmid)));
     }, []);
 
     useEffect(() => {
@@ -47,16 +47,16 @@ export function PendingInstanceCreationsProvider({ children }: { children: React
 
         const details = message.detalles;
         const taskId = typeof details?.tareaId === 'string' ? details.tareaId : null;
-        const resourceId = Number(message.recursoId);
+        const resourceId = message.recursoId;
         const creation = creations.find((item) =>
             item.status === 'creating'
-            && (item.tareaId === taskId || item.instance.id === resourceId));
+            && (item.tareaId === taskId || String(item.instance.id) === resourceId));
         if (!creation) return;
 
         handledEvents.current.add(message.id);
         const state = typeof details?.estado === 'string' ? details.estado.toUpperCase() : '';
         if (state === 'COMPLETED') {
-            setCreations((current) => current.map((item) => item.instance.id === creation.instance.id
+            setCreations((current) => current.map((item) => String(item.instance.id) === String(creation.instance.id)
                 ? {
                     ...item,
                     status: 'stopped',
@@ -80,7 +80,7 @@ export function PendingInstanceCreationsProvider({ children }: { children: React
                 : reason === 'PROXMOX_ERROR'
                     ? error || exitStatus || 'Proxmox no pudo completar el aprovisionamiento.'
                     : error || exitStatus || 'La tarea de aprovisionamiento falló.';
-            setCreations((current) => current.filter((item) => item.instance.id !== creation.instance.id));
+            setCreations((current) => current.filter((item) => String(item.instance.id) !== String(creation.instance.id)));
             toast.add({
                 title: `No se pudo aprovisionar ${creation.instance.name} (${creation.instance.id})`,
                 description,
