@@ -46,6 +46,7 @@ vi.mock('@/services/apiClient', () => ({
 
 import { apiClient } from '@/services/apiClient';
 import { toast } from '@/components/ui/toast';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 import Instances from '@/pages/Instances';
 
 const getMock = apiClient.get as unknown as Mock;
@@ -72,7 +73,9 @@ function taskFinished(id: string, severidad: string, detalles: Record<string, un
 function renderInstances() {
   return render(
     <MemoryRouter>
-      <Instances />
+        <PendingInstanceCreationsProvider>
+          <Instances />
+        </PendingInstanceCreationsProvider>
       </MemoryRouter>
   );
 }
@@ -80,7 +83,9 @@ function renderInstances() {
 function rerenderInstances(rerender: (ui: React.ReactNode) => void) {
   rerender(
     <MemoryRouter>
-      <Instances />
+      <PendingInstanceCreationsProvider>
+        <Instances />
+      </PendingInstanceCreationsProvider>
     </MemoryRouter>
   );
 }

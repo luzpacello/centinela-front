@@ -3,17 +3,24 @@ import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import CreateNewInstances from '@/pages/createNewInstances';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
+
+vi.mock('@/context/EventsContext', () => ({
+    useEventsContext: () => ({ estado: 'open', ultimoMensaje: null, error: null, motivoCierre: null }),
+}));
 
 const ADVERTENCIA = /aprovisionamiento en desarrollo — próximamente en etapa 2/i;
 
 function renderWizard() {
   return render(
-    <MemoryRouter initialEntries={['/instances/new']}>
-      <CreateNewInstances />
-    </MemoryRouter>,
+    <PendingInstanceCreationsProvider>
+      <MemoryRouter initialEntries={['/instances/new']}>
+        <CreateNewInstances />
+      </MemoryRouter>
+    </PendingInstanceCreationsProvider>,
   );
 }
 

@@ -56,6 +56,7 @@ export default function ReviewInstanceConfiguration({
                     icon={FileText}
                     title="General"
                     onEdit={() => onEditStep(1)}
+                    isDisabled={isCreating}
                 >
                     <ConfigurationValue label="Tipo de instancia" value={instanceTypeLabel} />
                     <ConfigurationValue label="Nombre" value={draft.nombre} />
@@ -66,6 +67,7 @@ export default function ReviewInstanceConfiguration({
                     icon={Cpu}
                     title="Hardware"
                     onEdit={() => onEditStep(2)}
+                    isDisabled={isCreating}
                 >
                     <ConfigurationValue label="vCPU" value={draft.cores == null ? undefined : `${draft.cores} vCPU`} />
                     <ConfigurationValue label="Memoria RAM" value={formatMemory(draft.ramMb)} />
@@ -76,6 +78,7 @@ export default function ReviewInstanceConfiguration({
                     icon={HardDrive}
                     title="Almacenamiento e imagen"
                     onEdit={() => onEditStep(2)}
+                    isDisabled={isCreating}
                 >
                     <ConfigurationValue label="Almacenamiento" value={draft.storageId} />
                     <ConfigurationValue label="Espacio disponible" value={selectedStorage?.availableLabel} />
@@ -88,6 +91,7 @@ export default function ReviewInstanceConfiguration({
                     icon={Network}
                     title="Red"
                     onEdit={() => onEditStep(3)}
+                    isDisabled={isCreating}
                 >
                     <ConfigurationValue label="Modo de configuración" value={networkModeLabel} />
                     <ConfigurationValue
@@ -140,6 +144,7 @@ interface ConfigurationSectionProps {
     title: string;
     children: React.ReactNode;
     onEdit: () => void;
+    isDisabled: boolean;
 }
 
 function ConfigurationSection({
@@ -147,6 +152,7 @@ function ConfigurationSection({
     title,
     children,
     onEdit,
+    isDisabled,
 }: ConfigurationSectionProps) {
     return (
         <Card className={styles.configurationSectionCard}>
@@ -155,7 +161,7 @@ function ConfigurationSection({
                     <Icon className={styles.configurationSectionIcon} aria-hidden="true" />
                     <h3 className={styles.configurationSectionTitle}>{title}</h3>
                 </span>
-                <button type="button" className={styles.editButton} onClick={onEdit}>
+                <button type="button" className={styles.editButton} onClick={onEdit} disabled={isDisabled}>
                     <Pencil className={styles.editButtonIcon} aria-hidden="true" />
                     Editar
                 </button>

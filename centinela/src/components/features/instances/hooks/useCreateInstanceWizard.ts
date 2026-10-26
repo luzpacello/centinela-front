@@ -22,6 +22,7 @@ import type {
 } from '@/components/features/instances/types/createInstance';
 import { assessResourceQuota, getCreateInstanceDraftError, getCreateInstanceStepError } from '@/components/features/instances/validation/createInstanceValidation';
 import { useCreationNodeStatus } from '@/components/features/instances/hooks/useCreationNodeStatus';
+import { usePendingInstanceCreations } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 
 export function useCreateInstanceWizard() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -33,7 +34,9 @@ export function useCreateInstanceWizard() {
     const [templates, setTemplates] = useState<OperatingSystemTemplateOption[]>([]);
     const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
     const [catalogError, setCatalogError] = useState<string | null>(null);
+    const [submissionError, setSubmissionError] = useState<string | null>(null);
     const { nodeStatus, nodeStatusError, isLoadingNodeStatus } = useCreationNodeStatus(currentStep === 2);
+    const { addCreation } = usePendingInstanceCreations();
 
     useEffect(() => {
         const controller = new AbortController();
@@ -56,11 +59,13 @@ export function useCreateInstanceWizard() {
 
     const updateField: UpdateCreateInstanceField = (field, value) => {
         setHasConfirmedConfiguration(false);
+        setSubmissionError(null);
         setDraft((currentDraft) => ({ ...currentDraft, [field]: value }));
     };
 
     const updateNetworkField: UpdateInstanceNetworkField = (field, value) => {
         setHasConfirmedConfiguration(false);
+        setSubmissionError(null);
         setDraft((currentDraft) => ({
             ...currentDraft,
             red: { ...currentDraft.red, [field]: value },
@@ -69,6 +74,7 @@ export function useCreateInstanceWizard() {
 
     function selectInstanceType(type: InstanceType) {
         setHasConfirmedConfiguration(false);
+        setSubmissionError(null);
         setDraft((currentDraft) => ({
             ...currentDraft,
             tipo: type,
@@ -110,16 +116,22 @@ export function useCreateInstanceWizard() {
 
         creationInProgress.current = true;
         setIsCreatingInstance(true);
+        setSubmissionError(null);
         try {
             const payload = buildCreateInstancePayload(draft);
-            await createInstance(payload);
+            const result = await createInstance(payload);
+            addCreation(result.vmid, result.tareaId, payload.nombre, payload.tipo);
             toast.add({
                 title: 'Instancia en creación',
                 description: 'La solicitud fue aceptada y podés seguir su progreso desde el listado de instancias.',
-                type: 'success',
+                type: 'info',
             });
             return true;
         } catch (error) {
+            if (error instanceof ApiRequestError && error.status === 409 && error.errorCode === 'RESOURCE_QUOTA_EXCEEDED') {
+                setSubmissionError(error.message);
+                return false;
+            }
             if (!(error instanceof ApiRequestError && [401, 403].includes(error.status))) {
                 toast.add({
                     title: 'No se pudo crear la instancia',
@@ -143,6 +155,7 @@ export function useCreateInstanceWizard() {
         isCreatingInstance,
         canCreateInstance,
         currentStepError,
+        submissionError,
         hasConfirmedConfiguration,
         setHasConfirmedConfiguration,
         storages,

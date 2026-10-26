@@ -19,6 +19,7 @@ import {
 
 import InstancesPage from '@/pages/Instances';
 import { Toaster } from '@/components/ui/toast';
+import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 
 // ============================================================
 // Providers de la aplicación
@@ -160,7 +161,9 @@ function renderInstances({ rol, permisos = [] }: Session) {
     withProtectedProviders(
       <Toaster>
         <MemoryRouter initialEntries={['/instances']}>
-          <InstancesPage />
+          <PendingInstanceCreationsProvider>
+            <InstancesPage />
+          </PendingInstanceCreationsProvider>
         </MemoryRouter>
       </Toaster>,
     ),

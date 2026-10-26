@@ -4,6 +4,7 @@ import type { InventoryInstance, InstancePowerAction, InstanceTransition } from 
 import { useEventsContext } from '@/context/EventsContext';
 import { toast } from '@/components/ui/toast';
 import type { CentinelaEventsMessage } from '@/services/eventsClient';
+import { usePendingInstanceCreations } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 
 // Eventos que obligan a releer el inventario. El TASK_FINISHED además cierra el
 // ciclo de la fila que lo esperaba (spinner y bloqueo).
@@ -93,6 +94,7 @@ function convergePendingPowerActions(
 
 export function useInstances() {
   const [instances, setInstances] = useState<InventoryInstance[]>([]);
+  const { creations, removeCreation } = usePendingInstanceCreations();
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
@@ -114,6 +116,35 @@ export function useInstances() {
   useEffect(() => {
     pendingPowerActionsRef.current = pendingPowerActions;
   }, [pendingPowerActions]);
+
+  const displayInstances = useMemo(() => {
+    const byId = new Map(instances.map((instance) => [instance.id, instance]));
+    for (const creation of creations) {
+        const serverInstance = byId.get(creation.instance.id);
+        if (!serverInstance) {
+            byId.set(creation.instance.id, creation.instance);
+            continue;
+        }
+        byId.set(creation.instance.id, creation.status === 'creating'
+            ? {
+                ...creation.instance,
+                ...serverInstance,
+                status: 'creating',
+                activeTask: creation.instance.activeTask,
+            }
+            : { ...serverInstance, status: 'stopped', activeTask: null });
+    }
+    return [...byId.values()];
+  }, [instances, creations]);
+
+  useEffect(() => {
+    for (const creation of creations) {
+        const serverInstance = instances.find((instance) => instance.id === creation.instance.id);
+        const serverHasCreationTask = serverInstance?.activeTask?.tareaId === creation.tareaId;
+        const serverHasFinalState = creation.status === 'stopped' && serverInstance?.status === 'stopped';
+        if (serverHasCreationTask || serverHasFinalState) removeCreation(creation.instance.id);
+    }
+  }, [creations, instances, removeCreation]);
 
   const clearPendingPowerAction = useCallback((vmid: number) => {
     setPendingPowerActions((previous) => {
@@ -240,7 +271,12 @@ export function useInstances() {
       : null;
     if (finishedTareaId) {
       const target = instances.find((instance) => instance.activeTask?.tareaId === finishedTareaId);
-      if (target) notifyTaskResult(target, ultimoMensaje);
+      const finishedAction = readDetalleString(ultimoMensaje.detalles, 'accion')
+        ?? target?.activeTask?.action
+        ?? '';
+      if (target && !['CREATE', 'CREATION', 'PROVISION'].includes(finishedAction.toUpperCase())) {
+        notifyTaskResult(target, ultimoMensaje);
+      }
     }
 
     const action = readDetalleString(ultimoMensaje.detalles, 'accion')
@@ -279,7 +315,7 @@ export function useInstances() {
   // las tareas ya cerradas por evento. Es la "tarea guardada en la fila".
   const transitioningTasks = useMemo(() => {
     const transitions: Record<number, InstanceTransition> = {};
-    for (const instance of instances) {
+    for (const instance of displayInstances) {
       const activeTask = instance.activeTask;
       if (activeTask?.status === 'RUNNING' && !finishedTaskIds.has(activeTask.tareaId)) {
         transitions[instance.id] = {
@@ -290,10 +326,10 @@ export function useInstances() {
       }
     }
     return transitions;
-  }, [instances, finishedTaskIds]);
+  }, [displayInstances, finishedTaskIds]);
 
   return {
-    instances,
+    instances: displayInstances,
     isLoading,
     errorMessage,
     reloadInventory,

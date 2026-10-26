@@ -3,11 +3,12 @@ import type { InstanceActiveTask, InstancePowerActionResponse, InventoryInstance
 import type { CreateInstanceDraft, CreateInstancePayload, CreateInstanceResponse, OperatingSystemTemplateOption, StorageOption } from '../types/createInstance';
 import { DEFAULT_NETWORK_CONFIGURATION, DEFAULT_RESOURCE_CONFIGURATION } from '../data/createInstanceOptions';
 import { isValidStaticNetwork } from '../validation/createInstanceValidation';
+import { mockInstances } from '@/mocks/instances';
 
 export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
-//mockInstances es en caso de que se necesite instancias de prueba espara alguna tarea
-//const USE_INSTANCE_MOCKS = import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true';
+// mockInstances es en caso de que se necesite instancias de prueba espara alguna tarea
+const USE_INSTANCE_MOCKS = import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true';
 
 function validateInstanceVmid(vmid: number): number {
   if (!Number.isSafeInteger(vmid) || vmid <= 0) {
@@ -89,12 +90,12 @@ export async function fetchCreationTemplates(signal?: AbortSignal): Promise<Oper
 }
 
 export async function fetchInstanceInventory(signal?: AbortSignal): Promise<InventoryInstance[]> {
-  {/*if (USE_INSTANCE_MOCKS) {
+  if (USE_INSTANCE_MOCKS) {
     if (signal?.aborted) {
       throw new DOMException('Operación cancelada', 'AbortError');
     }
     return mockInstances.map((instance) => ({ ...instance }));
-  }*/}
+  }
   const response = await apiClient.get<unknown>('/instances', { signal, expectedStatus: 200 });
   if (!Array.isArray(response)) throw new ApiRequestError('No se pudo interpretar el inventario de instancias.');
   return response.map((value: unknown): InventoryInstance => {
@@ -127,9 +128,9 @@ export async function fetchInstanceInventory(signal?: AbortSignal): Promise<Inve
 
 export async function requestInstancePowerAction(vmid: number, action: InstancePowerAction): Promise<InstancePowerActionResponse> {
   const validVmid = validateInstanceVmid(vmid)
-  
+
   let endpoint: string;
-  
+
   switch (action) {
     case 'start':
     case 'stop':
@@ -156,10 +157,10 @@ export async function requestInstancePowerAction(vmid: number, action: InstanceP
   return response;
 }
 
-export async function deleteInstance( vmid: number ): Promise<InstancePowerActionResponse> {
+export async function deleteInstance(vmid: number): Promise<InstancePowerActionResponse> {
   const response = await apiClient.request<InstancePowerActionResponse>(
     `/instances/${validateInstanceVmid(vmid)}`,
-    { method: 'DELETE', expectedStatus: 202,},
+    { method: 'DELETE', expectedStatus: 202, },
   );
 
   if (!response || typeof response.tareaId !== 'string' || !response.tareaId.trim()) {
