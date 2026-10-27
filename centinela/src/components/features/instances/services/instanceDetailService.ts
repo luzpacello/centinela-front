@@ -6,10 +6,12 @@ import type {
     InstanceMetricsTimeframe,
     InstanceResourceConfiguration,
 } from '../types/instanceDetail';
+import type { InstanceRef } from '../types/instance';
 
-function instancePath(reference: string): string {
-    if (!reference.trim()) throw new ApiRequestError('La referencia de la instancia no es válida.');
-    return `/instances/${encodeURIComponent(reference)}`;
+function instancePath(reference: InstanceRef): string {
+    const normalizedReference = String(reference).trim();
+    if (!normalizedReference) throw new ApiRequestError('La referencia de la instancia no es válida.');
+    return `/instances/${encodeURIComponent(normalizedReference)}`;
 }
 
 function readNonNegativeNumber(value: unknown): number | null {
@@ -73,26 +75,32 @@ export async function fetchInstanceMetrics(
 }
 
 export async function updateInstanceConfiguration(
-    reference: string,
+    reference: InstanceRef,
     configuration: Partial<InstanceResourceConfiguration>,
 ): Promise<InstanceConfigurationResult> {
     if ((configuration.cores === undefined && configuration.ramMb === undefined)
-        || (configuration.cores !== undefined && (!Number.isInteger(configuration.cores) || configuration.cores < 1))
-        || (configuration.ramMb !== undefined && (!Number.isInteger(configuration.ramMb) || configuration.ramMb < 16))) {
-        throw new ApiRequestError('Ingresá una cantidad entera de CPU y una memoria de al menos 16 MiB.');
+        || (configuration.cores !== undefined && (!Number.isSafeInteger(configuration.cores) || configuration.cores < 1))
+        || (configuration.ramMb !== undefined && (!Number.isSafeInteger(configuration.ramMb) || configuration.ramMb < 16))) {
+        throw new ApiRequestError('Ingresá al menos un recurso válido: CPU entera positiva y/o memoria entera de al menos 16 MiB.');
     }
+    const payload: { cores?: number; ramMb?: number } = {};
+    if (configuration.cores !== undefined) payload.cores = configuration.cores;
+    if (configuration.ramMb !== undefined) payload.ramMb = configuration.ramMb;
     const response = await apiClient.request<unknown>(`${instancePath(reference)}/config`, {
         method: 'PUT',
-        payload: configuration,
+        payload,
         expectedStatus: 200,
     });
-    if (typeof response !== 'object' || response === null
-        || typeof (response as Record<string, unknown>).requiresReboot !== 'boolean') {
-        throw new ApiRequestError('No se pudo verificar la configuración aplicada. Actualizá el detalle antes de reintentar.');
+    if (typeof response !== 'object' || response === null) {
+        throw new ApiRequestError('El servidor devolvió una respuesta inválida al guardar los recursos.');
     }
     const result = response as Record<string, unknown>;
+    const requiresReboot = result.requiresReboot;
+    if (typeof requiresReboot !== 'boolean') {
+        throw new ApiRequestError('El servidor devolvió una respuesta inválida al guardar los recursos.');
+    }
     return {
-        requiresReboot: result.requiresReboot as boolean,
+        requiresReboot,
         message: typeof result.message === 'string' ? result.message : undefined,
     };
 }

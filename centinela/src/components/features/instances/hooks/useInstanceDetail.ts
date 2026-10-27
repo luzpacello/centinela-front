@@ -10,7 +10,11 @@ import type {
     InstanceResourceConfiguration,
 } from '../types/instanceDetail';
 
-export function useInstanceDetail(reference: string, inventoryStatus: string) {
+interface UseInstanceDetailOptions {
+    onConfigurationSaved?: (configuration: Partial<InstanceResourceConfiguration>) => void;
+}
+
+export function useInstanceDetail(reference: string, inventoryStatus: string, options: UseInstanceDetailOptions = {}) {
     const [detail, setDetail] = useState<InstanceDetail | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,8 +44,14 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
             try {
                 const result = await fetchInstanceDetail(reference, controller.signal);
                 if (controller.signal.aborted) return;
-                setDetail(result);
                 const pending = pendingConfigurationRef.current;
+                setDetail({
+                    ...result,
+                    cores: pending.cores ?? result.cores,
+                    memoryTotalBytes: pending.ramMb == null
+                        ? result.memoryTotalBytes
+                        : pending.ramMb * 1024 ** 2,
+                });
                 if (Object.keys(pending).length > 0
                     && (pending.cores === undefined || pending.cores === result.cores)
                     && (pending.ramMb === undefined || pending.ramMb * 1024 ** 2 === result.memoryTotalBytes)) {
@@ -122,13 +132,19 @@ export function useInstanceDetail(reference: string, inventoryStatus: string) {
             const result = await updateInstanceConfiguration(reference, changes);
             pendingConfigurationRef.current = { ...pendingConfigurationRef.current, ...changes };
             setPendingConfiguration(pendingConfigurationRef.current);
+            setDetail((current) => current ? {
+                ...current,
+                cores: changes.cores ?? current.cores,
+                memoryTotalBytes: changes.ramMb == null ? current.memoryTotalBytes : changes.ramMb * 1024 ** 2,
+            } : current);
+            options.onConfigurationSaved?.(changes);
             setResourceDraft({});
             setRequiresReboot(result.requiresReboot);
             toast.add({
-                title: 'Cambios guardados',
-                description: result.message || (result.requiresReboot
-                    ? 'Los recursos se aplicarán al reiniciar la instancia.'
-                    : 'La configuración de recursos se actualizó correctamente.'),
+                title: result.requiresReboot ? 'Configuración guardada' : 'Recursos actualizados',
+                description: result.requiresReboot
+                    ? 'Configuración guardada. La máquina requiere reinicio para aplicar los nuevos recursos.'
+                    : 'Recursos actualizados exitosamente.',
                 type: result.requiresReboot ? 'warning' : 'success',
             });
             refresh();

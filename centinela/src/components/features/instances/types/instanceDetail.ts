@@ -28,6 +28,6 @@ export interface InstanceResourceConfiguration {
 }
 
 export interface InstanceConfigurationResult {
-    message?: string;
     requiresReboot: boolean;
+    message?: string;
 }

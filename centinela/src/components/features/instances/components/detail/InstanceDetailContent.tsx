@@ -9,6 +9,7 @@ import { useInstanceDetail } from '../../hooks/useInstanceDetail';
 import { useEditInstanceConfig } from '../../hooks/useEditInstanceConfig';
 import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../../types/instance';
 import type { InstanceDetailTab } from '../../types/instanceDetail';
+import type { InstanceResourceConfiguration } from '../../types/instanceDetail';
 import InstanceAction from '../InstanceAction';
 import { InstanceStatusBadge } from '../InstanceBadges';
 import GeneralDataOfInstance from './generalDataOfInstance';
@@ -24,13 +25,14 @@ interface InstanceDetailContentProps {
     isPowerActionPending: boolean;
     onActionAccepted: (action: InstancePowerAction) => void;
     onDeleteAccepted: () => void;
+    onConfigurationSaved: (configuration: Partial<InstanceResourceConfiguration>) => void;
 }
 
-export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted }: InstanceDetailContentProps) {
+export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted, onConfigurationSaved }: InstanceDetailContentProps) {
     const { canOperateInstance, isAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<InstanceDetailTab>('resumen');
     const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
-    const data = useInstanceDetail(String(instance.id), instance.status);
+    const data = useInstanceDetail(String(instance.id), instance.status, { onConfigurationSaved });
     const canEdit = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
     const isBusy = isPowerActionPending || transition?.isTransitioning === true || instance.activeTask?.status === 'RUNNING';
     const editor = useEditInstanceConfig({

@@ -39,6 +39,9 @@ export function getErrorMessage(error: unknown, action?: InstancePowerAction): s
   if (status === 409 && errorCode === 'INSTANCE_BUSY') {
     return 'La instancia se encuentra ejecutando otra tarea. Aguarde a que finalice.';
   }
+  if (status === 409 && errorCode === 'RESOURCE_QUOTA_EXCEEDED') {
+    return message || 'El nodo no tiene recursos disponibles para aplicar ese incremento de CPU o RAM.';
+  }
   if (status === 403 && errorCode === 'INSTANCE_PROTECTED') {
     return 'La instancia pertenece a infraestructura protegida y no puede ser modificada.';
   }
