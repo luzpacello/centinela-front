@@ -5,6 +5,47 @@
 // tengan que adivinar cuál les llegó.
 export type AuditDetalles = Record<string, unknown> | string | null | undefined;
 
+const CLAVE_SENSIBLE = /(token|secret|password|passwd|authorization|credential|api[_-]?key|private[_-]?key|jwt|cookie)/i;
+const VALOR_SENSIBLE = '[REDACTADO]';
+
+function sanitizeValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(sanitizeValue);
+    }
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, nestedValue]) => [
+                key,
+                CLAVE_SENSIBLE.test(key) ? VALOR_SENSIBLE : sanitizeValue(nestedValue),
+            ]),
+        );
+    }
+    return value;
+}
+
+function sanitizeText(value: string): string {
+    return value.replace(
+        /(["']?[\w.-]*(?:token|secret|password|passwd|authorization|credential|api[_-]?key|private[_-]?key|jwt|cookie)[\w.-]*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^,\r\n}]+)/gi,
+        `$1${VALOR_SENSIBLE}`,
+    );
+}
+
+export function auditDetallesSeguros(detalles: AuditDetalles): string {
+    if (detalles == null) return 'Sin detalles disponibles.';
+
+    if (typeof detalles === 'string') {
+        const text = detalles.trim();
+        if (!text) return 'Sin detalles disponibles.';
+        try {
+            return JSON.stringify(sanitizeValue(JSON.parse(text)), null, 2);
+        } catch {
+            return sanitizeText(text);
+        }
+    }
+
+    return JSON.stringify(sanitizeValue(detalles), null, 2);
+}
+
 // Campos que explican un movimiento en una línea, para el subtítulo del panel.
 const CLAVES_CORTAS = ['motivo', 'error', 'razon'];
 
