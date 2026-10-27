@@ -23,6 +23,24 @@ export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
   activeTask?: InstanceActiveTask | null;
   pendingAction?: InstancePowerAction;
 }) {
+  const normalizedStatus = status.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
+  const normalizedTaskAction = activeTask?.action.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_') ?? '';
+  if (normalizedStatus === 'SNAPSHOTTING' || (activeTask?.status !== undefined && normalizedTaskAction.includes('SNAPSHOT') && !normalizedTaskAction.includes('ROLLBACK'))) {
+    return (
+      <Badge variant="secondary" className="border-0 bg-blue-50 text-blue-700">
+        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+        Creando Snapshot...
+      </Badge>
+    );
+  }
+  if (normalizedStatus === 'ROLLING_BACK' || normalizedTaskAction.includes('ROLLBACK')) {
+    return (
+      <Badge variant="secondary" className="border-0 bg-amber-50 text-amber-700">
+        <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+        Restaurando...
+      </Badge>
+    );
+  }
   if (activeTask?.status === 'RUNNING' && ['CREATE', 'CREATION', 'PROVISION'].includes(activeTask.action.toUpperCase())) {
     return (
       <Badge variant="secondary" className="border-0 bg-blue-50 text-blue-700">
