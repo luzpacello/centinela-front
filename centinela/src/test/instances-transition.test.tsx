@@ -116,6 +116,19 @@ describe('Resincronización del estado en progreso (86e3m0bw2)', () => {
     expect(screen.queryByRole('button', { name: /acciones para api-produccion/i })).not.toBeInTheDocument();
   });
 
+  it('mantiene bloqueada la fila mientras la tarea activa está en cola', async () => {
+    getMock.mockResolvedValue([{
+      ...runningInstance,
+      activeTask: { tareaId: 'task-queued', action: 'SNAPSHOT_CREATE', status: 'PENDING' },
+    }]);
+
+    renderInstances();
+
+    const progressButton = await screen.findByRole('button', { name: /creando snapshot/i });
+    expect(progressButton).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /acciones para api-produccion/i })).not.toBeInTheDocument();
+  });
+
   it('revalida en silencio al reconectar el stream, sin loader general ni parpadeo', async () => {
     getMock.mockResolvedValueOnce([runningInstance]).mockResolvedValueOnce([settledInstance]);
 

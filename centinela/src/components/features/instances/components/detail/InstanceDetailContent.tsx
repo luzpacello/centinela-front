@@ -18,6 +18,7 @@ import InstanceIdentityCard from './InstanceIdentityCard';
 import InstanceInformationRow from './InstanceInformationRow';
 import InstanceResourcesPanel from './InstanceResourcesPanel';
 import EditInstanceConfigModal from '../EditInstanceConfigModal';
+import SnapshotsTabContent from './SnapshotsTabContent';
 
 interface InstanceDetailContentProps {
     instance: InventoryInstance;
@@ -34,7 +35,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
     const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
     const data = useInstanceDetail(String(instance.id), instance.status, { onConfigurationSaved });
     const canEdit = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
-    const isBusy = isPowerActionPending || transition?.isTransitioning === true || instance.activeTask?.status === 'RUNNING';
+    const isBusy = isPowerActionPending || transition?.isTransitioning === true;
     const editor = useEditInstanceConfig({
         enabled: Boolean(data.detail) && (activeTab === 'recursos' || editModalMode !== null || data.hasChanges),
         values: data.editableConfiguration,
@@ -64,7 +65,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                 </div>
             </div>
             <div className={styles.headerActions}>
-                <InstanceAction variant="header" disabled={isSavingResources} instance={displayedInstance} transition={transition}
+                <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={transition ?? null}
                     isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
                 <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
                     onClick={() => setEditModalMode('confirm')}>
@@ -122,12 +123,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                         </dl>
                     </Card>
                 </TabsContent>
-                <TabsContent value="snapshots">
-                    <Card className={styles.contentCard}>
-                        <h2>Snapshots</h2>
-                        <p className="text-secundario">La consulta de snapshots todavía no está disponible.</p>
-                    </Card>
-                </TabsContent>
+                <TabsContent value="snapshots"><SnapshotsTabContent /></TabsContent>
             </>}
         </Tabs>
     </section>;

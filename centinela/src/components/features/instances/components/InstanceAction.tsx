@@ -44,6 +44,14 @@ function describeTransitionAction(action: string): string {
     case 'CREATION':
     case 'PROVISION':
       return 'Creando…';
+    case 'SNAPSHOT_CREATE':
+    case 'CREATE_SNAPSHOT':
+    case 'SNAPSHOTTING':
+      return 'Creando Snapshot…';
+    case 'SNAPSHOT_ROLLBACK':
+    case 'ROLLBACK':
+    case 'ROLLING_BACK':
+      return 'Restaurando…';
     default:
       return 'Operación en progreso…';
   }
@@ -93,13 +101,15 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   const canOperate = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
 
   const activeTask = instance.activeTask ?? null;
-  const derivedTransition: InstanceTransition | null = activeTask?.status === 'RUNNING'
+  const derivedTransition: InstanceTransition | null = activeTask
     ? { isTransitioning: true, tareaId: activeTask.tareaId, action: activeTask.action }
     : null;
   const transition = transitionProp === undefined ? derivedTransition : transitionProp;
-  // La fila se bloquea tanto por una tarea RUNNING como por una acción de
+  // La fila se bloquea tanto por una tarea activa como por una acción de
   // energía aceptada que todavía no convergió en el inventario.
   const isTransitioning = transition?.isTransitioning === true || isPowerActionPending;
+  const isHeader = variant === 'header';
+  const activeOperation = transition?.action ?? activeTask?.action;
 
   const canConfirmDelete =
     deleteVerification === instance.name ||
@@ -138,7 +148,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
 
   // Fila en transición: se reemplaza la celda de acciones por el botón en
   // progreso deshabilitado, bloqueando todos los controles de la máquina.
-  if (isTransitioning) {
+  if (isTransitioning && !isHeader) {
     const actionLabel = transition ? describeTransitionAction(transition.action) : 'Operación en progreso…';
     return (
       <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`}
@@ -151,6 +161,13 @@ export default function InstanceAction({ instance, transition: transitionProp, i
 
   // Reemplazar la función confirmDelete dentro de InstanceAction:
   async function confirmDelete() {
+    if (disabled || isTransitioning) {
+      setDeleteError(activeOperation
+        ? `Operación en curso: ${activeOperation}.`
+        : 'La instancia ya tiene una tarea en curso.');
+      return;
+    }
+
     if (!canConfirmDelete) {
       setDeleteError('Ingresá exactamente el nombre de la instancia o su ID.');
       return;
@@ -207,19 +224,35 @@ export default function InstanceAction({ instance, transition: transitionProp, i
     <>
       {variant === 'header' ? (
         <div className="flex flex-wrap items-center gap-3">
+          {isTransitioning && (
+            <p role="status" className="flex basis-full items-center gap-2 text-sm text-amber-700">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Operación en curso: {activeOperation || 'Tarea activa'}
+            </p>
+          )}
           {instance.status === 'stopped' ? (
-            <Button type="button" variant="outline" disabled={!canOperate || disabled} onClick={() => setPendingAction('start')}>
+            <Button type="button" variant="outline" disabled={!canOperate || disabled || isTransitioning} onClick={() => setPendingAction('start')}>
               <CirclePlay className="size-4! text-emerald-600" aria-hidden="true" />Encender
             </Button>
           ) : (
             <>
-              <Button type="button" variant="outline" className="border-red-200 text-red-600" disabled={!canOperate || disabled || instance.status !== 'running'} onClick={() => setPendingAction('shutdown')}>
+              <Button type="button" variant="outline" className="border-red-200 text-red-600" disabled={!canOperate || disabled || isTransitioning || instance.status !== 'running'} onClick={() => setPendingAction('shutdown')}>
                 <Power className="size-4!" aria-hidden="true" />Apagar
               </Button>
-              <Button type="button" variant="outline" className="border-amber-200 text-amber-600" disabled={!canOperate || disabled || instance.status !== 'running'} onClick={() => setPendingAction('reboot')}>
+              <Button type="button" variant="outline" className="border-amber-200 text-amber-600" disabled={!canOperate || disabled || isTransitioning || instance.status !== 'running'} onClick={() => setPendingAction('reboot')}>
                 <RotateCcw className="size-4!" aria-hidden="true" />Reiniciar
               </Button>
             </>
+          )}
+          {isAdmin() && (
+            <Button type="button" variant="destructive" disabled={disabled || isTransitioning}
+              onClick={() => {
+                setDeleteVerification('');
+                setDeleteError(null);
+                setIsDeleteOpen(true);
+              }}>
+              <Trash className="size-4" aria-hidden="true" />Eliminar
+            </Button>
           )}
         </div>
       ) : <Menu.Root open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>

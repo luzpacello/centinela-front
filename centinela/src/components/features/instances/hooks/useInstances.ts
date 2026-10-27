@@ -281,6 +281,9 @@ export function useInstances() {
       ? readDetalleString(ultimoMensaje.detalles, 'tareaId')
       : null;
     if (finishedTareaId) {
+      queueMicrotask(() => {
+        setFinishedTaskIds((previous) => (previous.has(finishedTareaId) ? previous : new Set(previous).add(finishedTareaId)));
+      });
       const target = instances.find((instance) => instance.activeTask?.tareaId === finishedTareaId);
       const finishedAction = readDetalleString(ultimoMensaje.detalles, 'accion')
         ?? target?.activeTask?.action
@@ -310,11 +313,6 @@ export function useInstances() {
       .then((inventory) => {
         if (controller.signal.aborted) return;
         settleInventory(inventory, pendingPowerActionsRef.current);
-        // Marcar la tarea como cerrada para que un inventario con retraso no
-        // vuelva a bloquear una fila que ya recibió su TASK_FINISHED.
-        if (finishedTareaId) {
-          setFinishedTaskIds((previous) => (previous.has(finishedTareaId) ? previous : new Set(previous).add(finishedTareaId)));
-        }
       })
       .catch(() => {
         // Silencioso a propósito: se conserva el inventario actual.
@@ -328,7 +326,7 @@ export function useInstances() {
     const transitions: Record<string, InstanceTransition> = {};
     for (const instance of displayInstances) {
       const activeTask = instance.activeTask;
-      if (activeTask?.status === 'RUNNING' && !finishedTaskIds.has(activeTask.tareaId)) {
+      if (activeTask && !finishedTaskIds.has(activeTask.tareaId)) {
         transitions[String(instance.id)] = {
           isTransitioning: true,
           tareaId: activeTask.tareaId,
