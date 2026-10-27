@@ -7,6 +7,7 @@ describe('etiquetas de auditoría', () => {
         expect(auditActionLabel('REINICIAR_VM')).toBe('Instancia reiniciada');
         expect(auditActionLabel('ELIMINAR_VM')).toBe('Instancia eliminada');
         expect(auditActionLabel('START')).toBe('Instancia iniciada');
+        expect(auditActionLabel('SNAPSHOT_CREATE')).toBe('Snapshot creado');
     });
 
     it('distingue el despacho del resultado final', () => {
@@ -22,6 +23,10 @@ describe('etiquetas de auditoría', () => {
         expect(values).toContain('INICIAR_VM');
         expect(values).toContain('APAGAR_VM');
         expect(values).toContain('CREATE_INSTANCE');
+        expect(values).toContain('START_VM');
+        expect(values).toContain('STOP_VM');
+        expect(values).toContain('SNAPSHOT_CREATE');
+        expect(values).toContain('SNAPSHOT_ROLLBACK');
         expect(values).not.toContain('CREAR_INSTANCIA');
         expect(values).not.toContain('START');
         expect(new Set(values).size).toBe(values.length);

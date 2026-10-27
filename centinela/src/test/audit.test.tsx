@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from '@/services/apiClient';
 import AuditoriaPage from '@/pages/Auditoria';
 import { useLocation, useNavigate } from 'react-router';
-import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel } from '@/utils/auditActionLabels';
+import { HIDDEN_AUDIT_ACTIONS, auditActionLabel } from '@/utils/auditActionLabels';
 
 // 1. Mock de las dependencias de tu proyecto
 vi.mock('@/services/apiClient', () => {
@@ -31,11 +31,23 @@ vi.mock('@/storage/tokenStorage', () => {
 });
 
 // Mockeamos el router para espiar si la app intenta cambiar de página
-vi.mock('react-router', () => ({
-    useNavigate: vi.fn(),
-    // La página lee el estado de navegación para llegar con un usuario prefiltrarlo.
-    useLocation: vi.fn(),
-}));
+vi.mock('react-router', async () => {
+    const React = await import('react');
+    return {
+        useNavigate: vi.fn(),
+        // La página lee el estado de navegación para llegar con un usuario prefiltrado.
+        useLocation: vi.fn(),
+        useSearchParams: () => {
+            const [params, setParams] = React.useState(() => new URLSearchParams());
+            const setSearchParams = React.useCallback((next: URLSearchParams | ((current: URLSearchParams) => URLSearchParams)) => {
+                setParams((current) => new URLSearchParams(
+                    typeof next === 'function' ? next(new URLSearchParams(current)) : next,
+                ));
+            }, []);
+            return [params, setSearchParams];
+        },
+    };
+});
 
 // Mockeamos el contexto de usuario
 vi.mock('@/hooks/useAuth', () => ({
@@ -122,9 +134,12 @@ describe('AuditoriaPage', () => {
                     id: 'test-inicial-1',
                     nombreUsuario: 'Carlos Admin',
                     accion: 'CREAR_ROL',
+                    recursoTipo: 'VM',
+                    recursoId: 'vm-12',
                     instanciaNombre: 'Roles',
                     resultado: 'EXITO',
                     fechaHora: '2023-11-01T09:00:00Z',
+                    detalles: { upid: 'UPID:node:task', authToken: 'secret-value', exitstatus: 'OK' },
                 }
             ]
         };
@@ -151,7 +166,15 @@ describe('AuditoriaPage', () => {
         expect(usuarioRenderizado).toBeInTheDocument();
         // La tabla muestra la etiqueta legible de la acción, no el código crudo.
         expect(screen.getByText(auditActionLabel('CREAR_ROL'))).toBeInTheDocument();
-        expect(screen.getByText('Roles')).toBeInTheDocument();
+        expect(screen.getByText(/Roles/)).toBeInTheDocument();
+        expect(screen.getByLabelText('Desde')).toBeInTheDocument();
+        expect(screen.getByLabelText('Hasta')).toBeInTheDocument();
+
+        await userEvent.setup().click(screen.getByRole('button', { name: /ver detalles/i }));
+        const detailDialog = screen.getByRole('dialog', { name: 'Detalle de auditoría' });
+        expect(detailDialog).toHaveTextContent('UPID:node:task');
+        expect(detailDialog).toHaveTextContent('[REDACTADO]');
+        expect(detailDialog).not.toHaveTextContent('secret-value');
     });
 
     it('Reactividad de Filtros: rearma la consulta al elegir acción y resultado', async () => {
@@ -161,17 +184,34 @@ describe('AuditoriaPage', () => {
 
         vi.mocked(apiClient.get).mockClear();
 
-        // La acción sale del desplegable "Filtros" y el resultado de las pestañas.
-        // El texto del desplegable es la etiqueta de AUDIT_ACTION_OPTIONS, así que se
-        // toma de ahí para no duplicar el texto en el test.
-        const opcionLogin = AUDIT_ACTION_OPTIONS.find((opcion) => opcion.value === 'LOGIN');
-        await user.click(screen.getByRole('button', { name: 'Filtros' }));
-        await user.click(await screen.findByRole('menuitemradio', { name: opcionLogin?.label ?? 'LOGIN' }));
+        // El texto de la acción se toma del catálogo compartido con la interfaz.
+        await user.selectOptions(screen.getByLabelText('Acción'), 'LOGIN');
         await user.click(screen.getByRole('tab', { name: /exitosos/i }));
 
         await waitFor(() => {
             expect(apiClient.get).toHaveBeenCalledWith(
                 urlAuditoria({ accion: 'LOGIN', resultado: 'EXITO' }),
+                expect.objectContaining({ signal: expect.any(AbortSignal) }),
+            );
+        });
+    });
+
+    it('mantiene los filtros al cambiar el tamaño de página y envía el tipo de recurso', async () => {
+        const user = userEvent.setup();
+        render(<AuditoriaPage />);
+        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        vi.mocked(apiClient.get).mockClear();
+
+        await user.selectOptions(screen.getByLabelText('Tipo de recurso'), 'VM');
+        await user.selectOptions(screen.getByLabelText('Registros por página'), '25');
+
+        await waitFor(() => {
+            expect(apiClient.get).toHaveBeenCalledWith(
+                expect.stringContaining('tamano=25'),
+                expect.objectContaining({ signal: expect.any(AbortSignal) }),
+            );
+            expect(apiClient.get).toHaveBeenCalledWith(
+                expect.stringContaining('recursoTipo=VM'),
                 expect.objectContaining({ signal: expect.any(AbortSignal) }),
             );
         });
@@ -246,4 +286,3 @@ describe('AuditoriaPage', () => {
         expect(apiClient.get).not.toHaveBeenCalled();
     });
 });
-

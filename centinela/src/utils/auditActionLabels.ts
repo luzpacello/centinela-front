@@ -7,6 +7,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
     LOGOUT: 'Cierre de sesión',
     VERIFICAR_2FA: 'Verificación 2FA',
     '2FA_FALLA': 'Verificación 2FA fallida',
+    START_VM: 'Instancia iniciada',
+    STOP_VM: 'Instancia detenida',
+    SNAPSHOT_CREATE: 'Snapshot creado',
+    SNAPSHOT_ROLLBACK: 'Snapshot restaurado',
     INICIAR_VM: 'Instancia iniciada',
     APAGAR_VM: 'Instancia apagada',
     DETENER_VM: 'Instancia detenida',
@@ -51,6 +55,10 @@ const AUDIT_ACTION_ORDER = [
     'CONFIG_INSTANCE',
     'SUSPENDER_VM',
     'REANUDAR_VM',
+    'START_VM',
+    'STOP_VM',
+    'SNAPSHOT_CREATE',
+    'SNAPSHOT_ROLLBACK',
     'LOGIN',
     'LOGIN_FALLA',
     'LOGOUT',
@@ -81,10 +89,10 @@ export function auditActionLabel(accion?: string | null): string {
 }
 
 const PENDING_RESULTS = new Set(['PENDIENTE', 'PENDING']);
-const FINAL_RESULTS = new Set(['SUCCESS', 'EXITO', 'FAILED', 'FALLA', 'FALLIDO', 'ERROR', 'ADVERTENCIA', 'WARNING']);
+const FINAL_RESULTS = new Set(['SUCCESS', 'EXITO', 'FAILED', 'FALLO', 'FALLA', 'FALLIDO', 'ERROR', 'ADVERTENCIA', 'WARNING']);
 const LIFECYCLE_ACTIONS = new Set([
     'INICIAR_VM', 'APAGAR_VM', 'DETENER_VM', 'REINICIAR_VM', 'ELIMINAR_VM',
-    'CREAR_INSTANCIA', 'CREATE_INSTANCE', 'CREAR_VM', 'CREAR_LXC',
+    'CREAR_INSTANCIA', 'CREATE_INSTANCE', 'START_VM', 'STOP_VM', 'CREAR_VM', 'CREAR_LXC',
     'CONFIG_INSTANCE', 'SUSPENDER_VM', 'REANUDAR_VM',
     'START', 'STOP', 'SHUTDOWN', 'REBOOT',
 ]);
