@@ -26,7 +26,6 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
-//import InstanceTester from '@/components/features/instances/components/InstanceTester';
 const INSTANCES_PER_PAGE = 10;
 import { Link } from 'react-router';
 
