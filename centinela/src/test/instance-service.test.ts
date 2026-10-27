@@ -18,6 +18,7 @@ import {
     deleteInstance,
     requestInstancePowerAction,
 } from '@/components/features/instances/services/instanceService';
+import { updateInstanceConfiguration } from '@/components/features/instances/services/instanceDetailService';
 import type { CreateInstancePayload } from '@/components/features/instances/types/createInstance';
 
 const requestMock = vi.mocked(apiClient.request);
@@ -46,6 +47,40 @@ const payload: CreateInstancePayload = {
 };
 
 describe('contrato de acciones de instancia', () => {
+    it('actualiza CPU y RAM usando el contrato real de Swagger', async () => {
+        requestMock.mockResolvedValueOnce({
+            requiresReboot: true,
+        });
+
+        await expect(updateInstanceConfiguration('inst_a/b', { cores: 4, ramMb: 8192 })).resolves.toEqual({
+            requiresReboot: true,
+        });
+        expect(requestMock).toHaveBeenCalledWith('/instances/inst_a%2Fb/config', {
+            method: 'PUT',
+            payload: { cores: 4, ramMb: 8192 },
+            expectedStatus: 200,
+        });
+    });
+
+    it('permite modificar solo CPU o solo RAM y valida el error si no hay recursos', async () => {
+        requestMock.mockResolvedValueOnce({ requiresReboot: false });
+
+        await expect(updateInstanceConfiguration(201, { cores: 4 })).resolves.toEqual({ requiresReboot: false });
+        expect(requestMock).toHaveBeenLastCalledWith('/instances/201/config', {
+            method: 'PUT',
+            payload: { cores: 4 },
+            expectedStatus: 200,
+        });
+        await expect(updateInstanceConfiguration(201, {})).rejects.toThrow(/al menos un recurso válido/i);
+    });
+
+    it('rechaza una respuesta de actualización sin requiresReboot', async () => {
+        requestMock.mockResolvedValueOnce({});
+
+        await expect(updateInstanceConfiguration(201, { ramMb: 4096 }))
+            .rejects.toThrow(/respuesta inválida/i);
+    });
+
     it('usa el tareaId público que devuelve el backend al aceptar una orden', async () => {
         requestMock.mockResolvedValueOnce({ tareaId: 'tarea-201' });
 

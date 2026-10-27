@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchInstanceInventory } from '../services/instanceService';
 import type { InventoryInstance, InstancePowerAction, InstanceRef, InstanceTransition } from '../types/instance';
+import type { InstanceResourceConfiguration } from '../types/instanceDetail';
 import { useEventsContext } from '@/context/EventsContext';
 import { toast } from '@/components/ui/toast';
 import type { CentinelaEventsMessage } from '@/services/eventsClient';
@@ -155,6 +156,14 @@ export function useInstances() {
       delete next[key];
       return next;
     });
+  }, []);
+
+  const updateInstanceResources = useCallback((vmid: InstanceRef, configuration: Partial<InstanceResourceConfiguration>) => {
+    const ramMb = configuration.ramMb;
+    if (ramMb === undefined) return;
+    setInstances((current) => current.map((instance) => String(instance.id) === String(vmid)
+      ? { ...instance, maxRam: ramMb * 1024 ** 2 }
+      : instance));
   }, []);
 
   // Procesa un inventario recién leído de forma uniforme para las tres rutas de
@@ -339,6 +348,7 @@ export function useInstances() {
     pendingPowerActions,
     markPowerActionAccepted,
     clearPendingPowerAction,
+    updateInstanceResources,
     transitioningTasks,
   };
 }

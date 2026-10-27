@@ -12,7 +12,7 @@ export default function InstanceDetailPage() {
     const { canAccessInstance } = useAuth();
     const {
         instances, isLoading, errorMessage, reloadInventory, pendingPowerActions,
-        markPowerActionAccepted, revalidateInventory, transitioningTasks,
+        markPowerActionAccepted, revalidateInventory, transitioningTasks, updateInstanceResources,
     } = useInstances();
     const instanceReference = vmidParam?.trim() ?? '';
     const numericReference = Number(instanceReference);
@@ -42,6 +42,7 @@ export default function InstanceDetailPage() {
     }
 
     return <InstanceDetailContent key={instanceReference} instance={instance}
+        onConfigurationSaved={(configuration) => updateInstanceResources(instance.id, configuration)}
         transition={transitioningTasks[instance.id]}
         isPowerActionPending={Boolean(pendingPowerActions[instance.id])}
         onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
