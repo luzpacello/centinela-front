@@ -18,7 +18,7 @@ import InstanceIdentityCard from './InstanceIdentityCard';
 import InstanceInformationRow from './InstanceInformationRow';
 import InstanceResourcesPanel from './InstanceResourcesPanel';
 import EditInstanceConfigModal from '../EditInstanceConfigModal';
-import SnapshotsTabContent from './SnapshotsTabContent';
+import { SnapshotsTabContent } from './SnapshotsTabContent';
 
 interface InstanceDetailContentProps {
     instance: InventoryInstance;
@@ -123,7 +123,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                         </dl>
                     </Card>
                 </TabsContent>
-                <TabsContent value="snapshots"><SnapshotsTabContent /></TabsContent>
+                <TabsContent value="snapshots"><SnapshotsTabContent vmid={instance.id}/></TabsContent>
             </>}
         </Tabs>
     </section>;

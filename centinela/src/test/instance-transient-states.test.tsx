@@ -11,7 +11,7 @@ vi.mock('@/context/AuthContext', () => ({
 
 import InstanceAction from '@/components/features/instances/components/InstanceAction';
 import { InstanceStatusBadge } from '@/components/features/instances/components/InstanceBadges';
-import SnapshotsTabContent from '@/components/features/instances/components/detail/SnapshotsTabContent';
+import { SnapshotsTabContent } from '@/components/features/instances/components/detail/SnapshotsTabContent';
 
 const instance = {
   id: 110,
@@ -50,7 +50,7 @@ describe('Estados transitorios de instancia', () => {
   });
 
   it('renderiza el estado vacío de la pestaña Snapshots', () => {
-    render(<SnapshotsTabContent />);
+    render(<SnapshotsTabContent vmid={instance.id} />);
     expect(screen.getByRole('heading', { name: 'Snapshots' })).toBeInTheDocument();
     expect(screen.getByText('Todavía no hay snapshots para mostrar.')).toBeInTheDocument();
   });
