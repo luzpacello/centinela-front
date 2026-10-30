@@ -52,7 +52,7 @@ describe('Estados transitorios de instancia', () => {
       />,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('Operación en curso: SNAPSHOT_CREATE');
+    expect(screen.getByRole('status')).toHaveTextContent('Operación en curso: creación de snapshot');
     expect(screen.getByRole('button', { name: /apagar/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /reiniciar/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeDisabled();

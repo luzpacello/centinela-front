@@ -14,6 +14,7 @@ import type { InventoryInstance, InstancePowerAction, InstanceTransition } from 
 import { Modal, ModalDescription, ModalFooter, ModalHeader, ModalIcon, ModalTitle } from '@/components/ui/modals';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
+import { describeActionProgress, describeActionStatus } from '../utils/actionLabels';
 
 interface InstanceActionProps {
   variant?: 'menu' | 'header';
@@ -28,37 +29,7 @@ interface InstanceActionProps {
 }
 
 // Etiqueta del botón en progreso según la acción reportada por el backend
-// (START, STOP, SHUTDOWN, REBOOT, DELETE).
-function describeTransitionAction(action: string): string {
-  switch (action.toUpperCase()) {
-    case 'START':
-      return 'Encendiendo…';
-    case 'STOP':
-    case 'SHUTDOWN':
-      return 'Apagando…';
-    case 'REBOOT':
-      return 'Reiniciando…';
-    case 'DELETE':
-      return 'Eliminando…';
-    case 'CREATE':
-    case 'CREATION':
-    case 'PROVISION':
-      return 'Creando…';
-    case 'SNAPSHOT_CREATE':
-    case 'CREATE_SNAPSHOT':
-    case 'SNAPSHOTTING':
-      return 'Creando Snapshot…';
-    case 'SNAPSHOT_ROLLBACK':
-    case 'ROLLBACK_SNAPSHOT':
-    case 'ROLLBACK':
-    case 'ROLLING_BACK':
-      return 'Restaurando estado...';
-    case 'DELETE_SNAPSHOT':
-      return 'Eliminando snapshot…';
-    default:
-      return 'Operación en progreso…';
-  }
-}
+// (START, STOP, SHUTDOWN, REBOOT, DELETE): ver utils/actionLabels.
 
 const POWER_ACTION_CONFIG: Record<InstancePowerAction, {
   title: string;
@@ -153,7 +124,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   // Fila en transición: se reemplaza la celda de acciones por el botón en
   // progreso deshabilitado, bloqueando todos los controles de la máquina.
   if (isTransitioning && !isHeader) {
-    const actionLabel = transition ? describeTransitionAction(transition.action) : 'Operación en progreso…';
+    const actionLabel = transition ? describeActionProgress(transition.action) : 'Operación en progreso…';
     // La celda se mantiene compacta: con la etiqueta larga, la columna de
     // acciones ensanchaba la tabla y empujaba los menús de las otras filas
     // fuera del ancho visible.
@@ -233,9 +204,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
           {isTransitioning && (
             <p role="status" className="flex basis-full items-center gap-2 text-sm text-amber-700">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              {activeOperation?.toUpperCase() === 'ROLLBACK_SNAPSHOT'
-                ? 'Restaurando estado...'
-                : `Operación en curso: ${activeOperation || 'Tarea activa'}`}
+              {describeActionStatus(activeOperation)}
             </p>
           )}
           {instance.status === 'stopped' ? (
