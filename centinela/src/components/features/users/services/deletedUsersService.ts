@@ -6,7 +6,8 @@ const AUDIT_PAGE_SIZE = 200;
 const DETAIL_REQUEST_BATCH_SIZE = 4;
 const USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Las bajas nuevas se auditan con el vocabulario único (SUCCESS); las anteriores
-// quedaron con EXITO. Se leen las dos hasta la normalización de los datos.
+// quedaron con EXITO. Se leen las dos hasta que el backend normalice el vocabulario
+// (ClickUp 1dfdzjeax24); después esta lista se queda sólo con SUCCESS.
 const DELETED_USER_RESULTS = new Set(['SUCCESS', 'EXITO']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

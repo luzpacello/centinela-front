@@ -24,7 +24,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
     REINICIAR_VM: 'Instancia reiniciada',
     ELIMINAR_VM: 'Instancia eliminada',
     // Códigos anteriores a la unificación de auditoría: se leen igual, pero no
-    // se ofrecen en el filtro para no repetir opciones.
+    // se ofrecen en el filtro para no repetir opciones. Se retiran cuando el
+    // backend normalice los datos (ClickUp 1dfdzjeax24).
     START: 'Instancia iniciada',
     STOP: 'Instancia detenida',
     SHUTDOWN: 'Instancia apagada',
