@@ -50,7 +50,7 @@ export default function LoginForm({ initialEmail = '' }: { initialEmail?: string
 
       <Button
         type="submit"
-        className={`${INTER} h-[52px] w-full rounded-[10px] text-[15px] font-semibold`}
+        className={`${INTER} h-[52px] w-full rounded-[10px] bg-[#1d4ed8] text-[15px] font-semibold focus-visible:bg-[#1e3a8a] focus-visible:ring-4 focus-visible:ring-blue-700 focus-visible:ring-offset-2`}
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}

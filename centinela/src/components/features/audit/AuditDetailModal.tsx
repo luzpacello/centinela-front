@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auditDetallesSeguros, type AuditDetalles } from '@/utils/auditDetalle';
+import { useModalFocus } from '@/components/common/useModalFocus';
 
 interface AuditDetailModalProps {
     action: string;
@@ -10,23 +11,21 @@ interface AuditDetailModalProps {
 }
 
 export function AuditDetailModal({ action, details, onClose }: AuditDetailModalProps) {
-    useEffect(() => {
-        function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === 'Escape') onClose();
-        }
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [onClose]);
+    const dialogRef = useRef<HTMLElement>(null);
+    useModalFocus(dialogRef, true, onClose);
 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
             onMouseDown={(event) => {
-                if (event.target === event.currentTarget) onClose();
+                if (event.target === event.currentTarget) {
+                    event.preventDefault();
+                    onClose();
+                }
             }}
         >
             <section
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="audit-detail-title"
