@@ -71,7 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const canOperateInstance = (vmid: InstanceRef): boolean =>
     isAdmin() || (isOperator() && (user?.permisos ?? []).some((permission) =>
-      permission.vmid === vmid && permission.nivelAcceso === 'FULL_ACCESS'
+      permission.vmid === String(vmid) && permission.nivelAcceso === 'FULL_ACCESS'
     ));
 
   const value: AuthContextValue = {

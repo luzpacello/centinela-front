@@ -54,7 +54,7 @@ export const applicationRoutes: RouteObject[] = [
           { index: true, loader: () => redirect('/dashboard') },
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
-          { path: '/instances/:vmid', Component: InstanceDetailPage },
+          { path: '/instances/:instanceRef', Component: InstanceDetailPage },
 
           {
             // Guard administrativo: un OPERATOR es redirigido al dashboard.

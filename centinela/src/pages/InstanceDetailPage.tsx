@@ -6,6 +6,7 @@ import { useInstances } from '@/components/features/instances/hooks/useInstances
 import InstanceDetailContent from '@/components/features/instances/components/detail/InstanceDetailContent';
 import InstanceDetailFeedback from '@/components/features/instances/components/detail/InstanceDetailFeedback';
 import { validateInstanceRef } from '@/components/features/instances/services/instanceService';
+import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 export default function InstanceDetailPage() {
     const { vmid: vmidParam } = useParams<{ vmid: string }>();
@@ -16,7 +17,7 @@ export default function InstanceDetailPage() {
         markPowerActionAccepted, revalidateInventory, transitioningTasks, updateInstanceResources,
     } = useInstances();
 
-    let validRef: string | number | null = null;
+    let validRef: InstanceRef | null = null;
     try {
         validRef = validateInstanceRef(vmidParam);
     } catch {
@@ -49,8 +50,8 @@ export default function InstanceDetailPage() {
 
     return <InstanceDetailContent key={String(validRef)} instance={instance}
         onConfigurationSaved={(configuration) => updateInstanceResources(instance.id, configuration)}
-        transition={transitioningTasks[instance.id]}
-        isPowerActionPending={Boolean(pendingPowerActions[instance.id])}
+        transition={transitioningTasks[String(instance.id)]}
+        isPowerActionPending={Boolean(pendingPowerActions[String(instance.id)])}
         onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
         onDeleteAccepted={() => { revalidateInventory(); navigate('/instances'); }} />;
 }
