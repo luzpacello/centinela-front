@@ -49,9 +49,12 @@ function describeTransitionAction(action: string): string {
     case 'SNAPSHOTTING':
       return 'Creando Snapshot…';
     case 'SNAPSHOT_ROLLBACK':
+    case 'ROLLBACK_SNAPSHOT':
     case 'ROLLBACK':
     case 'ROLLING_BACK':
-      return 'Restaurando…';
+      return 'Restaurando estado...';
+    case 'DELETE_SNAPSHOT':
+      return 'Eliminando snapshot…';
     default:
       return 'Operación en progreso…';
   }
@@ -227,7 +230,9 @@ export default function InstanceAction({ instance, transition: transitionProp, i
           {isTransitioning && (
             <p role="status" className="flex basis-full items-center gap-2 text-sm text-amber-700">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Operación en curso: {activeOperation || 'Tarea activa'}
+              {activeOperation?.toUpperCase() === 'ROLLBACK_SNAPSHOT'
+                ? 'Restaurando estado...'
+                : `Operación en curso: ${activeOperation || 'Tarea activa'}`}
             </p>
           )}
           {instance.status === 'stopped' ? (

@@ -93,7 +93,7 @@ function convergePendingPowerActions(
   return changed ? next : previous;
 }
 
-export function useInstances() {
+export function useInstances(suppressSnapshotNotifications = false) {
   const [instances, setInstances] = useState<InventoryInstance[]>([]);
   const { creations, removeCreation } = usePendingInstanceCreations();
   const [isLoading, setIsLoading] = useState(true);
@@ -288,7 +288,8 @@ export function useInstances() {
       const finishedAction = readDetalleString(ultimoMensaje.detalles, 'accion')
         ?? target?.activeTask?.action
         ?? '';
-      if (target && !['CREATE', 'CREATION', 'PROVISION'].includes(finishedAction.toUpperCase())) {
+      if (target && !['CREATE', 'CREATION', 'PROVISION'].includes(finishedAction.toUpperCase())
+        && !(suppressSnapshotNotifications && ['ROLLBACK_SNAPSHOT', 'DELETE_SNAPSHOT'].includes(finishedAction.toUpperCase()))) {
         notifyTaskResult(target, ultimoMensaje);
       }
     }
@@ -318,7 +319,7 @@ export function useInstances() {
         // Silencioso a propósito: se conserva el inventario actual.
       });
     return () => controller.abort();
-  }, [ultimoMensaje, instances, revalidateInventory, settleInventory]);
+  }, [ultimoMensaje, instances, revalidateInventory, settleInventory, suppressSnapshotNotifications]);
 
   // Estado de transición por fila: se deriva del inventario vigente y descarta
   // las tareas ya cerradas por evento. Es la "tarea guardada en la fila".
@@ -348,5 +349,6 @@ export function useInstances() {
     clearPendingPowerAction,
     updateInstanceResources,
     transitioningTasks,
+    eventsStatus: estado,
   };
 }
