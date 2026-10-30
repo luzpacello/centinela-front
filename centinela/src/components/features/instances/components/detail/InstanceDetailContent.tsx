@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useInstanceDetail } from '../../hooks/useInstanceDetail';
 import { useEditInstanceConfig } from '../../hooks/useEditInstanceConfig';
+import { useSnapshotTasks } from '../../hooks/useSnapshotTasks';
 import type { InventoryInstance, InstancePowerAction, InstanceTransition } from '../../types/instance';
 import type { InstanceDetailTab } from '../../types/instanceDetail';
 import type { InstanceResourceConfiguration } from '../../types/instanceDetail';
@@ -27,15 +28,30 @@ interface InstanceDetailContentProps {
     onActionAccepted: (action: InstancePowerAction) => void;
     onDeleteAccepted: () => void;
     onConfigurationSaved: (configuration: Partial<InstanceResourceConfiguration>) => void;
+    onSnapshotAccepted?: () => void;
+    eventsStatus?: string;
 }
 
-export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted, onConfigurationSaved }: InstanceDetailContentProps) {
+export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted, onConfigurationSaved, onSnapshotAccepted, eventsStatus }: InstanceDetailContentProps) {
     const { canOperateInstance, isAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<InstanceDetailTab>('resumen');
     const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
+    const [snapshotOutcomeUncertain, setSnapshotOutcomeUncertain] = useState(false);
     const data = useInstanceDetail(String(instance.id), instance.status, { onConfigurationSaved });
+    const snapshotTasks = useSnapshotTasks(instance.id, instance.activeTask?.tareaId, eventsStatus);
     const canEdit = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
-    const isBusy = isPowerActionPending || transition?.isTransitioning === true;
+    const snapshotTransition: InstanceTransition | undefined = snapshotTasks.pendingTask ? {
+        isTransitioning: true, tareaId: snapshotTasks.pendingTask.taskId,
+        action: snapshotTasks.pendingTask.action === 'rollback' ? 'ROLLBACK_SNAPSHOT' : 'DELETE_SNAPSHOT',
+    } : undefined;
+    const effectiveTransition = snapshotTransition ?? transition;
+    const isBusy = isPowerActionPending || effectiveTransition?.isTransitioning === true || snapshotTasks.isSubmitting || snapshotOutcomeUncertain;
+    const completedRollbackIsStale = snapshotTasks.lastFinishedTask?.action === 'rollback'
+        && snapshotTasks.lastFinishedTask.taskId === instance.activeTask?.tareaId
+        && !effectiveTransition && instance.status.toLowerCase() === 'rolling_back';
+    const displayStatus = completedRollbackIsStale
+        ? (snapshotTasks.lastFinishedTask?.status === 'COMPLETED' ? 'stopped' : data.detail?.status === 'rolling_back' ? 'unknown' : data.detail?.status ?? 'unknown')
+        : instance.status;
     const editor = useEditInstanceConfig({
         enabled: Boolean(data.detail) && (activeTab === 'recursos' || editModalMode !== null || data.hasChanges),
         values: data.editableConfiguration,
@@ -61,11 +77,11 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                 </nav>
                 <div className={styles.titleRow}>
                     <h1>{displayedInstance.name}</h1>
-                    <InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} />
+                    <InstanceStatusBadge status={displayStatus} activeTask={snapshotTransition ? { tareaId: snapshotTransition.tareaId, action: snapshotTransition.action, status: 'RUNNING' } : transition ? instance.activeTask : null} />
                 </div>
             </div>
             <div className={styles.headerActions}>
-                <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={transition ?? null}
+                <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={effectiveTransition ?? null}
                     isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
                 <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
                     onClick={() => setEditModalMode('confirm')}>
@@ -76,6 +92,10 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
         </header>
 
         <InstanceIdentityCard instance={displayedInstance} />
+
+        {snapshotOutcomeUncertain && <div role="alert" className={styles.refreshError}>
+            No se pudo confirmar el resultado de la solicitud de snapshot. Recargá el detalle y verificá el estado antes de reintentar.
+        </div>}
 
         {editModalMode && data.detail && <EditInstanceConfigModal instanceName={displayedInstance.name}
             status={instance.status} values={data.editableConfiguration} current={data.appliedConfiguration} editor={editor}
@@ -123,7 +143,8 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                         </dl>
                     </Card>
                 </TabsContent>
-                <TabsContent value="snapshots"><SnapshotsTabContent vmid={instance.id}/></TabsContent>
+                <TabsContent value="snapshots"><SnapshotsTabContent vmid={instance.id} isBusy={isBusy || isSavingResources}
+                    onSubmittingChange={snapshotTasks.setIsSubmitting} onOutcomeUncertain={() => { setSnapshotOutcomeUncertain(true); onSnapshotAccepted?.(); }} onActionAccepted={(taskId, action, name) => { snapshotTasks.acceptTask(taskId, action, name); onSnapshotAccepted?.(); }} refreshVersion={snapshotTasks.refreshVersion} /></TabsContent>
             </>}
         </Tabs>
     </section>;
