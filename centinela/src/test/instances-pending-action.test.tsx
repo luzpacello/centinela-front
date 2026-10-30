@@ -82,4 +82,24 @@ describe('Acciones de energía aceptadas por instancia', () => {
     await waitFor(() => expect(result.current.pendingPowerActions['110']).toBeUndefined());
     expect(result.current.pendingPowerActions['111']).toBeDefined();
   });
+
+  it('relee el inventario un rato después del cierre para ver el estado final', async () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = renderHook(() => useInstances(), { wrapper });
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      const lecturasIniciales = getMock.mock.calls.length;
+
+      events.state.ultimoMensaje = taskFinished('task-9');
+      rerender();
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      const lecturasTrasEvento = getMock.mock.calls.length;
+      expect(lecturasTrasEvento).toBeGreaterThan(lecturasIniciales);
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(3_100); });
+      expect(getMock.mock.calls.length).toBeGreaterThan(lecturasTrasEvento);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

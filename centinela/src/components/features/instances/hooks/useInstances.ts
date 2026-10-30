@@ -21,6 +21,9 @@ const INVENTORY_POLL_INTERVAL_MS = 2_500;
 // las tareas a los 3 minutos.
 const PENDING_POWER_ACTION_TIMEOUT_MS = 180_000;
 const PENDING_POWER_ACTION_SWEEP_MS = 15_000;
+// Proxmox puede tardar en reflejar el estado final; después del cierre se relee
+// el inventario un par de veces para que la fila no quede con el estado previo.
+const POST_FINISH_RELOAD_DELAYS_MS = [3_000, 8_000];
 
 interface PendingPowerAction {
   action: InstancePowerAction;
@@ -287,6 +290,11 @@ export function useInstances(suppressSnapshotNotifications = false) {
   // Eventos push: el TASK_FINISHED cierra la fila correspondiente y notifica su
   // resultado; todo evento de inventario se revalida en silencio, sin loader.
   const handledMessageId = useRef<string | null>(null);
+  const settleTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => {
+    settleTimers.current.forEach(clearTimeout);
+    settleTimers.current = [];
+  }, []);
   useEffect(() => {
     if (!ultimoMensaje || handledMessageId.current === ultimoMensaje.id) return;
     handledMessageId.current = ultimoMensaje.id;
@@ -296,6 +304,9 @@ export function useInstances(suppressSnapshotNotifications = false) {
       ? readDetalleString(ultimoMensaje.detalles, 'tareaId')
       : null;
     if (finishedTareaId) {
+      for (const delay of POST_FINISH_RELOAD_DELAYS_MS) {
+        settleTimers.current.push(setTimeout(() => setSilentReloadCount((count) => count + 1), delay));
+      }
       queueMicrotask(() => {
         setFinishedTaskIds((previous) => (previous.has(finishedTareaId) ? previous : new Set(previous).add(finishedTareaId)));
         // Cerrar la acción aceptada por su tarea: sin esto la fila quedaba
