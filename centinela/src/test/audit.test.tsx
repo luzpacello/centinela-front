@@ -190,7 +190,7 @@ describe('AuditoriaPage', () => {
 
         await waitFor(() => {
             expect(apiClient.get).toHaveBeenCalledWith(
-                urlAuditoria({ accion: 'LOGIN', resultado: 'EXITO' }),
+                urlAuditoria({ accion: 'LOGIN', resultado: 'SUCCESS' }),
                 expect.objectContaining({ signal: expect.any(AbortSignal) }),
             );
         });

@@ -225,8 +225,8 @@ export default function AuditoriaPage() {
             try {
                 const successParams = new URLSearchParams(params);
                 const failureParams = new URLSearchParams(params);
-                successParams.set('resultado', 'EXITO');
-                failureParams.set('resultado', 'FALLA');
+                successParams.set('resultado', 'SUCCESS');
+                failureParams.set('resultado', 'FAILED');
                 const [successes, failures] = await Promise.all([
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${successParams.toString()}`, { signal: controller.signal }),
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${failureParams.toString()}`, { signal: controller.signal }),
@@ -308,10 +308,10 @@ export default function AuditoriaPage() {
     const lastVisible = Math.min(pagina * pageSize, total);
     const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
         .filter((page) => page === 1 || page === totalPages || Math.abs(page - pagina) <= 1);
-    const activeResultTab = resultado === 'EXITO' || resultado === 'SUCCESS'
-        ? 'EXITO'
-        : resultado === 'FALLA' || resultado === 'FAILED'
-            ? 'FALLA'
+    const activeResultTab = resultado === 'SUCCESS' || resultado === 'EXITO'
+        ? 'SUCCESS'
+        : resultado === 'FAILED' || resultado === 'FALLA'
+            ? 'FAILED'
             : 'all';
 
     const getResultBadge = (resultado?: string | null) => {
@@ -455,10 +455,9 @@ export default function AuditoriaPage() {
                                 onChange={(event) => updateUrlFilter('resultado', event.target.value)}
                             >
                                 <option value="">Todos</option>
-                                <option value="SUCCESS">SUCCESS</option>
-                                <option value="FAILED">FAILED</option>
-                                <option value="PENDING">PENDING</option>
-                                <option value="WARNING">WARNING</option>
+                                <option value="PENDIENTE">En curso</option>
+                                <option value="SUCCESS">Éxito</option>
+                                <option value="FAILED">Falla</option>
                             </select>
                         </label>
                 </div>
@@ -469,8 +468,8 @@ export default function AuditoriaPage() {
             <Tabs value={activeResultTab} onValueChange={(value) => updateUrlFilter('resultado', value === 'all' ? '' : value)} className="min-w-0 gap-4">
                 <TabsList variant="line" aria-label="Resultado" className="max-w-full">
                     <TabsTrigger value="all" className="px-4"><FileText /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
-                    <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
-                    <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
+                    <TabsTrigger value="SUCCESS" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
+                    <TabsTrigger value="FAILED" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
                 </TabsList>
                 <TabsContent value={activeResultTab} className="min-w-0">
                     {/* Tabla de Registros */}
