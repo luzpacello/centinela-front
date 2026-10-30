@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import { Disc3, Package, Search } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+// Íconos de distribuciones de Simple Icons (CC0).
+import debianIcon from '@/components/features/instances/assets/distributions/debian.svg';
+import ubuntuIcon from '@/components/features/instances/assets/distributions/ubuntu.svg';
+import alpineIcon from '@/components/features/instances/assets/distributions/alpinelinux.svg';
+import { parseTemplateOption, type ParsedTemplate } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
     OperatingSystemTemplateOption,
 } from '@/components/features/instances/types/createInstance';
+
+const TEMPLATE_FAMILIES: { family: ParsedTemplate['family']; label: string; icon?: string }[] = [
+    { family: 'debian', label: 'Debian', icon: debianIcon },
+    { family: 'ubuntu', label: 'Ubuntu', icon: ubuntuIcon },
+    { family: 'alpine', label: 'Alpine', icon: alpineIcon },
+    { family: 'other', label: 'Otro' },
+];
 
 interface SelectInstanceOperatingSystemProps {
     draft: CreateInstanceDraft;
@@ -35,11 +40,18 @@ export default function SelectInstanceOperatingSystem({
         ? templates.filter((template) => template.type === (draft.tipo === 'vm' ? 'ISO' : 'LXC_TEMPLATE'))
         : [];
     const normalizedSearch = templateSearch.trim().toLowerCase();
-    const filteredTemplates = availableTemplates.filter((template) => (
-        `${template.templateName} ${template.distribution} ${template.operatingSystem} ${template.version}`
+    const filteredTemplates = availableTemplates.map((template) => ({
+        template,
+        parsed: parseTemplateOption(template.value),
+    })).filter(({ template, parsed }) => (
+        `${template.templateName} ${template.value} ${template.distribution} ${template.operatingSystem} ${template.version} ${parsed.displayName}`
             .toLowerCase()
             .includes(normalizedSearch)
     ));
+    const groups = TEMPLATE_FAMILIES.map((family) => ({
+        ...family,
+        templates: filteredTemplates.filter(({ parsed }) => parsed.family === family.family),
+    })).filter((family) => family.templates.length > 0);
 
     return (
         <Card className={styles.templateSelectionCard}>
@@ -63,97 +75,73 @@ export default function SelectInstanceOperatingSystem({
                 </div>
             </div>
 
-            <div className={styles.tableContainer}>
-                <Table className={styles.templatesTable}>
-                    <TableHeader>
-                        <TableRow className={styles.tableHeaderRow}>
-                            <TableHead className={styles.selectionColumn}>
-                                <span className="sr-only">Seleccionar</span>
-                            </TableHead>
-                            <TableHead className="header-of-table">Template</TableHead>
-                            <TableHead className="header-of-table">Sistema operativo</TableHead>
-                            <TableHead className="header-of-table">Versión</TableHead>
-                            <TableHead className="header-of-table">Tamaño</TableHead>
-                            <TableHead className="header-of-table">Fecha</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody role="radiogroup" aria-label="Template del sistema operativo">
-                        {filteredTemplates.map((template) => (
-                            <OperatingSystemTemplateRow
-                                key={template.value}
-                                template={template}
-                                instanceType={draft.tipo}
-                                isSelected={draft.templateOso === template.value}
-                                onSelect={() => onTemplateChange(template.value)}
-                            />
-                        ))}
-                        {filteredTemplates.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={6} className={styles.emptyStateCell}>
-                                    {catalogError || (isLoadingCatalog
-                                        ? 'Cargando imágenes…'
-                                        : draft.tipo
-                                            ? 'No se encontraron templates para la búsqueda.'
-                                            : 'Selecciona primero el tipo de instancia.')}
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+            <div role="radiogroup" aria-label="Template del sistema operativo" className={styles.templateGroups}>
+                {groups.map((group) => (
+                    <section key={group.family} aria-labelledby={`template-family-${group.family}`}>
+                        <h4 id={`template-family-${group.family}`} className={styles.familyTitle}>{group.label}</h4>
+                        <div className={styles.templateGrid}>
+                            {group.templates.map(({ template, parsed }) => (
+                                <OperatingSystemTemplateCard
+                                    key={template.value}
+                                    template={template}
+                                    parsed={parsed}
+                                    icon={group.icon}
+                                    isSelected={draft.templateOso === template.value}
+                                    onSelect={() => onTemplateChange(template.value)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ))}
+                {filteredTemplates.length === 0 && (
+                    <p className={styles.emptyState}>
+                        {catalogError || (isLoadingCatalog
+                            ? 'Cargando imágenes…'
+                            : draft.tipo
+                                ? 'No se encontraron templates para la búsqueda.'
+                                : 'Selecciona primero el tipo de instancia.')}
+                    </p>
+                )}
             </div>
         </Card>
     );
 }
 
-interface OperatingSystemTemplateRowProps {
+interface OperatingSystemTemplateCardProps {
     template: OperatingSystemTemplateOption;
-    instanceType: CreateInstanceDraft['tipo'];
+    parsed: ParsedTemplate;
+    icon?: string;
     isSelected: boolean;
     onSelect: () => void;
 }
 
-function OperatingSystemTemplateRow({
+function OperatingSystemTemplateCard({
     template,
-    instanceType,
+    parsed,
+    icon,
     isSelected,
     onSelect,
-}: OperatingSystemTemplateRowProps) {
-    const TemplateIcon = instanceType === 'vm' ? Disc3 : Package;
-
+}: OperatingSystemTemplateCardProps) {
     return (
-        <TableRow
-            data-state={isSelected ? 'selected' : undefined}
-            className={`${styles.tableBodyRow} ${isSelected ? styles.selectedTableBodyRow : ''}`}
-        >
-            <TableCell className={styles.selectionCell}>
-                <button
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    aria-label={`Seleccionar ${template.templateName}`}
-                    className={`${styles.selectionControl} ${isSelected ? styles.selectedSelectionControl : styles.unselectedSelectionControl}`}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onSelect();
-                    }}
-                >
-                    {isSelected && <span className={styles.selectionControlDot} />}
-                </button>
-            </TableCell>
-            <TableCell className={styles.templateCell}>
+        <label className={`${styles.templateCard} ${isSelected ? styles.selectedTemplateCard : ''}`}>
+            <input
+                type="radio"
+                name="instance-template"
+                value={template.value}
+                checked={isSelected}
+                aria-label={`Seleccionar ${parsed.displayName}, ${template.templateName}`}
+                onChange={onSelect}
+                className="sr-only"
+            />
+            <span className={styles.templateCardHeader}>
                 <span className={styles.templateIconContainer}>
-                    <TemplateIcon className={styles.templateIcon} aria-hidden="true" />
+                    {icon ? <img src={icon} className={styles.templateIcon} alt="" /> : <Package className={styles.templateIcon} aria-hidden="true" />}
                 </span>
-                <span className={styles.templateNameContainer}>
-                    <strong className={styles.templateName}>{template.templateName}</strong>
-                    <span className="text-secundario">{template.distribution}</span>
-                </span>
-            </TableCell>
-            <TableCell className="text-of-table">{template.operatingSystem}</TableCell>
-            <TableCell className="text-of-table">{template.version}</TableCell>
-            <TableCell className="text-of-table">{template.size}</TableCell>
-            <TableCell className="text-of-table">{template.date}</TableCell>
-        </TableRow>
+                <Badge variant="secondary">{parsed.displayName}</Badge>
+            </span>
+            <strong className={styles.templateName}>{template.templateName}</strong>
+            <span className="text-secundario">{template.size}</span>
+        </label>
     );
 }
 
@@ -163,21 +151,14 @@ const styles = {
     searchContainer: 'relative w-full md:max-w-64',
     searchIcon: 'pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-400',
     searchInput: 'pl-10',
-    tableContainer: 'overflow-hidden rounded-lg border border-slate-200',
-    templatesTable: 'min-w-[48rem] text-xs text-slate-700',
-    tableHeaderRow: 'bg-slate-50/80 hover:bg-slate-50/80',
-    selectionColumn: 'w-14 pl-5',
-    tableBodyRow: 'hover:bg-slate-50/70',
-    selectedTableBodyRow: 'bg-blue-50/70 hover:bg-blue-50/70',
-    selectionCell: 'pl-5',
-    selectionControl: 'flex size-5 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
-    selectedSelectionControl: 'border-blue-600 bg-blue-600',
-    unselectedSelectionControl: 'border-slate-300 bg-white hover:border-blue-400',
-    selectionControlDot: 'size-2 rounded-full bg-white',
-    templateCell: 'flex items-center gap-3',
+    templateGroups: 'grid gap-5',
+    familyTitle: 'mb-2 text-sm font-semibold text-slate-900',
+    templateGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3',
+    templateCard: 'flex min-w-0 cursor-pointer flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 text-left transition-colors hover:border-blue-300 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600',
+    selectedTemplateCard: 'border-blue-600 bg-blue-50/70',
+    templateCardHeader: 'flex items-center justify-between gap-2',
     templateIconContainer: 'flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600',
     templateIcon: 'size-4',
-    templateNameContainer: 'flex min-w-0 flex-col',
-    templateName: 'text-of-table font-semibold',
-    emptyStateCell: 'h-24 text-center text-slate-500',
+    templateName: 'break-all text-sm font-semibold text-slate-900',
+    emptyState: 'py-8 text-center text-sm text-slate-500',
 };

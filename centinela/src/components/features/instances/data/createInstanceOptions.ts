@@ -4,6 +4,29 @@ import type {
     InstanceTypeOption,
 } from '@/components/features/instances/types/createInstance';
 
+export interface ParsedTemplate {
+    id: string;
+    family: 'debian' | 'ubuntu' | 'alpine' | 'other';
+    displayName: string;
+    version: string;
+}
+
+export function parseTemplateOption(volid: string): ParsedTemplate {
+    const filename = volid.slice(volid.lastIndexOf('/') + 1);
+    const match = /(?:^|[^a-z0-9])(debian|ubuntu|alpine)(?=$|[^a-z])/i.exec(filename);
+    if (!match) return { id: volid, family: 'other', displayName: 'Otro', version: '' };
+
+    const family = match[1].toLowerCase() as Exclude<ParsedTemplate['family'], 'other'>;
+    const familyName = { debian: 'Debian', ubuntu: 'Ubuntu', alpine: 'Alpine' }[family];
+    const suffix = filename.slice(match.index + match[0].length);
+    const versionMatch = /^[-_.\s]+(?:server[-_.\s]+)?(\d+)(?:\.(\d+))?/i.exec(suffix);
+    const version = versionMatch
+        ? family !== 'debian' && versionMatch[2] ? `${versionMatch[1]}.${versionMatch[2]}` : versionMatch[1]
+        : '';
+
+    return { id: volid, family, displayName: version ? `${familyName} ${version}` : familyName, version };
+}
+
 export const INSTANCE_CREATION_STEPS: InstanceCreationStep[] = [
     { title: 'General', description: 'Tipo y nombre' },
     { title: 'Recursos', description: 'CPU, RAM y almacenamiento' },
