@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { describeActionProgress } from '../utils/actionLabels';
 import { Loader2 } from 'lucide-react';
 import type { InstanceActiveTask, InstancePowerAction, InstanceType } from '../types/instance';
 
@@ -52,15 +53,26 @@ export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
       </Badge>
     );
   }
+  // Transición en curso: se cubre toda la familia de energía, no sólo
+  // start/stop. Antes un apagado ordenado (shutdown) o un reinicio no mostraban
+  // su estado y la fila seguía pareciendo "Running" hasta el final.
   const action = pendingAction ?? (activeTask?.status === 'RUNNING' ? activeTask.action.toLowerCase() : null);
-  const targetStatus = action === 'start' ? 'running' : action === 'stop' ? 'stopped' : null;
-  if (targetStatus && status.toLowerCase() !== targetStatus) {
+  // Un reinicio no cambia el estado final: mientras está pendiente se muestra
+  // igual, porque el invitado puede volver a "running" sin pasar por stopped.
+  const finishedStatus = action === 'start'
+    ? 'running'
+    : action === 'stop' || action === 'shutdown'
+      ? 'stopped'
+      : null;
+  const isTransitioning = action === 'reboot'
+    || Boolean(finishedStatus && status.toLowerCase() !== finishedStatus);
+  if (action && isTransitioning) {
     return (
-      <Badge variant="secondary" className={action === 'start'
+      <Badge variant="secondary" className={action === 'start' || action === 'reboot'
         ? instanceStatusPresentation.running.className
         : instanceStatusPresentation.paused.className}>
         <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
-        {action === 'start' ? 'Encendiendo…' : 'Apagando…'}
+        {describeActionProgress(action)}
       </Badge>
     );
   }
