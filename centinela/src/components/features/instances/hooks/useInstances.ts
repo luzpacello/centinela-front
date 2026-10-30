@@ -6,6 +6,7 @@ import { useEventsContext } from '@/context/EventsContext';
 import { toast } from '@/components/ui/toast';
 import type { CentinelaEventsMessage } from '@/services/eventsClient';
 import { usePendingInstanceCreations } from '@/components/features/instances/context/PendingInstanceCreationsContext';
+import { describeActionNoun } from '../utils/actionLabels';
 
 // Eventos que obligan a releer el inventario. El TASK_FINISHED además cierra el
 // ciclo de la fila que lo esperaba (spinner y bloqueo).
@@ -38,7 +39,7 @@ function readDetalleString(detalles: Record<string, unknown> | null, key: string
 // error con el motivo reportado por el backend si terminó FAILED.
 function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsMessage): void {
   const estadoTarea = readDetalleString(message.detalles, 'estado');
-  const accion = readDetalleString(message.detalles, 'accion') || 'de la instancia';
+  const accion = readDetalleString(message.detalles, 'accion');
 
   if (estadoTarea === 'FAILED') {
     const error = readDetalleString(message.detalles, 'error');
@@ -66,7 +67,9 @@ function notifyTaskResult(instance: InventoryInstance, message: CentinelaEventsM
 
   toast.add({
     title: `Orden completada en ${instance.name}`,
-    description: `Operación ${accion} sobre la instancia finalizada correctamente`,
+    description: accion
+      ? `Operación de ${describeActionNoun(accion)} sobre la instancia finalizada correctamente`
+      : 'Operación sobre la instancia finalizada correctamente',
     type: 'success',
   });
 }
