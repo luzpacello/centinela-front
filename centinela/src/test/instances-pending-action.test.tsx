@@ -82,4 +82,47 @@ describe('Acciones de energía aceptadas por instancia', () => {
     await waitFor(() => expect(result.current.pendingPowerActions['110']).toBeUndefined());
     expect(result.current.pendingPowerActions['111']).toBeDefined();
   });
+
+  it('muestra el estado final aunque Proxmox venga atrasado en la primera lectura', async () => {
+    // La instancia arranca detenida; el cierre llega antes de que Proxmox la
+    // reporte encendida, y recién en una relectura posterior aparece running.
+    const detenida = inventory.map((item) => ({ ...item, status: 'stopped' }));
+    const encendida = inventory.map((item) => ({ ...item, status: 'running' }));
+    getMock
+      .mockResolvedValueOnce(detenida)
+      .mockResolvedValueOnce(detenida)
+      .mockResolvedValue(encendida);
+
+    const { result, rerender } = renderHook(() => useInstances(), { wrapper });
+    await waitFor(() => expect(result.current.instances).toHaveLength(2));
+    expect(result.current.instances[0].status).toBe('stopped');
+
+    events.state.ultimoMensaje = taskFinished('task-9');
+    rerender();
+
+    await waitFor(
+      () => expect(result.current.instances.every((item) => item.status === 'running')).toBe(true),
+      { timeout: 6_000 },
+    );
+  });
+
+  it('relee el inventario un rato después del cierre para ver el estado final', async () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = renderHook(() => useInstances(), { wrapper });
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      const lecturasIniciales = getMock.mock.calls.length;
+
+      events.state.ultimoMensaje = taskFinished('task-9');
+      rerender();
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      const lecturasTrasEvento = getMock.mock.calls.length;
+      expect(lecturasTrasEvento).toBeGreaterThan(lecturasIniciales);
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(3_100); });
+      expect(getMock.mock.calls.length).toBeGreaterThan(lecturasTrasEvento);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

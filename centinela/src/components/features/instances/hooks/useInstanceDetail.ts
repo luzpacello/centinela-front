@@ -32,8 +32,11 @@ export function useInstanceDetail(reference: string, inventoryStatus: string, op
     const pendingConfigurationRef = useRef<Partial<InstanceResourceConfiguration>>({});
 
     const refresh = useCallback(() => setRefreshVersion((version) => version + 1), []);
-    useEventSubscription({ tipo: 'TASK_FINISHED', recursoId: reference }, refresh);
-    useEventSubscription({ tipo: 'INSTANCE_STATE_CHANGED', recursoId: reference }, refresh);
+    // El evento de tarea viaja con el identificador numérico de Proxmox, no con
+    // la referencia opaca inst_..., así que no se filtra por recursoId: el
+    // refresco vuelve a leer el detalle por su propia referencia.
+    useEventSubscription({ tipo: 'TASK_FINISHED' }, refresh);
+    useEventSubscription({ tipo: 'INSTANCE_STATE_CHANGED' }, refresh);
 
     useEffect(() => {
         const controller = new AbortController();
