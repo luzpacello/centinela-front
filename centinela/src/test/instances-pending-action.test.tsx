@@ -106,6 +106,31 @@ describe('Acciones de energía aceptadas por instancia', () => {
     );
   });
 
+  it('mantiene el estado en curso hasta que el inventario muestra el estado final', async () => {
+    const encendidas = inventory.map((item) => ({ ...item, status: 'running' }));
+    const detenidas = inventory.map((item) => ({ ...item, status: 'stopped' }));
+    getMock.mockResolvedValue(encendidas);
+
+    const { result, rerender } = renderHook(() => useInstances(), { wrapper });
+    await waitFor(() => expect(result.current.instances).toHaveLength(2));
+
+    act(() => { result.current.markPowerActionAccepted(110, 'shutdown', 'task-9'); });
+    events.state.ultimoMensaje = taskFinished('task-9');
+    rerender();
+
+    // La orden cerró pero Proxmox todavía la reporta encendida: el estado en
+    // curso se mantiene para que el usuario no vea "Running" mientras se apaga.
+    await waitFor(() => expect(result.current.settlingPowerActions['110']).toBeDefined());
+    expect(result.current.settlingPowerActions['110'].action).toBe('shutdown');
+
+    // Recién cuando el inventario confirma el apagado se retira el estado.
+    getMock.mockResolvedValue(detenidas);
+    await waitFor(
+      () => expect(result.current.settlingPowerActions['110']).toBeUndefined(),
+      { timeout: 8_000 },
+    );
+  });
+
   it('relee el inventario un rato después del cierre para ver el estado final', async () => {
     vi.useFakeTimers();
     try {

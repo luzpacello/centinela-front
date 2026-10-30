@@ -32,7 +32,7 @@ import { Link } from 'react-router';
 export default function Instances() {
     const navigate = useNavigate();
     const { user, isAdmin } = useAuth();
-    const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
+    const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, settlingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = instances;
     const vmInstanceCount = visibleInstances.filter((instance) => instance.type === 'VM').length;
     const lxcInstanceCount = visibleInstances.filter((instance) => instance.type === 'LXC').length;
@@ -176,7 +176,7 @@ export default function Instances() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="p-4"><InstanceTypeBadge type={instance.type} /></TableCell>
-                                    <TableCell className="p-4"><InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} pendingAction={pendingPowerActions[instance.id]?.action} /></TableCell>
+                                    <TableCell className="p-4"><InstanceStatusBadge status={instance.status} activeTask={instance.activeTask} pendingAction={pendingPowerActions[instance.id]?.action ?? settlingPowerActions?.[instance.id]?.action} /></TableCell>
                                     <TableCell className="p-4 text-secundario">{instance.node}</TableCell>
                                     <TableCell className={`p-4 table-text-secondary ${cpuUsage === '—' ? 'text-center' : ''}`}>{cpuUsage}</TableCell>
                                     <TableCell className={`p-4 table-text-secondary ${ramUsage === '—' ? 'text-center' : ''}`}>{ramUsage}</TableCell>
