@@ -153,11 +153,13 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   // progreso deshabilitado, bloqueando todos los controles de la máquina.
   if (isTransitioning && !isHeader) {
     const actionLabel = transition ? describeTransitionAction(transition.action) : 'Operación en progreso…';
+    // La celda se mantiene compacta: con la etiqueta larga, la columna de
+    // acciones ensanchaba la tabla y empujaba los menús de las otras filas
+    // fuera del ancho visible.
     return (
-      <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`}
-        className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+      <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`} title={actionLabel}
+        className="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500">
         <Loader2 data-testid="instance-transition-spinner" className="size-3.5 animate-spin" aria-hidden="true" />
-        {actionLabel}
       </button>
     );
   }
