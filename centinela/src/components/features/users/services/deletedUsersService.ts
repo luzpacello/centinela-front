@@ -5,6 +5,9 @@ import { fetchUserDetails } from './userDetailsService';
 const AUDIT_PAGE_SIZE = 200;
 const DETAIL_REQUEST_BATCH_SIZE = 4;
 const USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Las bajas nuevas se auditan con el vocabulario único (SUCCESS); las anteriores
+// quedaron con EXITO. Se leen las dos hasta la normalización de los datos.
+const DELETED_USER_RESULTS = new Set(['SUCCESS', 'EXITO']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -20,7 +23,7 @@ export async function fetchDeletedUsers(signal?: AbortSignal): Promise<UserDetai
   do {
     signal?.throwIfAborted();
     const query = new URLSearchParams({
-      accion: 'ELIMINAR_USUARIO', resultado: 'EXITO', pagina: String(pageNumber),
+      accion: 'ELIMINAR_USUARIO', pagina: String(pageNumber),
       tamano: String(AUDIT_PAGE_SIZE), ordenarPor: 'fechaHora', direccion: 'desc',
     });
     const response = await apiClient.get<unknown>(`/admin/audit?${query}`, { signal, expectedStatus: 200 });
@@ -31,7 +34,7 @@ export async function fetchDeletedUsers(signal?: AbortSignal): Promise<UserDetai
     }
     totalRecords = response.total;
     for (const entry of response.items) {
-      if (!isRecord(entry) || entry.accion !== 'ELIMINAR_USUARIO' || entry.resultado !== 'EXITO') continue;
+      if (!isRecord(entry) || entry.accion !== 'ELIMINAR_USUARIO' || !DELETED_USER_RESULTS.has(String(entry.resultado))) continue;
       let details: unknown;
       try {
         details = typeof entry.detalles === 'string' ? JSON.parse(entry.detalles) : null;
