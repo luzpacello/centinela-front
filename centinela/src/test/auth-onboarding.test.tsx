@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Mail } from 'lucide-react';
 
@@ -124,5 +124,15 @@ describe('AuthenticationInputField: prop de ícono aditiva', () => {
 
         expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Mostrar contraseña' })).toBeInTheDocument();
+    });
+
+    it('ofrece un control de visibilidad amplio y conserva la alternancia de contraseña', () => {
+        render(<AuthenticationInputField id="t-pass" label="Contraseña" type="password" />);
+        const toggle = screen.getByRole('button', { name: 'Mostrar contraseña' });
+        expect(toggle).toHaveClass('size-10');
+        fireEvent.click(toggle);
+        expect(screen.getByLabelText('Contraseña')).toHaveAttribute('type', 'text');
+        fireEvent.click(screen.getByRole('button', { name: 'Ocultar contraseña' }));
+        expect(screen.getByLabelText('Contraseña')).toHaveAttribute('type', 'password');
     });
 });

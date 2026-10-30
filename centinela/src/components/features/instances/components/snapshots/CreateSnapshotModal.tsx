@@ -1,10 +1,12 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef } from 'react';
 import { Camera, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modals';
 import { FieldGroup } from '@/components/ui/field';
 import { AuthenticationInputField } from '@/components/features/auth/components/AuthenticationInputField';
 import { snapshotService, type CreateSnapshotResponse } from '../../services/snapshotService';
 import { ApiRequestError } from '@/services/apiClient';
+import { useModalFocus } from '@/components/common/useModalFocus';
 
 interface CreateSnapshotModalProps {
   instanceRef: string | number;
@@ -30,6 +32,8 @@ export function CreateSnapshotModal({
 
   const nameInputId = useId();
   const descInputId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef, isOpen, onClose, !isSubmitting);
 
   if (!isOpen) return null;
 
@@ -97,12 +101,14 @@ export function CreateSnapshotModal({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
+      tabIndex={-1}
       aria-modal="true"
       aria-labelledby="create-snapshot-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
     >
-      <div className="w-full max-w-md rounded-xl border bg-card p-6 shadow-lg space-y-4">
+      <Modal variant="form" className="w-full max-w-md space-y-4">
         {/* Cabecera */}
         <div className="flex items-center gap-3 border-b pb-3">
           <div className="rounded-full bg-primary/10 p-2 text-primary">
@@ -129,7 +135,8 @@ export function CreateSnapshotModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {isSubmitting && <p role="status" className="text-sm text-slate-700">Enviando solicitud, esperá un momento.</p>}
+        <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting} noValidate>
           <FieldGroup className="space-y-3">
             {/* Campo Nombre del Snapshot */}
             <div>
@@ -200,7 +207,7 @@ export function CreateSnapshotModal({
             </Button>
           </div>
         </form>
-      </div>
+      </Modal>
     </div>
   );
 }

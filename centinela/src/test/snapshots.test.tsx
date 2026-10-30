@@ -56,6 +56,26 @@ afterEach(() => {
 });
 
 describe('RF-06 / RNF-04 - Pestaña Snapshots y Modal de Creación', () => {
+  it('mantiene el foco dentro del modal y lo devuelve al cerrar con Escape', async () => {
+    getMock.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<SnapshotsTabContent vmid={101} />);
+
+    const trigger = await screen.findByRole('button', { name: /crear snapshot/i });
+    await user.click(trigger);
+    const dialog = screen.getByRole('dialog');
+    const name = within(dialog).getByRole('textbox', { name: /nombre del snapshot/i });
+    const cancel = within(dialog).getByRole('button', { name: /cancelar/i });
+    expect(name).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(cancel).toHaveFocus();
+    await user.tab();
+    expect(name).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it('Lista los snapshots omitiendo el marcador sintético current', async () => {
     getMock.mockResolvedValue([
       { name: 'current', snaptime: 1700000000, description: 'Marcador actual' },

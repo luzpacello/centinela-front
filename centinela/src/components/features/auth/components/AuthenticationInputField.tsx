@@ -28,7 +28,7 @@ export function AuthenticationInputField({
   const descriptionIds = [description && `${id}-description`, error && `${id}-error`].filter(Boolean).join(' ');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const isPasswordField = type === 'password';
-  const inputClassName = [icon ? 'pl-11' : '', isPasswordField ? 'pr-10' : '', className]
+  const inputClassName = [icon ? 'pl-11' : '', isPasswordField ? 'pr-12' : '', className]
     .filter(Boolean)
     .join(' ');
 
@@ -56,7 +56,7 @@ export function AuthenticationInputField({
           <button
             type="button"
             aria-label={isPasswordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-700"
+            className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
             onClick={() => setIsPasswordVisible((visible) => !visible)}
           >
             {isPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
