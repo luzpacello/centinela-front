@@ -31,7 +31,9 @@ describe('ResourceMeters', () => {
 
         expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '15.85');
         expect(screen.getByText('15.85%')).toBeInTheDocument();
-        expect(screen.getByText('10.74 GB / 67.73 GB')).toBeInTheDocument();
+        expect(screen.queryByText('10.74 GB / 67.73 GB')).not.toBeInTheDocument();
+        expect(screen.getByText('10.74 GB de 67.73 GB')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Almacenamiento' }).parentElement?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
         expect(screen.queryByTestId('storage-meter-sparkline')).not.toBeInTheDocument();
     });
     it('renderiza estado normal en 69%', () => {
