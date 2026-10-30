@@ -21,7 +21,7 @@ export default function SnapshotsTabContent() {
     );
 }
 */
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Camera, Clock, RefreshCw, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,9 +32,17 @@ import { useAuth } from '@/context/AuthContext';
 import { useEventsContext } from '@/context/EventsContext';
 import { snapshotService, type SnapshotItem, type CreateSnapshotResponse } from '../../services/snapshotService';
 import { CreateSnapshotModal } from '../snapshots/CreateSnapshotModal';
+import { RollbackSnapshotModal } from '../snapshots/RollbackSnapshotModal';
+import { DeleteSnapshotModal } from '../snapshots/DeleteSnapshotModal';
+import type { SnapshotAction } from '../snapshots/SnapshotActionModal';
 
 interface SnapshotsTabContentProps {
   vmid: number | string;
+  isBusy?: boolean;
+  onSubmittingChange?: (submitting: boolean) => void;
+  onOutcomeUncertain?: () => void;
+  onActionAccepted?: (taskId: string, action: SnapshotAction, snapshotName: string) => void;
+  refreshVersion?: number;
 }
 
 function formatSnapshotDate(rawTime?: number | string): string {
@@ -56,7 +64,7 @@ function formatSnapshotDate(rawTime?: number | string): string {
   }).format(date);
 }
 
-export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
+export function SnapshotsTabContent({ vmid, isBusy = false, onSubmittingChange = () => {}, onOutcomeUncertain = () => {}, onActionAccepted = () => {}, refreshVersion = 0 }: SnapshotsTabContentProps) {
   const { canOperateInstance } = useAuth();
   const { ultimoMensaje } = useEventsContext();
 
@@ -64,27 +72,32 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<{ action: SnapshotAction; snapshotName: string } | null>(null);
+  const latestRequest = useRef(0);
 
   const [pendingTareaId, setPendingTareaId] = useState<string | null>(null);
 
   const canOperate = canOperateInstance(vmid);
 
   const fetchList = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
     setErrorMessage(null);
     try {
       const data = await snapshotService.getSnapshots(vmid);
-      setSnapshots(data);
+      if (requestId === latestRequest.current) setSnapshots(data);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Error al cargar el historial de snapshots.');
+      if (requestId === latestRequest.current) setErrorMessage(err instanceof Error ? err.message : 'Error al cargar el historial de snapshots.');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequest.current) setIsLoading(false);
     }
   }, [vmid]);
 
   useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+    let active = true;
+    queueMicrotask(() => { if (active) void fetchList(); });
+    return () => { active = false; latestRequest.current += 1; };
+  }, [fetchList, refreshVersion]);
 
   // Escuchar el evento TASK_FINISHED asíncrono proveniente de Centinela/Proxmox
   useEffect(() => {
@@ -94,23 +107,28 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
       ultimoMensaje.tipo === 'TASK_FINISHED' &&
       ultimoMensaje.detalles?.tareaId === pendingTareaId
     ) {
-      const estado = ultimoMensaje.detalles?.estado;
-      if (estado === 'COMPLETED') {
-        toast.add({
-          title: 'Snapshot Creado',
-          description: 'El punto de restauración se guardó exitosamente en Proxmox.',
-          type: 'success',
-        });
-        fetchList();
-      } else if (estado === 'FAILED') {
-        const errorDetail = (ultimoMensaje.detalles?.error as string) || 'No se pudo completar la instantánea en Proxmox.';
-        toast.add({
-          title: 'Fallo al crear snapshot',
-          description: errorDetail,
-          type: 'error',
-        });
-      }
-      setPendingTareaId(null);
+      let active = true;
+      queueMicrotask(() => {
+        if (!active) return;
+        const estado = ultimoMensaje.detalles?.estado;
+        if (estado === 'COMPLETED') {
+          toast.add({
+            title: 'Snapshot Creado',
+            description: 'El punto de restauración se guardó exitosamente en Proxmox.',
+            type: 'success',
+          });
+          void fetchList();
+        } else if (estado === 'FAILED') {
+          const errorDetail = (ultimoMensaje.detalles?.error as string) || 'No se pudo completar la instantánea en Proxmox.';
+          toast.add({
+            title: 'Fallo al crear snapshot',
+            description: errorDetail,
+            type: 'error',
+          });
+        } else return;
+        setPendingTareaId(null);
+      });
+      return () => { active = false; };
     }
   }, [ultimoMensaje, pendingTareaId, fetchList]);
 
@@ -160,7 +178,7 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
 
           <Button
             onClick={() => setIsModalOpen(true)}
-            disabled={!canOperate}
+            disabled={!canOperate || isBusy}
             title={!canOperate ? 'Requiere permisos de escritura (FULL_ACCESS)' : undefined}
             className="gap-1.5"
           >
@@ -197,7 +215,7 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
             <Button
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              disabled={!canOperate}
+              disabled={!canOperate || isBusy}
               className="gap-1.5"
             >
               <Plus className="h-4 w-4" />
@@ -213,6 +231,7 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
                   <TableHead>Fecha de Creación</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-right">Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -233,6 +252,12 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
                         Guardado
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button type="button" variant="outline" size="sm" disabled={!canOperate || isBusy} aria-label={`Revertir ${snap.name}`}
+                        onClick={() => setSelectedAction({ action: 'rollback', snapshotName: snap.name })}>Revertir</Button>{' '}
+                      <Button type="button" variant="outline" size="sm" disabled={!canOperate || isBusy} aria-label={`Eliminar ${snap.name}`}
+                        onClick={() => setSelectedAction({ action: 'delete', snapshotName: snap.name })}>Eliminar</Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -247,6 +272,13 @@ export function SnapshotsTabContent({ vmid }: SnapshotsTabContentProps) {
         onClose={() => setIsModalOpen(false)}
         onSnapshotCreated={handleSnapshotCreated}
       />
+      {selectedAction && (selectedAction.action === 'rollback'
+        ? <RollbackSnapshotModal instanceRef={vmid} snapshotName={selectedAction.snapshotName} canOperate={canOperate && !isBusy}
+            onClose={() => setSelectedAction(null)} onSubmittingChange={onSubmittingChange} onOutcomeUncertain={onOutcomeUncertain}
+            onAccepted={(taskId, action, snapshotName) => { onActionAccepted(taskId, action, snapshotName); setSelectedAction(null); }} />
+        : <DeleteSnapshotModal instanceRef={vmid} snapshotName={selectedAction.snapshotName} canOperate={canOperate && !isBusy}
+            onClose={() => setSelectedAction(null)} onSubmittingChange={onSubmittingChange} onOutcomeUncertain={onOutcomeUncertain}
+            onAccepted={(taskId, action, snapshotName) => { onActionAccepted(taskId, action, snapshotName); setSelectedAction(null); }} />)}
     </Card>
   );
 }

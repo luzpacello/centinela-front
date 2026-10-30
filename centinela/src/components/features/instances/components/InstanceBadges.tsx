@@ -25,7 +25,10 @@ export function InstanceStatusBadge({ status, activeTask, pendingAction }: {
 }) {
   const normalizedStatus = status.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
   const normalizedTaskAction = activeTask?.action.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_') ?? '';
-  if (normalizedStatus === 'SNAPSHOTTING' || (activeTask?.status !== undefined && normalizedTaskAction.includes('SNAPSHOT') && !normalizedTaskAction.includes('ROLLBACK'))) {
+  if (activeTask?.status === 'RUNNING' && normalizedTaskAction.includes('DELETE_SNAPSHOT')) {
+    return <Badge variant="secondary" className="border-0 bg-amber-50 text-amber-700"><Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />Eliminando snapshot…</Badge>;
+  }
+  if (normalizedStatus === 'SNAPSHOTTING' || (activeTask?.status === 'RUNNING' && normalizedTaskAction.includes('SNAPSHOT') && !normalizedTaskAction.includes('ROLLBACK'))) {
     return (
       <Badge variant="secondary" className="border-0 bg-blue-50 text-blue-700">
         <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />
