@@ -26,6 +26,15 @@ const PENDING_POWER_ACTION_SWEEP_MS = 15_000;
 // inventario aunque ya no queden acciones pendientes.
 const POST_FINISH_SETTLE_WINDOW_MS = 12_000;
 
+// Acción ya aceptada que todavía no se refleja en el inventario. Mantiene el
+// estado visible ("Apagando…") hasta que la pantalla tenga el dato nuevo, para
+// que el usuario no vea el estado viejo mientras Proxmox termina de cerrar.
+interface SettlingPowerAction {
+  action: InstancePowerAction;
+  targetStatus: InventoryInstance['status'];
+  until: number;
+}
+
 interface PendingPowerAction {
   action: InstancePowerAction;
   // Identificador público de la tarea que abrió la acción: permite cerrarla con
@@ -117,6 +126,7 @@ export function useInstances(suppressSnapshotNotifications = false) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
   const [pendingPowerActions, setPendingPowerActions] = useState<Record<string, PendingPowerAction>>({});
+  const [settlingPowerActions, setSettlingPowerActions] = useState<Record<string, SettlingPowerAction>>({});
   // Cuenta separada para la revalidación silenciosa: actualiza la tabla sin
   // activar el loader general de pantalla.
   const [silentReloadCount, setSilentReloadCount] = useState(0);
@@ -203,6 +213,16 @@ export function useInstances(suppressSnapshotNotifications = false) {
     // cerró una acción, un inventario que llega tarde no puede resucitarla.
     const nextPending = convergePendingPowerActions(currentPending, visibleInventory);
     setPendingPowerActions((previous) => convergePendingPowerActions(previous, visibleInventory));
+    // El estado "en curso" se retira recién cuando el inventario muestra el
+    // estado final (o vence la ventana), no cuando llega el evento.
+    setSettlingPowerActions((previous) => {
+      const next = Object.fromEntries(Object.entries(previous).filter(([vmid, settling]) => {
+        const instance = visibleInventory.find((item) => String(item.id) === vmid);
+        if (!instance) return Date.now() < settling.until;
+        return instance.status !== settling.targetStatus && Date.now() < settling.until;
+      }));
+      return Object.keys(next).length === Object.keys(previous).length ? previous : next;
+    });
     return nextPending;
   }, []);
 
@@ -293,7 +313,11 @@ export function useInstances(suppressSnapshotNotifications = false) {
   const handledMessageId = useRef<string | null>(null);
   const settleUntil = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(settleTimer.current), []);
+  const settleClearTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => {
+    clearTimeout(settleTimer.current);
+    clearTimeout(settleClearTimer.current);
+  }, []);
   useEffect(() => {
     if (!ultimoMensaje || handledMessageId.current === ultimoMensaje.id) return;
     handledMessageId.current = ultimoMensaje.id;
@@ -304,8 +328,30 @@ export function useInstances(suppressSnapshotNotifications = false) {
       : null;
     if (finishedTareaId) {
       settleUntil.current = Date.now() + POST_FINISH_SETTLE_WINDOW_MS;
+      const cerradas = Object.entries(pendingPowerActionsRef.current)
+        .filter(([, pending]) => pending.tareaId === finishedTareaId);
+      if (cerradas.length > 0) {
+        setSettlingPowerActions((previous) => {
+          const next = { ...previous };
+          for (const [vmid, pending] of cerradas) {
+            next[vmid] = {
+              action: pending.action,
+              targetStatus: getTargetStatus(pending.action),
+              until: Date.now() + POST_FINISH_SETTLE_WINDOW_MS,
+            };
+          }
+          return next;
+        });
+      }
       clearTimeout(settleTimer.current);
       settleTimer.current = setTimeout(() => setReloadCount((count) => count + 1), INVENTORY_POLL_INTERVAL_MS);
+      // Red de seguridad: aunque no llegue otra lectura, el estado en curso se
+      // retira cuando vence la ventana y vuelve a mostrarse el estado real.
+      clearTimeout(settleClearTimer.current);
+      settleClearTimer.current = setTimeout(
+        () => setSettlingPowerActions({}),
+        POST_FINISH_SETTLE_WINDOW_MS + 1_000,
+      );
       queueMicrotask(() => {
         setFinishedTaskIds((previous) => (previous.has(finishedTareaId) ? previous : new Set(previous).add(finishedTareaId)));
         // Cerrar la acción aceptada por su tarea: sin esto la fila quedaba
@@ -393,6 +439,7 @@ export function useInstances(suppressSnapshotNotifications = false) {
     reloadInventory,
     revalidateInventory,
     pendingPowerActions,
+    settlingPowerActions,
     markPowerActionAccepted,
     clearPendingPowerAction,
     updateInstanceResources,
