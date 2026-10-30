@@ -31,7 +31,9 @@ export function usePermissions() {
     if (isAdmin) return true;
     if (user?.rol !== 'OPERATOR') return false;
     // Una asignación antigua sin nivel permite consultar, pero nunca operar.
-    const permission = userPermissions.find((entry) => entry?.vmid === vmid);
+    // Mismo criterio que el contexto: el vmid del perfil y la referencia de la
+    // instancia se comparan como texto.
+    const permission = userPermissions.find((entry) => String(entry?.vmid) === String(vmid));
     return permission?.nivelAcceso === 'FULL_ACCESS';
   }
 
