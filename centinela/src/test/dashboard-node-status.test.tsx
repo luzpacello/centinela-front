@@ -77,7 +77,8 @@ const status: NodeStatusResponse = {
 
 const operatorStatus: NodeStatusResponse = {
     cpu: { usagePercent: 37.5, cores: 16 },
-    // A los operadores no se les manda ram ni storage
+    ram: { usedGb: 42.25, totalGb: 128, usagePercent: 33.01 },
+    storage: null as unknown as NodeStatusResponse['storage'],
     uptimeSeconds: 86400,
     instancesSummary: {
         vms: { running: 6, stopped: 2, paused: 1, total: 9 },
@@ -208,6 +209,15 @@ describe('Dashboard node status', () => {
         expect(within(resources).getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '70');
     });
 
+    it('oculta el medidor de almacenamiento cuando no hay datos', async () => {
+        vi.mocked(getNodeStatus).mockResolvedValue({ ...status, storage: null } as unknown as NodeStatusResponse);
+
+        renderDashboard();
+        expect(await screen.findByTestId('cpu-meter-sparkline')).toBeInTheDocument();
+        expect(screen.queryByRole('progressbar', { name: 'Uso de almacenamiento' })).not.toBeInTheDocument();
+        expect(screen.getByTestId('cpu-meter-sparkline').closest('.grid')).not.toHaveClass('sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]');
+    });
+
     it('muestra inaccesible y permite reintentar sin recargar', async () => {
         vi.mocked(getNodeStatus)
             .mockRejectedValueOnce(new Error('Sin conexión'))
@@ -323,7 +333,7 @@ describe('Dashboard node status', () => {
 
     it('carga fluidamente para el Operador sin métricas globales ni plantillas', async () => {
         authState.role = 'OPERATOR';
-        // Le pasamos el mock SIN storage ni ram, como lo manda el backend real
+        // El backend devuelve storage null para operadores.
         vi.mocked(getNodeStatus).mockResolvedValue(operatorStatus);
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -338,6 +348,7 @@ describe('Dashboard node status', () => {
 
             // Verifica que las tarjetas de recursos físicos están ocultas
             expect(screen.queryByTestId('resources-overview')).not.toBeInTheDocument();
+            expect(screen.queryByRole('progressbar', { name: 'Uso de almacenamiento' })).not.toBeInTheDocument();
 
             // Verifica que no se ven plantillas ni errores de consola
             expect(screen.queryByText(/\d+ Plantillas/)).not.toBeInTheDocument();

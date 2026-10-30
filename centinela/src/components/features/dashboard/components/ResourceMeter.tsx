@@ -215,7 +215,10 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamp
         const displayedPercent = Number(safePercent.toFixed(2));
         return (
             <div className="flex min-w-0 flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4" data-testid="storage-meter" data-state={safePercent >= 70 ? 'warning' : 'normal'}>
-                <div className="w-full text-left"><h4 className="text-sm font-semibold text-slate-900">Almacenamiento</h4><p className="text-xs text-slate-500">{formatStorage(usedGb)} / {formatStorage(totalGb)}</p></div>
+                <div className="flex w-full items-center gap-2 text-left">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600"><HardDrive className="size-4" aria-hidden="true" /></span>
+                    <h4 className="text-sm font-semibold text-slate-900">Almacenamiento</h4>
+                </div>
                 <div role="progressbar" aria-label="Uso de almacenamiento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayedPercent} className="relative grid size-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#9333ea ${safePercent}%, #e9d5ff ${safePercent}% 100%)` }}>
                     <span className="grid size-[84%] place-items-center rounded-full bg-white text-xl font-semibold text-slate-900">{displayedPercent}%</span>
                 </div>

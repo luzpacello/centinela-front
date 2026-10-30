@@ -132,12 +132,12 @@ export default function Dashboard() {
                                 {[0, 1, 2].map((item) => <div key={item} className={style.meterSkeleton} />)}
                             </div>
                         ) : data ? (
-                            <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]">
+                            <div className={`mt-4 grid min-w-0 grid-cols-1 gap-4 ${data.storage ? 'sm:grid-cols-[minmax(0,1fr)_minmax(120px,0.8fr)]' : ''}`}>
                                 <div className="flex min-w-0 flex-col justify-around gap-3">
                                     <CpuGauge percent={data?.cpu?.usagePercent ?? 0} cores={data?.cpu?.cores ?? 0} samples={history.map((sample) => sample?.cpu ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
                                     <RamMeter usedGb={data?.ram?.usedGb ?? 0} totalGb={data?.ram?.totalGb ?? 0} usagePercent={data?.ram?.usagePercent ?? 0} samples={history.map((sample) => sample?.ram ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
                                 </div>
-                                <StorageMeter usedGb={data?.storage?.usedGb ?? 0} totalGb={data?.storage?.totalGb ?? 0} usagePercent={data?.storage?.usagePercent ?? 0} variant="ring" />
+                                {data.storage && <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} variant="ring" />}
                             </div>
                         ) : null}
 
