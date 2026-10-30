@@ -11,6 +11,7 @@ import {
     DEFAULT_RESOURCE_CONFIGURATION,
     INITIAL_INSTANCE_DRAFT,
     INSTANCE_CREATION_STEPS,
+    parseTemplateOption,
 } from '@/components/features/instances/data/createInstanceOptions';
 import type {
     CreateInstanceDraft,
@@ -46,7 +47,10 @@ export function useCreateInstanceWizard() {
         ]).then(([availableStorages, availableTemplates]) => {
             if (controller.signal.aborted) return;
             setStorages(availableStorages);
-            setTemplates(availableTemplates);
+            setTemplates(availableTemplates.map((template) => {
+                const parsed = parseTemplateOption(template.value);
+                return { ...template, distribution: parsed.displayName, version: parsed.version || '—' };
+            }));
             setCatalogError(null);
         }).catch((error: unknown) => {
             if (controller.signal.aborted) return;
