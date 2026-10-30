@@ -25,7 +25,7 @@ interface InstanceDetailContentProps {
     instance: InventoryInstance;
     transition?: InstanceTransition;
     isPowerActionPending: boolean;
-    onActionAccepted: (action: InstancePowerAction) => void;
+    onActionAccepted: (action: InstancePowerAction, tareaId?: string | null) => void;
     onDeleteAccepted: () => void;
     onConfigurationSaved: (configuration: Partial<InstanceResourceConfiguration>) => void;
     onSnapshotAccepted?: () => void;

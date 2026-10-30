@@ -32,12 +32,12 @@ function collectPaths(route: AnyRoute, parent = ''): string[] {
 
 const declaredPaths = applicationRoutes.flatMap((route) => collectPaths(route));
 
-describe('FRN-21 - Vista Detalle de Instancia (/instances/:vmid)', () => {
-  it('declara la ruta /instances/:vmid dentro del árbol de rutas de la aplicación', () => {
+describe('FRN-21 - Vista Detalle de Instancia (/instances/:instanceRef)', () => {
+  it('declara la ruta /instances/:instanceRef dentro del árbol de rutas de la aplicación', () => {
     expect(
       declaredPaths,
-      'falta la ruta /instances/:vmid (FRN-21). Rutas declaradas: ' + declaredPaths.join(', '),
-    ).toContain('/instances/:vmid');
+      'falta la ruta /instances/:instanceRef (FRN-21). Rutas declaradas: ' + declaredPaths.join(', '),
+    ).toContain('/instances/:instanceRef');
   });
 
   it('mantiene la ruta de inventario /instances como padre del detalle', () => {

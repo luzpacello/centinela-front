@@ -23,7 +23,7 @@ interface InstanceActionProps {
   // se pasa, se deriva del activeTask del inventario.
   transition?: InstanceTransition | null;
   isPowerActionPending: boolean;
-  onActionAccepted: (action: InstancePowerAction) => void;
+  onActionAccepted: (action: InstancePowerAction, tareaId?: string | null) => void;
   onDeleteAccepted: () => void;
 }
 
@@ -140,8 +140,9 @@ export default function InstanceAction({ instance, transition: transitionProp, i
       throw new ApiRequestError('La instancia no está en ejecución. Revisá la acción antes de continuar.');
     }
 
-    await requestInstancePowerAction(instance.id, pendingAction);
-    onActionAccepted(pendingAction);
+    const accepted = await requestInstancePowerAction(instance.id, pendingAction);
+    // El tareaId correlaciona la fila con el TASK_FINISHED que la libera.
+    onActionAccepted(pendingAction, accepted?.tareaId ?? null);
     toast.add({
       title: 'Orden enviada',
       description: `${POWER_ACTION_CONFIG[pendingAction].confirmLabel} solicitado para ${instance.name}.`,
@@ -153,11 +154,13 @@ export default function InstanceAction({ instance, transition: transitionProp, i
   // progreso deshabilitado, bloqueando todos los controles de la máquina.
   if (isTransitioning && !isHeader) {
     const actionLabel = transition ? describeTransitionAction(transition.action) : 'Operación en progreso…';
+    // La celda se mantiene compacta: con la etiqueta larga, la columna de
+    // acciones ensanchaba la tabla y empujaba los menús de las otras filas
+    // fuera del ancho visible.
     return (
-      <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`}
-        className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+      <button type="button" disabled aria-busy="true" aria-label={`${actionLabel} ${instance.name}`} title={actionLabel}
+        className="inline-flex size-8 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500">
         <Loader2 data-testid="instance-transition-spinner" className="size-3.5 animate-spin" aria-hidden="true" />
-        {actionLabel}
       </button>
     );
   }
