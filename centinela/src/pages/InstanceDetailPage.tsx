@@ -9,17 +9,17 @@ import { validateInstanceRef } from '@/components/features/instances/services/in
 import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 export default function InstanceDetailPage() {
-    const { vmid: vmidParam } = useParams<{ vmid: string }>();
+    const { instanceRef } = useParams<{ instanceRef: string }>();
     const navigate = useNavigate();
     const { canAccessInstance } = useAuth();
     const {
         instances, isLoading, errorMessage, reloadInventory, pendingPowerActions,
-        markPowerActionAccepted, revalidateInventory, transitioningTasks, updateInstanceResources,
-    } = useInstances();
+        markPowerActionAccepted, revalidateInventory, transitioningTasks, updateInstanceResources, eventsStatus,
+    } = useInstances(true);
 
     let validRef: InstanceRef | null = null;
     try {
-        validRef = validateInstanceRef(vmidParam);
+        validRef = validateInstanceRef(instanceRef);
     } catch {
         validRef = null;
     }
@@ -50,6 +50,8 @@ export default function InstanceDetailPage() {
 
     return <InstanceDetailContent key={String(validRef)} instance={instance}
         onConfigurationSaved={(configuration) => updateInstanceResources(instance.id, configuration)}
+        onSnapshotAccepted={revalidateInventory}
+        eventsStatus={eventsStatus}
         transition={transitioningTasks[String(instance.id)]}
         isPowerActionPending={Boolean(pendingPowerActions[String(instance.id)])}
         onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
