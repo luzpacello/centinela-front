@@ -23,7 +23,7 @@ interface InstanceActionProps {
   // se pasa, se deriva del activeTask del inventario.
   transition?: InstanceTransition | null;
   isPowerActionPending: boolean;
-  onActionAccepted: (action: InstancePowerAction) => void;
+  onActionAccepted: (action: InstancePowerAction, tareaId?: string | null) => void;
   onDeleteAccepted: () => void;
 }
 
@@ -140,8 +140,9 @@ export default function InstanceAction({ instance, transition: transitionProp, i
       throw new ApiRequestError('La instancia no está en ejecución. Revisá la acción antes de continuar.');
     }
 
-    await requestInstancePowerAction(instance.id, pendingAction);
-    onActionAccepted(pendingAction);
+    const accepted = await requestInstancePowerAction(instance.id, pendingAction);
+    // El tareaId correlaciona la fila con el TASK_FINISHED que la libera.
+    onActionAccepted(pendingAction, accepted?.tareaId ?? null);
     toast.add({
       title: 'Orden enviada',
       description: `${POWER_ACTION_CONFIG[pendingAction].confirmLabel} solicitado para ${instance.name}.`,

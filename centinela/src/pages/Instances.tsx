@@ -187,7 +187,7 @@ export default function Instances() {
                                                 instance={instance}
                                                 transition={transition}
                                                 isPowerActionPending={isPending}
-                                                onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
+                                                onActionAccepted={(action, tareaId) => markPowerActionAccepted(instance.id, action, tareaId)}
                                                 onDeleteAccepted={revalidateInventory}
                                             />
                                         </div>

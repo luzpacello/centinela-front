@@ -54,7 +54,7 @@ export default function InstanceDetailPage() {
         eventsStatus={eventsStatus}
         transition={transitioningTasks[String(instance.id)]}
         isPowerActionPending={Boolean(pendingPowerActions[String(instance.id)])}
-        onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
+        onActionAccepted={(action, tareaId) => markPowerActionAccepted(instance.id, action, tareaId)}
         onDeleteAccepted={() => { revalidateInventory(); navigate('/instances'); }} />;
 }
 

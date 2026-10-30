@@ -15,8 +15,18 @@ const INVENTORY_CHANGING_EVENTS = new Set<CentinelaEventsMessage['tipo']>([
 ]);
 const INVENTORY_POLL_INTERVAL_MS = 2_500;
 
+// Red de seguridad: si el evento de cierre se pierde o el inventario nunca
+// converge, la fila no puede quedar bloqueada para siempre. El backend corta
+// las tareas a los 3 minutos.
+const PENDING_POWER_ACTION_TIMEOUT_MS = 180_000;
+const PENDING_POWER_ACTION_SWEEP_MS = 15_000;
+
 interface PendingPowerAction {
   action: InstancePowerAction;
+  // Identificador público de la tarea que abrió la acción: permite cerrarla con
+  // el TASK_FINISHED en lugar de esperar a que el inventario converja.
+  tareaId: string | null;
+  acceptedAt: number;
 }
 
 function readDetalleString(detalles: Record<string, unknown> | null, key: string): string | null {
@@ -182,8 +192,10 @@ export function useInstances(suppressSnapshotNotifications = false) {
     setErrorMessage(null);
     showRefreshError.current = false;
     hadRunningTask.current = visibleInventory.some((instance) => instance.activeTask?.status === 'RUNNING');
+    // La convergencia se aplica siempre sobre el estado vigente: si el evento ya
+    // cerró una acción, un inventario que llega tarde no puede resucitarla.
     const nextPending = convergePendingPowerActions(currentPending, visibleInventory);
-    if (nextPending !== currentPending) setPendingPowerActions(nextPending);
+    setPendingPowerActions((previous) => convergePendingPowerActions(previous, visibleInventory));
     return nextPending;
   }, []);
 
@@ -194,10 +206,10 @@ export function useInstances(suppressSnapshotNotifications = false) {
     setReloadCount((previousCount) => previousCount + 1);
   }, []);
 
-  const markPowerActionAccepted = useCallback((vmid: InstanceRef, action: InstancePowerAction) => {
+  const markPowerActionAccepted = useCallback((vmid: InstanceRef, action: InstancePowerAction, tareaId?: string | null) => {
     setPendingPowerActions((previous) => ({
       ...previous,
-      [String(vmid)]: { action },
+      [String(vmid)]: { action, tareaId: tareaId ?? null, acceptedAt: Date.now() },
     }));
   }, []);
 
@@ -283,6 +295,14 @@ export function useInstances(suppressSnapshotNotifications = false) {
     if (finishedTareaId) {
       queueMicrotask(() => {
         setFinishedTaskIds((previous) => (previous.has(finishedTareaId) ? previous : new Set(previous).add(finishedTareaId)));
+        // Cerrar la acción aceptada por su tarea: sin esto la fila quedaba
+        // bloqueada hasta que el inventario convergiera por su cuenta.
+        setPendingPowerActions((previous) => {
+          const next = Object.fromEntries(
+            Object.entries(previous).filter(([, pending]) => pending.tareaId !== finishedTareaId),
+          );
+          return Object.keys(next).length === Object.keys(previous).length ? previous : next;
+        });
       });
       const target = instances.find((instance) => instance.activeTask?.tareaId === finishedTareaId);
       const finishedAction = readDetalleString(ultimoMensaje.detalles, 'accion')
@@ -320,6 +340,21 @@ export function useInstances(suppressSnapshotNotifications = false) {
       });
     return () => controller.abort();
   }, [ultimoMensaje, instances, revalidateInventory, settleInventory, suppressSnapshotNotifications]);
+
+  // Barrido de acciones vencidas: libera la fila cuando el cierre nunca llega.
+  useEffect(() => {
+    if (!Object.keys(pendingPowerActions).length) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setPendingPowerActions((previous) => {
+        const next = Object.fromEntries(
+          Object.entries(previous).filter(([, pending]) => now - pending.acceptedAt < PENDING_POWER_ACTION_TIMEOUT_MS),
+        );
+        return Object.keys(next).length === Object.keys(previous).length ? previous : next;
+      });
+    }, PENDING_POWER_ACTION_SWEEP_MS);
+    return () => clearInterval(timer);
+  }, [pendingPowerActions]);
 
   // Estado de transición por fila: se deriva del inventario vigente y descarta
   // las tareas ya cerradas por evento. Es la "tarea guardada en la fila".
