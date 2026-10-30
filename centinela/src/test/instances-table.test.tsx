@@ -77,7 +77,7 @@ const inventory = [
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderInstancesPage() {
+function renderInstancesPage(userOverrides: Record<string, unknown> = {}) {
   window.sessionStorage.setItem(
     'centinela_access',
     'access-token-inventario',
@@ -93,6 +93,7 @@ function renderInstancesPage() {
       rol: 'ADMIN',
       instanciasPermitidas: [],
       tiene2FA: true,
+      ...userOverrides,
     }),
   );
 
@@ -330,6 +331,14 @@ describe('FRN-20A - Tabla interactiva de inventario con badges de estado e IP', 
       'href',
       '/instances/inst_k8Pq2v',
     );
+  });
+
+  it('FIX-IDS: marca el permiso de la instancia aunque el vmid llegue como texto', async () => {
+    renderInstancesPage({ instanciasPermitidas: ['101'] });
+
+    const row = await rowOf('servidor-web');
+
+    expect(within(row).getByRole('checkbox')).toBeChecked();
   });
 
   it('FIX-60: la cabecera de inventario /instances incluye el botón "Crear instancia" para ADMIN', async () => {

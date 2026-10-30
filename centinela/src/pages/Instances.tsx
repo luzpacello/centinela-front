@@ -146,14 +146,15 @@ export default function Instances() {
                                 )}
                             </TableCell></TableRow>
                         ) : paginatedInstances.map((instance) => {
-                            const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => permission.vmid === instance.id)?.nivelAcceso;
+                            const instanceRef = String(instance.id);
+                            const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => String(permission.vmid) === instanceRef)?.nivelAcceso;
                             const cpuUsage = formatCpuUsage(instance.cpuUsage);
                             const ramUsage = formatRamUsage(instance.ramUsage, instance.maxRam);
                             const transition = transitioningTasks[instance.id] ?? null;
                             const isPending = Boolean(pendingPowerActions[instance.id]);
                             return (
                                 <TableRow key={instance.id} className="hover:bg-slate-50/70">
-                                    <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).includes(instance.id)} disabled /></TableCell>
+                                    <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).some((permitida) => String(permitida) === instanceRef)} disabled /></TableCell>
                                     <TableCell className="p-4 table-text-secondary">{instance.id}</TableCell>
                                     <TableCell className="p-4">
                                         <div className="flex items-center gap-3">
