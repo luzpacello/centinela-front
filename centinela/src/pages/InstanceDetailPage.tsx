@@ -5,6 +5,8 @@ import { toast } from '@/components/ui/toast';
 import { useInstances } from '@/components/features/instances/hooks/useInstances';
 import InstanceDetailContent from '@/components/features/instances/components/detail/InstanceDetailContent';
 import InstanceDetailFeedback from '@/components/features/instances/components/detail/InstanceDetailFeedback';
+import { validateInstanceRef } from '@/components/features/instances/services/instanceService';
+import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 export default function InstanceDetailPage() {
     const { vmid: vmidParam } = useParams<{ vmid: string }>();
@@ -14,11 +16,16 @@ export default function InstanceDetailPage() {
         instances, isLoading, errorMessage, reloadInventory, pendingPowerActions,
         markPowerActionAccepted, revalidateInventory, transitioningTasks, updateInstanceResources,
     } = useInstances();
-    const instanceReference = vmidParam?.trim() ?? '';
-    const numericReference = Number(instanceReference);
-    const isNumericReference = Number.isSafeInteger(numericReference) && numericReference > 0;
-    const isValidReference = Boolean(instanceReference) && (isNumericReference || instanceReference.startsWith('inst_'));
-    const hasAccess = isValidReference && canAccessInstance(isNumericReference ? numericReference : instanceReference);
+
+    let validRef: InstanceRef | null = null;
+    try {
+        validRef = validateInstanceRef(vmidParam);
+    } catch {
+        validRef = null;
+    }
+
+    const isValidReference = validRef !== null;
+    const hasAccess = validRef !== null && canAccessInstance(validRef);
 
     useEffect(() => {
         if (isValidReference && !hasAccess) {
@@ -27,7 +34,7 @@ export default function InstanceDetailPage() {
         }
     }, [isValidReference, hasAccess, navigate]);
 
-    const instance = instances.find((item) => String(item.id) === instanceReference);
+    const instance = instances.find((item) => String(item.id) === String(validRef));
 
     if (!isValidReference) {
         return <InstanceDetailFeedback title="Identificador inválido" description="El identificador de la instancia no es válido." />;
@@ -41,10 +48,10 @@ export default function InstanceDetailPage() {
         return <InstanceDetailFeedback title="Instancia no encontrada" description="No encontramos esa instancia en el inventario actual." />;
     }
 
-    return <InstanceDetailContent key={instanceReference} instance={instance}
+    return <InstanceDetailContent key={String(validRef)} instance={instance}
         onConfigurationSaved={(configuration) => updateInstanceResources(instance.id, configuration)}
-        transition={transitioningTasks[instance.id]}
-        isPowerActionPending={Boolean(pendingPowerActions[instance.id])}
+        transition={transitioningTasks[String(instance.id)]}
+        isPowerActionPending={Boolean(pendingPowerActions[String(instance.id)])}
         onActionAccepted={(action) => markPowerActionAccepted(instance.id, action)}
         onDeleteAccepted={() => { revalidateInventory(); navigate('/instances'); }} />;
 }

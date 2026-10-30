@@ -9,9 +9,12 @@ export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
 // mockInstances es en caso de que se necesite instancias de prueba espara alguna tarea
 const USE_INSTANCE_MOCKS = import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true';
+const OPAQUE_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
 
-function validateInstanceRef(ref: unknown): InstanceRef {
-  if (typeof ref === 'string' && ref.trim()) return ref.trim();
+export function validateInstanceRef(ref: unknown): InstanceRef {
+  if (typeof ref === 'string' && ref.length > 0 && OPAQUE_ID_REGEX.test(ref)){
+      return ref;
+  }  
   if (typeof ref === 'number' && Number.isSafeInteger(ref) && ref > 0) return ref;
   throw new ApiRequestError('La instancia no tiene una referencia válida.');
 }

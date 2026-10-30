@@ -8,5 +8,9 @@ export function canUserAccessInstance(
 ): boolean {
   if (user?.rol === 'ADMIN') return true;
   if (user?.rol !== 'OPERATOR') return false;
-  return Array.isArray(user.instanciasPermitidas) && user.instanciasPermitidas.includes(vmid);
+  return (
+    Array.isArray(user.instanciasPermitidas) && 
+    user.instanciasPermitidas.some(
+      (allowedRef) => String(allowedRef) === String(vmid),
+    ));
 }
