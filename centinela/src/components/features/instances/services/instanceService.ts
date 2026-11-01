@@ -32,10 +32,10 @@ function readOptionalActiveTask(value: unknown): InstanceActiveTask | null {
 
 function formatCatalogBytes(bytes: number, allowMegabytes = false): string {
   const gigabytes = bytes / 1024 ** 3;
-  if (allowMegabytes && gigabytes < 1) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
+  if (allowMegabytes && gigabytes < 1) return `${Number((bytes / 1024 ** 2).toFixed(1))} MB`;
   return gigabytes >= 1024
-    ? `${(gigabytes / 1024).toFixed(2)} TB`
-    : `${gigabytes.toFixed(2)} GB`;
+    ? `${Number((gigabytes / 1024).toFixed(1))} TB`
+    : `${Number(gigabytes.toFixed(1))} GB`;
 }
 
 export async function fetchCreationStorages(signal?: AbortSignal): Promise<StorageOption[]> {

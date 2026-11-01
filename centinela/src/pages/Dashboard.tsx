@@ -137,7 +137,7 @@ export default function Dashboard() {
                                     <CpuGauge percent={data?.cpu?.usagePercent ?? 0} cores={data?.cpu?.cores ?? 0} samples={history.map((sample) => sample?.cpu ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
                                     <RamMeter usedGb={data?.ram?.usedGb ?? 0} totalGb={data?.ram?.totalGb ?? 0} usagePercent={data?.ram?.usagePercent ?? 0} samples={history.map((sample) => sample?.ram ?? 0)} timestamps={history.map((sample) => sample?.timestamp ?? '')} compact />
                                 </div>
-                                {data.storage && <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} usagePercent={data.storage.usagePercent} variant="ring" />}
+                                {data.storage && <StorageMeter usedGb={data.storage.usedGb} totalGb={data.storage.totalGb} variant="ring" />}
                             </div>
                         ) : null}
 

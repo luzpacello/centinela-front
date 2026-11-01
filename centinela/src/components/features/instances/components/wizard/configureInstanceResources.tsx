@@ -54,9 +54,11 @@ export default function ConfigureInstanceResources({
     onFieldChange,
 }: ConfigureInstanceResourcesProps) {
     const selectedStorage = storages.find((storage) => storage.value === draft.storageId);
-    const storagePercentage = selectedStorage && selectedStorage.totalGb > 0
-        ? Math.round((selectedStorage.availableGb / selectedStorage.totalGb) * 100)
-        : 0;
+    const storagePercentage = selectedStorage
+        && Number.isFinite(selectedStorage.availableGb) && selectedStorage.availableGb >= 0
+        && Number.isFinite(selectedStorage.totalGb) && selectedStorage.totalGb > 0
+        ? Math.min(100, Math.max(0, Math.round((selectedStorage.availableGb / selectedStorage.totalGb) * 100)))
+        : null;
     const quotaAssessment = assessResourceQuota(draft, nodeStatus, nodeStatusError, isLoadingNodeStatus);
     const allocatable = nodeStatus?.stale ? null : nodeStatus?.allocatable;
     const quotaMetrics = [
@@ -252,10 +254,10 @@ export default function ConfigureInstanceResources({
                         </Combobox>
                         <div className={styles.storageAvailabilityRow}>
                             <span>{catalogError || (isLoadingCatalog ? 'Cargando almacenamientos…' : selectedStorage ? `Disponibles: ${selectedStorage.availableLabel} de ${selectedStorage.totalLabel}` : 'Disponibles: —')}</span>
-                            <strong>{selectedStorage ? `${storagePercentage}%` : '—'}</strong>
+                            <strong>{storagePercentage === null ? '—' : `${storagePercentage}%`}</strong>
                         </div>
                         <div className={styles.progressTrack}>
-                            <div className={styles.storageProgressValue} style={{ width: `${storagePercentage}%` }} />
+                            <div className={styles.storageProgressValue} style={{ width: `${storagePercentage ?? 0}%` }} />
                         </div>
                     </Card>
                 </div>
@@ -273,15 +275,18 @@ function AvailabilityMetric({
     value: string;
     percentage: number | null;
 }) {
+    const safePercentage = typeof percentage === 'number' && Number.isFinite(percentage)
+        ? Math.min(100, Math.max(0, Math.round(percentage)))
+        : null;
     return (
         <div className={styles.availabilityMetric}>
             <div className={styles.availabilityMetricHeader}>
                 <strong>{label}</strong>
-                <span>{percentage == null ? '—' : `${percentage}%`}</span>
+                <span>{safePercentage === null ? '—' : `${safePercentage}%`}</span>
             </div>
             <span className={styles.availabilityMetricValue}>{value}</span>
             <div className={styles.progressTrack}>
-                <div className={styles.availabilityProgressValue} style={{ width: `${percentage ?? 0}%` }} />
+                <div className={styles.availabilityProgressValue} style={{ width: `${safePercentage ?? 0}%` }} />
             </div>
         </div>
     );

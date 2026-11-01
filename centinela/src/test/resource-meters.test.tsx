@@ -27,12 +27,12 @@ describe('ResourceMeters', () => {
     });
 
     it('muestra el almacenamiento como anillo en el resumen compacto', () => {
-        render(<StorageMeter usedGb={10.74} totalGb={67.73} usagePercent={15.85} variant="ring" />);
+        render(<StorageMeter usedGb={10.74} totalGb={67.73} variant="ring" />);
 
-        expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '15.85');
-        expect(screen.getByText('15.85%')).toBeInTheDocument();
+        expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '16');
+        expect(screen.getByText('16%')).toBeInTheDocument();
         expect(screen.queryByText('10.74 GB / 67.73 GB')).not.toBeInTheDocument();
-        expect(screen.getByText('10.74 GB de 67.73 GB')).toBeInTheDocument();
+        expect(screen.getByText('10.7 GB de 67.7 GB')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Almacenamiento' }).parentElement?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
         expect(screen.queryByTestId('storage-meter-sparkline')).not.toBeInTheDocument();
     });
@@ -72,7 +72,7 @@ describe('ResourceMeters', () => {
         );
 
         expect(screen.getByText('12.4 GB / 32 GB')).toBeInTheDocument();
-        expect(screen.getByText('38.75%')).toBeInTheDocument();
+        expect(screen.getByText('50%')).toBeInTheDocument();
         expect(screen.getByText('510 GB / 1 TB')).toBeInTheDocument();
 
         rerender(
@@ -104,7 +104,25 @@ describe('ResourceMeters', () => {
 
         expect(screen.getByTestId('storage-meter-sparkline').querySelector('polyline')).toBeNull();
         expect(screen.getByText('Sin historial')).toBeInTheDocument();
-        expect(screen.getByText('49.8%')).toBeInTheDocument();
+        expect(screen.getByText('50%')).toBeInTheDocument();
+    });
+
+    it('mantiene el porcentaje de almacenamiento dentro de 0-100 y muestra un estado neutro sin capacidad', () => {
+        const { rerender } = render(<StorageMeter usedGb={1100} totalGb={1000} variant="ring" />);
+
+        expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '100');
+        expect(screen.getByText('100%')).toBeInTheDocument();
+        expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
+
+        rerender(<StorageMeter usedGb={Number.NaN} totalGb={0} variant="ring" />);
+        expect(screen.getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '0');
+        expect(screen.getAllByText('—')).toHaveLength(2);
+        expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
+
+        rerender(<StorageMeter usedGb={2} totalGb={0} />);
+        expect(screen.getByTestId('storage-meter')).toHaveAttribute('data-state', 'unavailable');
+        expect(screen.getAllByText('—')).toHaveLength(2);
+        expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
     });
 
     it('no representa una serie vacía como uso cero', () => {
@@ -196,7 +214,7 @@ describe('ResourceMeters', () => {
     });
 
     it('rellena el área bajo la curva para que el nivel se lea de un vistazo', () => {
-        render(<StorageMeter usedGb={10.73} totalGb={67.73} usagePercent={15.84} samples={[15.8, 15.84]} />);
+        render(<StorageMeter usedGb={10.73} totalGb={67.73} samples={[15.8, 15.84]} />);
 
         const area = screen
             .getByTestId('storage-meter-sparkline')
