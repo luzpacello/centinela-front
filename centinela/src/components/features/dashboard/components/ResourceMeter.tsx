@@ -54,7 +54,7 @@ function buildSparklinePaths(samples: Array<number | undefined>, timestamps?: nu
 interface BaseMeterProps {
     title: string;
     icon: React.ElementType;
-    percent: number;
+    percent: number | null;
     details: string;
     testId: string;
     iconTheme: string; // Nueva propiedad para recuperar los colores originales
@@ -71,21 +71,21 @@ interface BaseMeterProps {
 }
 
 function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, strokeTheme, fillTheme, gradientColor, samples, timestamps, compact }: BaseMeterProps) {
-    const safePercent = Math.max(0, Math.min(100, percent));
+    const safePercent = typeof percent === 'number' && Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0;
     const theme = getThresholdClasses(safePercent);
-    const displayedPercent = Number(safePercent.toFixed(2));
+    const displayedPercent = percent === null ? null : Number(safePercent.toFixed(2));
     const sparkline = buildSparklinePaths(samples ?? [], timestamps);
 
     if (compact) {
         return (
-            <div className="min-w-0" data-testid={testId} data-state={safePercent >= 70 ? 'warning' : 'normal'}>
+            <div className="min-w-0" data-testid={testId} data-state={displayedPercent === null ? 'unavailable' : safePercent >= 70 ? 'warning' : 'normal'}>
                 <div className="flex items-center gap-2">
                     <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconTheme}`}><Icon className="size-4" aria-hidden="true" /></span>
                     <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-900">{title}</p>
                         <p className="truncate text-xs text-slate-500" title={details}>{details}</p>
                     </div>
-                    <span className={`text-sm font-semibold ${theme.text}`}>{displayedPercent}%</span>
+                    <span className={`text-sm font-semibold ${displayedPercent === null ? 'text-slate-400' : theme.text}`}>{displayedPercent === null ? '—' : `${displayedPercent}%`}</span>
                 </div>
                 <div className="relative mt-2">
                     <svg data-testid={`${testId}-sparkline`} viewBox={`-2 0 ${SPARKLINE_WIDTH + 4} ${SPARKLINE_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={sparkline ? `Tendencia de uso de ${title} en la última hora` : `Sin historial de ${title}`} className="h-9 w-full">
@@ -111,7 +111,7 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
         <div
             className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-colors"
             data-testid={testId}
-            data-state={safePercent >= 70 ? 'warning' : 'normal'}
+            data-state={displayedPercent === null ? 'unavailable' : safePercent >= 70 ? 'warning' : 'normal'}
         >
             {/* Cabecera del medidor */}
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -154,8 +154,8 @@ function BaseMeter({ title, icon: Icon, percent, details, testId, iconTheme, str
                     {!sparkline && <span className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">Sin historial</span>}
                 </div>
                 {/* Porcentaje numérico */}
-                <span className={`w-16 text-right text-base font-bold tracking-tight ${theme.text}`}>
-                    {displayedPercent}%
+                <span className={`w-16 text-right text-base font-bold tracking-tight ${displayedPercent === null ? 'text-slate-400' : theme.text}`}>
+                    {displayedPercent === null ? '—' : `${displayedPercent}%`}
                 </span>
             </div>
             <span className="text-xs text-slate-500">Última hora</span>
@@ -183,11 +183,11 @@ export function CpuGauge({ percent, cores, samples, timestamps, compact }: { per
 }
 
 function formatGb(value: number): string {
-    return `${Number(value.toFixed(2))} GB`;
+    return Number.isFinite(value) && value >= 0 ? `${Number(value.toFixed(1))} GB` : '—';
 }
 
 export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps, compact }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[]; compact?: boolean }) {
-    const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
+    const percent = usagePercent ?? (Number.isFinite(totalGb) && totalGb > 0 && Number.isFinite(usedGb) && usedGb >= 0 ? (usedGb / totalGb) * 100 : 0);
     return (
         <BaseMeter
             title="Memoria RAM"
@@ -206,23 +206,27 @@ export function RamMeter({ usedGb, totalGb, usagePercent, samples, timestamps, c
     );
 }
 
-export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamps, variant }: { usedGb: number; totalGb: number; usagePercent?: number; samples?: Array<number | undefined>; timestamps?: number[]; variant?: 'ring' }) {
-    const percent = usagePercent ?? (totalGb > 0 ? (usedGb / totalGb) * 100 : 0);
-    const formatStorage = (gb: number) => gb >= 1000 ? `${Number((gb / 1024).toFixed(2))} TB` : formatGb(gb);
+export function StorageMeter({ usedGb, totalGb, samples, timestamps, variant }: { usedGb: number; totalGb: number; samples?: Array<number | undefined>; timestamps?: number[]; variant?: 'ring' }) {
+    const safeTotal = Number.isFinite(totalGb) && totalGb > 0 ? totalGb : 0;
+    const safeUsed = Number.isFinite(usedGb) && usedGb >= 0 ? usedGb : 0;
+    const percent = safeTotal > 0 ? Math.min(Math.max(Math.round((safeUsed / safeTotal) * 100), 0), 100) : 0;
+    const formatStorage = (gb: number) => !Number.isFinite(gb) || gb < 0
+        ? '—'
+        : gb >= 1000 ? `${Number((gb / 1024).toFixed(1))} TB` : formatGb(gb);
 
     if (variant === 'ring') {
-        const safePercent = Math.max(0, Math.min(100, percent));
-        const displayedPercent = Number(safePercent.toFixed(2));
+        const safePercent = Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0;
+        const displayedPercent = safeTotal > 0 ? safePercent : null;
         return (
-            <div className="flex min-w-0 flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4" data-testid="storage-meter" data-state={safePercent >= 70 ? 'warning' : 'normal'}>
+            <div className="flex min-w-0 flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4" data-testid="storage-meter" data-state={safeTotal === 0 ? 'unavailable' : safePercent >= 70 ? 'warning' : 'normal'}>
                 <div className="flex w-full items-center gap-2 text-left">
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600"><HardDrive className="size-4" aria-hidden="true" /></span>
                     <h4 className="text-sm font-semibold text-slate-900">Almacenamiento</h4>
                 </div>
-                <div role="progressbar" aria-label="Uso de almacenamiento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayedPercent} className="relative grid size-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#9333ea ${safePercent}%, #e9d5ff ${safePercent}% 100%)` }}>
-                    <span className="grid size-[84%] place-items-center rounded-full bg-white text-xl font-semibold text-slate-900">{displayedPercent}%</span>
+                <div role="progressbar" aria-label="Uso de almacenamiento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayedPercent ?? 0} className="relative grid size-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#9333ea ${safePercent}%, #e9d5ff ${safePercent}% 100%)` }}>
+                    <span className="grid size-[84%] place-items-center rounded-full bg-white text-xl font-semibold text-slate-900">{displayedPercent === null ? '—' : `${displayedPercent}%`}</span>
                 </div>
-                <span className="text-center text-xs text-slate-600">{formatStorage(usedGb)} de {formatStorage(totalGb)}</span>
+                <span className="text-center text-xs text-slate-600">{safeTotal === 0 ? '—' : `${formatStorage(safeUsed)} de ${formatStorage(safeTotal)}`}</span>
             </div>
         );
     }
@@ -231,8 +235,8 @@ export function StorageMeter({ usedGb, totalGb, usagePercent, samples, timestamp
         <BaseMeter
             title="Almacenamiento"
             icon={HardDrive}
-            percent={percent}
-            details={`${formatStorage(usedGb)} / ${formatStorage(totalGb)}`}
+            percent={safeTotal > 0 ? percent : null}
+            details={safeTotal > 0 ? `${formatStorage(safeUsed)} / ${formatStorage(safeTotal)}` : '—'}
             testId="storage-meter"
             iconTheme="bg-purple-50 text-purple-600" // Morado original
             strokeTheme="stroke-purple-600"

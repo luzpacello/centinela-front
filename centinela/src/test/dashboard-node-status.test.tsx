@@ -206,7 +206,7 @@ describe('Dashboard node status', () => {
         }
         expect(within(resources).getByTestId('cpu-meter-sparkline')).toBeInTheDocument();
         expect(within(resources).getByTestId('ram-meter-sparkline')).toBeInTheDocument();
-        expect(within(resources).getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '70');
+        expect(within(resources).getByRole('progressbar', { name: 'Uso de almacenamiento' })).toHaveAttribute('aria-valuenow', '59');
     });
 
     it('oculta el medidor de almacenamiento cuando no hay datos', async () => {

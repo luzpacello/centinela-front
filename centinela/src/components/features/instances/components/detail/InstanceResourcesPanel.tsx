@@ -19,10 +19,17 @@ interface InstanceResourcesPanelProps {
 
 export default function InstanceResourcesPanel({ values, current, editor, status, canEdit, isSaving, onChange, onEditResources }: InstanceResourcesPanelProps) {
     const node = editor.nodeStatus;
+    const formatGb = (value: number | undefined) => typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? `${Number(value.toFixed(1))}`
+        : '—';
+    const safePercentage = (value: number | undefined) => typeof value === 'number' && Number.isFinite(value)
+        ? Math.min(100, Math.max(0, Math.round(value)))
+        : null;
+    const cpuPercentage = safePercentage(node?.cpu?.usagePercent);
     const resources = [
-        { label: 'CPU', value: node?.cpu ? `${node.cpu.usagePercent}% de uso` : '—', percentage: node?.cpu?.usagePercent },
-        { label: 'Memoria RAM', value: node?.ram ? `${node.ram.usedGb} / ${node.ram.totalGb} GB` : '—', percentage: node?.ram?.usagePercent },
-        { label: 'Almacenamiento', value: node?.storage ? `${node.storage.usedGb} / ${node.storage.totalGb} GB` : '—', percentage: node?.storage?.usagePercent },
+        { label: 'CPU', value: cpuPercentage === null ? '—' : `${cpuPercentage}% de uso`, percentage: cpuPercentage },
+        { label: 'Memoria RAM', value: node?.ram ? `${formatGb(node.ram.usedGb)} / ${formatGb(node.ram.totalGb)} GB` : '—', percentage: safePercentage(node?.ram?.usagePercent) },
+        { label: 'Almacenamiento', value: node?.storage ? `${formatGb(node.storage.usedGb)} / ${formatGb(node.storage.totalGb)} GB` : '—', percentage: safePercentage(node?.storage?.usagePercent) },
     ];
     return <div className={styles.pageContent}>
         <Card className={styles.availableResourcesCard}>
@@ -37,9 +44,9 @@ export default function InstanceResourcesPanel({ values, current, editor, status
                 {resources.map((resource) => <div key={resource.label} className={styles.availabilityMetric}>
                     <strong className={styles.availabilityMetricHeader}>{resource.label}</strong>
                     <span className={styles.availabilityMetricValue}>{resource.value}</span>
-                    {resource.percentage !== undefined && <div className={styles.progressTrack} role="progressbar" aria-label={`Uso de ${resource.label}`}
+                    {resource.percentage !== null && <div className={styles.progressTrack} role="progressbar" aria-label={`Uso de ${resource.label}`}
                         aria-valuemin={0} aria-valuemax={100} aria-valuenow={resource.percentage}>
-                        <div className={styles.availabilityProgressValue} style={{ width: `${Math.min(100, Math.max(0, resource.percentage))}%` }} />
+                        <div className={styles.availabilityProgressValue} style={{ width: `${resource.percentage}%` }} />
                     </div>}
                 </div>)}
             </div>

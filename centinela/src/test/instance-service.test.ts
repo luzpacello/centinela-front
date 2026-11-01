@@ -16,6 +16,7 @@ import { apiClient } from '@/services/apiClient';
 import {
     createInstance,
     deleteInstance,
+    fetchCreationStorages,
     requestInstancePowerAction,
 } from '@/components/features/instances/services/instanceService';
 import { updateInstanceConfiguration } from '@/components/features/instances/services/instanceDetailService';
@@ -47,6 +48,25 @@ const payload: CreateInstancePayload = {
 };
 
 describe('contrato de acciones de instancia', () => {
+    it('acepta storages sin el content type import y redondea sus capacidades a un decimal', async () => {
+        vi.mocked(apiClient.get).mockResolvedValueOnce([{
+            name: 'local',
+            type: 'dir',
+            freeBytes: 1.234 * 1024 ** 3,
+            totalBytes: 2.345 * 1024 ** 3,
+            contentTypes: ['images', 'rootdir'],
+        }]);
+
+        await expect(fetchCreationStorages()).resolves.toEqual([
+            expect.objectContaining({
+                value: 'local',
+                availableLabel: '1.2 GB',
+                totalLabel: '2.3 GB',
+                contentTypes: ['images', 'rootdir'],
+            }),
+        ]);
+    });
+
     it('actualiza CPU y RAM usando el contrato real de Swagger', async () => {
         requestMock.mockResolvedValueOnce({
             requiresReboot: true,
