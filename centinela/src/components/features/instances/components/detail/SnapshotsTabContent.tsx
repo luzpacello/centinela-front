@@ -29,7 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/toast';
 import { useAuth } from '@/context/AuthContext';
-import { useEventsContext } from '@/context/EventsContext';
+import { useOptionalEventsContext } from '@/context/EventsContext';
 import { snapshotService, type SnapshotItem, type CreateSnapshotResponse } from '../../services/snapshotService';
 import { CreateSnapshotModal } from '../snapshots/CreateSnapshotModal';
 import { RollbackSnapshotModal } from '../snapshots/RollbackSnapshotModal';
@@ -66,7 +66,7 @@ function formatSnapshotDate(rawTime?: number | string): string {
 
 export function SnapshotsTabContent({ vmid, isBusy = false, onSubmittingChange = () => {}, onOutcomeUncertain = () => {}, onActionAccepted = () => {}, refreshVersion = 0 }: SnapshotsTabContentProps) {
   const { canOperateInstance } = useAuth();
-  const { ultimoMensaje } = useEventsContext();
+  const { ultimoMensaje } = useOptionalEventsContext();
 
   const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
