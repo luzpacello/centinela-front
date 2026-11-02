@@ -128,9 +128,17 @@ export const RecoverPassword: React.FC = () => {
         } catch (error) {
             if (error instanceof ApiRequestError) {
                 if (
-                    error.errorCode === 'RESET_FAILED' ||
-                    error.status === 400
+                    error.errorCode === 'SAME_PASSWORD' ||
+                    error.errorCode === 'WEAK_PASSWORD' ||
+                    error.errorCode === 'PASSWORD_RECENTLY_USED'
                 ) {
+                    setPasswordError(
+                        error.message ||
+                        'La nueva contraseña no puede ser igual a la anterior ni violar las políticas de seguridad.',
+                    );
+                    return;
+                }
+                if (error.errorCode === 'RESET_FAILED') {
                     const nextAttempts = failedAttempts + 1;
                     const remainingAttempts = MAX_RESET_ATTEMPTS - nextAttempts;
 
