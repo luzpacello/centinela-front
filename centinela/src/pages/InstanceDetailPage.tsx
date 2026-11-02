@@ -9,7 +9,8 @@ import { validateInstanceRef } from '@/components/features/instances/services/in
 import type { InstanceRef } from '@/components/features/instances/types/instance';
 
 export default function InstanceDetailPage() {
-    const { instanceRef } = useParams<{ instanceRef: string }>();
+    const { instanceRef, vmid } = useParams<{ instanceRef?: string; vmid?: string }>();
+    const resolvedRef = instanceRef ?? vmid;
     const navigate = useNavigate();
     const { canAccessInstance } = useAuth();
     const {
@@ -19,7 +20,7 @@ export default function InstanceDetailPage() {
 
     let validRef: InstanceRef | null = null;
     try {
-        validRef = validateInstanceRef(instanceRef);
+        validRef = validateInstanceRef(resolvedRef);
     } catch {
         validRef = null;
     }

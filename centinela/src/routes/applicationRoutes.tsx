@@ -54,6 +54,7 @@ export const applicationRoutes: RouteObject[] = [
           { index: true, loader: () => redirect('/dashboard') },
           { path: '/dashboard', Component: DashboardPage },
           { path: '/instances', Component: InstancesPage },
+          // :vmid representa el mismo patrón de URL; el detalle admite ambos nombres de parámetro.
           { path: '/instances/:instanceRef', Component: InstanceDetailPage },
 
           {

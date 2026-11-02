@@ -30,6 +30,16 @@ interface EventsProviderProps {
 // derivan de él tanto el estado como las suscripciones selectivas.
 const EventsContext = createContext<EventsClient | null>(null);
 
+const disconnectedEventsState: EventsContextValue = {
+  estado: 'idle',
+  ultimoMensaje: null,
+  error: null,
+  motivoCierre: null,
+};
+
+// El snapshot estable evita renders repetidos cuando no hay un canal compartido.
+const getDisconnectedEventsSnapshot = () => disconnectedEventsState;
+
 // Una única conexión de eventos para toda la aplicación. Montarlo sobre el
 // árbol protegido abre el canal y desmontarlo lo cierra (logout o expiración
 // de sesión), en lugar de abrir un stream por cada consumidor.
@@ -50,6 +60,17 @@ export function useEventsContext(): EventsContextValue {
 
   const subscribe = useCallback((listener: () => void) => client.subscribe(listener), [client]);
   return useSyncExternalStore(subscribe, client.getSnapshot);
+}
+
+// Permite montar vistas de consulta aisladas sin abrir otra conexión de eventos.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useOptionalEventsContext(): EventsContextValue {
+  const client = useContext(EventsContext);
+  const subscribe = useCallback(
+    (listener: () => void) => client ? client.subscribe(listener) : () => {},
+    [client],
+  );
+  return useSyncExternalStore(subscribe, client?.getSnapshot ?? getDisconnectedEventsSnapshot);
 }
 
 // Suscripción selectiva a los eventos del canal compartido. Registra el callback
