@@ -2,7 +2,6 @@ import { Fragment, useEffect, useState } from 'react';
 import { format, startOfDay, subMonths } from 'date-fns';
 import { useLocation, useSearchParams } from 'react-router';
 import {
-    Download,
     CheckCircle2,
     AlertTriangle,
     XCircle,
@@ -11,7 +10,6 @@ import {
     FileText,
     Clock3,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,9 +18,9 @@ import type { AuditDetalles } from '@/utils/auditDetalle';
 import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
-import { getAccessToken } from '@/storage/tokenStorage';
 import { useGuardiaRol } from '@/hooks/useGuardiaRol';
 import { AuditDetailModal } from '@/components/features/audit/AuditDetailModal';
+import { AuditExportButton } from '@/components/features/audit/AuditExportButton';
 import {
     Pagination,
     PaginationContent,
@@ -110,7 +108,6 @@ export default function AuditoriaPage() {
     const [resultCounts, setResultCounts] = useState<{ successes: number | null; failures: number | null }>({ successes: null, failures: null });
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [exportError, setExportError] = useState<string | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<AuditoriaItemDTO | null>(null);
 
     useEffect(() => {
@@ -247,43 +244,6 @@ export default function AuditoriaPage() {
         return null;
     }
 
-    async function handleExport() {
-        setExportError(null);
-        try {
-            const base = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
-            const token = getAccessToken();
-            const params = new URLSearchParams({
-                formato: 'csv',
-                excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
-            });
-            if (accion) params.set('accion', accion);
-            if (resultado) params.set('resultado', resultado);
-            if (usuarioId) params.set('usuarioId', usuarioId);
-            if (recursoTipo) params.set('recursoTipo', recursoTipo);
-            if (desde) params.set('desde', desde);
-            if (hasta) params.set('hasta', hasta);
-
-            const response = await fetch(`${base}/admin/audit/export?${params.toString()}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                credentials: 'include',
-            });
-            if (!response.ok) {
-                throw new Error('No se pudo exportar la auditoría.');
-            }
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = objectUrl;
-            link.download = 'auditoria.csv';
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(objectUrl);
-        } catch {
-            setExportError('No se pudo exportar la auditoría. Intentá nuevamente.');
-        }
-    }
-
     // El backend no expone búsqueda libre; el buscador filtra la página visible.
     const effectiveSearchTerm = initialAuditUserId && usuarioId === initialAuditUserId && debouncedSearchTerm === initialAuditUserLabel
         ? ''
@@ -372,9 +332,17 @@ export default function AuditoriaPage() {
                             />
                             <span id="audit-search-hint" className="sr-only">La búsqueda se aplica a los resultados de la página actual.</span>
                         </div>
-                        <Button type="button" onClick={handleExport}>
-                            <Download className="size-4!" /> Exportar CSV
-                        </Button>
+                        <AuditExportButton
+                            filters={{
+                                desde,
+                                hasta,
+                                usuarioId,
+                                accion,
+                                recursoTipo,
+                                resultado,
+                                excluirAccion: [...HIDDEN_AUDIT_ACTIONS],
+                            }}
+                        />
                     </div>
                 </div>
 
@@ -462,8 +430,6 @@ export default function AuditoriaPage() {
                         </label>
                 </div>
             </div>
-
-            {exportError && <p role="alert" className="text-xs text-red-600">{exportError}</p>}
 
             <Tabs value={activeResultTab} onValueChange={(value) => updateUrlFilter('resultado', value === 'all' ? '' : value)} className="min-w-0 gap-4">
                 <TabsList variant="line" aria-label="Resultado" className="max-w-full">

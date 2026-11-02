@@ -218,10 +218,15 @@ describe('AuditoriaPage', () => {
     });
 
     it('Flujo de Exportación: debe llamar a la API de exportación al hacer clic en Exportar', async () => {
+        const downloadedFilenames: string[] = [];
+        const clickDownload = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+            downloadedFilenames.push(this.download);
+        });
         // 1. Configuramos el mock de fetch específicamente para este test
         // Simulamos que la API responde OK y nos devuelve un "archivo" (Blob)
         vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
             ok: true,
+            headers: new Headers({ 'Content-Disposition': 'attachment; filename="auditoria_centinela.csv"' }),
             blob: async () => new Blob(['datos falsos'], { type: 'text/csv' })
         }));
 
@@ -229,21 +234,28 @@ describe('AuditoriaPage', () => {
 
         // 2. Buscamos el botón de exportar. 
         // Usamos una expresión regular /exportar/i para que no le importe mayúsculas o minúsculas
-        const botonExportar = screen.getByRole('button', { name: /exportar/i });
+        const botonExportar = screen.getByRole('button', { name: 'Exportar registros' });
 
         // 3. Simulamos el clic
         fireEvent.click(botonExportar);
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Exportar auditoría en formato CSV' }));
 
         // 4. Verificamos que se haya ejecutado el fetch con los parámetros esperados
         await waitFor(() => {
             // Usamos expect.stringContaining porque la URL base puede cambiar según las variables de entorno
             expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/admin/audit/export?formato=csv'),
+                expect.stringContaining('/admin/audit/export?format=csv'),
                 expect.objectContaining({
                     headers: { Authorization: 'Bearer fake-token' },
                     credentials: 'include',
                 })
             );
+            expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('desde=');
+            expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('hasta=');
+            expect(URL.createObjectURL).toHaveBeenCalledOnce();
+            expect(clickDownload).toHaveBeenCalledOnce();
+            expect(downloadedFilenames).toEqual(['auditoria_centinela.csv']);
+            expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
         });
 
         // 5. Verificamos que la vista no se haya roto comprobando que el título siga ahí
@@ -252,6 +264,26 @@ describe('AuditoriaPage', () => {
         // 6. Verificamos que NO haya aparecido el mensaje de error de exportación en pantalla
         // queryByText devuelve null si no lo encuentra (a diferencia de getByText que tira error)
         expect(screen.queryByText('No se pudo exportar la auditoría. Intentá nuevamente.')).not.toBeInTheDocument();
+    });
+
+    it('ofrece exportación JSON y envía el formato elegido', async () => {
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true,
+            headers: new Headers(),
+            blob: async () => new Blob(['{}'], { type: 'application/json' }),
+        } as Response);
+
+        render(<AuditoriaPage />);
+        fireEvent.click(screen.getByRole('button', { name: 'Exportar registros' }));
+        await screen.findByRole('menuitem', { name: 'Exportar auditoría en formato JSON' });
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Exportar auditoría en formato JSON' }));
+
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/admin/audit/export?format=json'),
+                expect.objectContaining({ credentials: 'include' }),
+            );
+        });
     });
 
     it('prefiltra el usuario que llega desde el listado de usuarios', async () => {
