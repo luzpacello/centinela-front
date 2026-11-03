@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 interface InstanceResourceChartProps {
     title: string;
@@ -10,16 +10,19 @@ interface InstanceResourceChartProps {
 
 export default function InstanceResourceChart({ title, samples, color, percentage = true, formatValue }: InstanceResourceChartProps) {
     const gradientId = useId();
-    const availableSamples = samples.filter((sample) => sample.value !== null);
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const safeSamples = samples.filter((sample) => Number.isFinite(sample.timestamp))
+        .map((sample) => ({ ...sample, value: typeof sample.value === 'number' && Number.isFinite(sample.value) && sample.value >= 0 ? sample.value : null }));
+    const availableSamples = safeSamples.filter((sample) => sample.value !== null);
     if (availableSamples.length === 0) {
         return <div className={styles.emptyChart} role="status">Sin historial disponible</div>;
     }
     const maximum = percentage ? 100 : Math.max(1, ...availableSamples.map((sample) => sample.value!));
-    const firstTimestamp = samples[0].timestamp;
-    const duration = Math.max(1, samples[samples.length - 1].timestamp - firstTimestamp);
+    const firstTimestamp = safeSamples[0].timestamp;
+    const duration = Math.max(1, safeSamples[safeSamples.length - 1].timestamp - firstTimestamp);
     const segments: string[][] = [];
     let currentSegment: string[] = [];
-    for (const sample of samples) {
+    for (const sample of safeSamples) {
         if (sample.value === null) {
             if (currentSegment.length) segments.push(currentSegment);
             currentSegment = [];
@@ -32,9 +35,26 @@ export default function InstanceResourceChart({ title, samples, color, percentag
     if (currentSegment.length) segments.push(currentSegment);
     const axisValue = (value: number) => percentage ? `${Math.round(value)}%` : formatValue?.(value) ?? String(value);
     const timeLabel = (timestamp: number) => new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(timestamp);
+    const selectedSample = selectedIndex == null ? undefined : availableSamples[selectedIndex];
 
     return (
-        <svg viewBox="0 0 300 140" className={styles.chart} role="img" aria-label={`Historial de ${title}`}>
+        <div>
+        <svg viewBox="0 0 300 140" className={styles.chart} role="img" aria-label={`Historial de ${title}`} tabIndex={0}
+            onFocus={() => setSelectedIndex(availableSamples.length - 1)} onBlur={() => setSelectedIndex(null)}
+            onPointerLeave={() => setSelectedIndex(null)}
+            onPointerMove={(event) => {
+                const bounds = event.currentTarget.getBoundingClientRect();
+                if (!bounds.width) return;
+                const chartX = (event.clientX - bounds.left) / bounds.width * 300;
+                const timestamp = firstTimestamp + Math.max(0, Math.min(1, (chartX - 40) / 250)) * duration;
+                const nearest = availableSamples.reduce((closest, sample, index) => Math.abs(sample.timestamp - timestamp) < Math.abs(availableSamples[closest].timestamp - timestamp) ? index : closest, 0);
+                setSelectedIndex(nearest);
+            }}
+            onKeyDown={(event) => {
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                event.preventDefault();
+                setSelectedIndex((index) => Math.max(0, Math.min(availableSamples.length - 1, (index ?? availableSamples.length - 1) + (event.key === 'ArrowLeft' ? -1 : 1))));
+            }}>
             <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -57,6 +77,8 @@ export default function InstanceResourceChart({ title, samples, color, percentag
             <text x="40" y="134" className={styles.axisLabel}>{timeLabel(firstTimestamp)}</text>
             <text x="290" y="134" textAnchor="end" className={styles.axisLabel}>{timeLabel(firstTimestamp + duration)}</text>
         </svg>
+        {selectedSample && <p role="status" className="text-center text-xs text-slate-500">{timeLabel(selectedSample.timestamp)} · {axisValue(selectedSample.value!)}</p>}
+        </div>
     );
 }
 
