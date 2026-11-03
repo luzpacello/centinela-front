@@ -1,5 +1,6 @@
-export type InstanceDetailTab = 'resumen' | 'recursos' | 'red' | 'snapshots';
-export type InstanceMetricsTimeframe = '2h' | '24h';
+export type InstanceDetailTab = 'resumen' | 'metrics' | 'recursos' | 'red' | 'snapshots';
+export type InstanceMetricsTimeframe = 'live' | '2h' | '24h';
+export type InstanceHistoricalMetricsTimeframe = Exclude<InstanceMetricsTimeframe, 'live'>;
 
 export interface InstanceDetail {
     reference: string;
@@ -20,6 +21,8 @@ export interface InstanceMetricPoint {
     ramTotalBytes: number | null;
     diskReadBps: number | null;
     diskWriteBps: number | null;
+    netInBps: number | null;
+    netOutBps: number | null;
 }
 
 export interface InstanceResourceConfiguration {
