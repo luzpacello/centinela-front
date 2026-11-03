@@ -3,7 +3,7 @@ import type {
     InstanceConfigurationResult,
     InstanceDetail,
     InstanceMetricPoint,
-    InstanceMetricsTimeframe,
+    InstanceHistoricalMetricsTimeframe,
     InstanceResourceConfiguration,
 } from '../types/instanceDetail';
 import type { InstanceRef } from '../types/instance';
@@ -18,7 +18,7 @@ function readNonNegativeNumber(value: unknown): number | null {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-export async function fetchInstanceDetail(reference: string, signal?: AbortSignal): Promise<InstanceDetail> {
+export async function fetchInstanceDetail(reference: InstanceRef, signal?: AbortSignal): Promise<InstanceDetail> {
     const response = await apiClient.get<unknown>(instancePath(reference), { signal, expectedStatus: 200 });
     if (typeof response !== 'object' || response === null) {
         throw new ApiRequestError('No se pudo interpretar el detalle de la instancia.');
@@ -44,8 +44,8 @@ export async function fetchInstanceDetail(reference: string, signal?: AbortSigna
 }
 
 export async function fetchInstanceMetrics(
-    reference: string,
-    timeframe: InstanceMetricsTimeframe,
+    reference: InstanceRef,
+    timeframe: InstanceHistoricalMetricsTimeframe,
     signal?: AbortSignal,
 ): Promise<InstanceMetricPoint[]> {
     const response = await apiClient.get<unknown>(`${instancePath(reference)}/metrics?timeframe=${timeframe}`, {
@@ -70,6 +70,8 @@ export async function fetchInstanceMetrics(
             ramTotalBytes: readNonNegativeNumber(point.ramTotalBytes),
             diskReadBps: readNonNegativeNumber(point.diskReadBps),
             diskWriteBps: readNonNegativeNumber(point.diskWriteBps),
+            netInBps: readNonNegativeNumber(point.netInBps),
+            netOutBps: readNonNegativeNumber(point.netOutBps),
         };
     }).sort((first, second) => first.timestamp - second.timestamp);
 }
