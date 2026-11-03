@@ -8,6 +8,7 @@ import InstanceInformationRow from './InstanceInformationRow';
 import InstanceResourceUsage from './InstanceResourceUsage';
 import InstanceNetworkCard from './InstanceNetworkCard';
 import InstanceHardwareCard from './InstanceHardwareCard';
+import type { MetricsConnectionStatus } from '../../metrics/metrics.types';
 
 interface GeneralDataOfInstanceProps {
     instance: InventoryInstance;
@@ -17,16 +18,18 @@ interface GeneralDataOfInstanceProps {
     onTimeframeChange: (timeframe: InstanceMetricsTimeframe) => void;
     metricsLoading: boolean;
     metricsError: string | null;
+    metricsConnectionStatus?: MetricsConnectionStatus;
+    isInstanceStopped?: boolean;
     onRetry: () => void;
     onEditResources: () => void;
     onViewNetwork: () => void;
     canEdit: boolean;
 }
 
-export default function GeneralDataOfInstance({ instance, detail, metrics, timeframe, onTimeframeChange, metricsLoading, metricsError, onRetry, onEditResources, onViewNetwork, canEdit }: GeneralDataOfInstanceProps) {
+export default function GeneralDataOfInstance({ instance, detail, metrics, timeframe, onTimeframeChange, metricsLoading, metricsError, onRetry, onEditResources, onViewNetwork, canEdit, metricsConnectionStatus, isInstanceStopped }: GeneralDataOfInstanceProps) {
     return <div className={styles.summaryGrid}>
         <div className={styles.mainColumn}>
-            <InstanceResourceUsage detail={detail} metrics={metrics} timeframe={timeframe} onTimeframeChange={onTimeframeChange} isLoading={metricsLoading} error={metricsError} onRetry={onRetry} />
+            <InstanceResourceUsage detail={detail} metrics={metrics} timeframe={timeframe} onTimeframeChange={onTimeframeChange} isLoading={metricsLoading} error={metricsError} onRetry={onRetry} connectionStatus={metricsConnectionStatus} isInstanceStopped={isInstanceStopped} />
             <Card className={styles.generalInformationCard}>
                 <div className={styles.sectionHeader}>
                     <h2>Información general</h2>
