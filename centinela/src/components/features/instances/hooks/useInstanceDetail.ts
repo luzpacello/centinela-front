@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/components/ui/toast';
 import { useEventSubscription } from '@/context/EventsContext';
 import { getErrorMessage } from '@/utils/errorMapper';
 import { fetchInstanceDetail, fetchInstanceMetrics, updateInstanceConfiguration } from '../services/instanceDetailService';
+import { useInstanceMetrics } from '../metrics/useInstanceMetrics';
+import type { InstanceRef } from '../types/instance';
 import type {
     InstanceDetail,
     InstanceMetricPoint,
@@ -14,14 +16,15 @@ interface UseInstanceDetailOptions {
     onConfigurationSaved?: (configuration: Partial<InstanceResourceConfiguration>) => void;
 }
 
-export function useInstanceDetail(reference: string, inventoryStatus: string, options: UseInstanceDetailOptions = {}) {
+export function useInstanceDetail(reference: InstanceRef, inventoryStatus: string, options: UseInstanceDetailOptions = {}) {
     const [detail, setDetail] = useState<InstanceDetail | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [metrics, setMetrics] = useState<InstanceMetricPoint[]>([]);
+    const [historicalMetrics, setMetrics] = useState<InstanceMetricPoint[]>([]);
     const [metricsError, setMetricsError] = useState<string | null>(null);
     const [metricsLoading, setMetricsLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<InstanceMetricsTimeframe>('2h');
+    const liveMetrics = useInstanceMetrics(timeframe === 'live' ? reference : null);
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [resourceDraft, setResourceDraft] = useState<Partial<InstanceResourceConfiguration>>({});
     const [pendingConfiguration, setPendingConfiguration] = useState<Partial<InstanceResourceConfiguration>>({});
@@ -76,6 +79,8 @@ export function useInstanceDetail(reference: string, inventoryStatus: string, op
     }, [reference, inventoryStatus, refreshVersion]);
 
     useEffect(() => {
+        if (timeframe === 'live') return;
+        const historicalTimeframe = timeframe;
         const controller = new AbortController();
         let requestInProgress = false;
         async function loadMetrics() {
@@ -83,7 +88,7 @@ export function useInstanceDetail(reference: string, inventoryStatus: string, op
             requestInProgress = true;
             setMetricsLoading(true);
             try {
-                const result = await fetchInstanceMetrics(reference, timeframe, controller.signal);
+                const result = await fetchInstanceMetrics(reference, historicalTimeframe, controller.signal);
                 if (controller.signal.aborted) return;
                 setMetrics(result);
                 setMetricsError(null);
@@ -98,6 +103,14 @@ export function useInstanceDetail(reference: string, inventoryStatus: string, op
         const interval = window.setInterval(() => void loadMetrics(), 30_000);
         return () => { controller.abort(); window.clearInterval(interval); };
     }, [reference, timeframe, refreshVersion]);
+
+    const metrics = useMemo<InstanceMetricPoint[]>(() => timeframe === 'live'
+        ? liveMetrics.metrics.map((point) => ({
+            timestamp: point.timestamp, cpuPercent: point.cpu, ramUsedBytes: point.mem,
+            ramTotalBytes: point.ramTotalBytes ?? detail?.memoryTotalBytes ?? null,
+            diskReadBps: point.diskReadBps, diskWriteBps: point.diskWriteBps,
+            netInBps: point.netInBps, netOutBps: point.netOutBps,
+        })) : historicalMetrics, [timeframe, liveMetrics.metrics, detail?.memoryTotalBytes, historicalMetrics]);
 
     const appliedConfiguration = {
         cores: pendingConfiguration.cores ?? detail?.cores ?? null,
@@ -164,7 +177,12 @@ export function useInstanceDetail(reference: string, inventoryStatus: string, op
     }
 
     return {
-        detail, isLoading, errorMessage, metrics, metricsError, metricsLoading, timeframe,
+        detail, isLoading, errorMessage, metrics,
+        metricsError: timeframe === 'live' ? liveMetrics.error : metricsError,
+        metricsLoading: timeframe === 'live' ? liveMetrics.metrics.length === 0 && ['conectando', 'reconectando'].includes(liveMetrics.status) : metricsLoading,
+        metricsConnectionStatus: timeframe === 'live' ? liveMetrics.status : undefined,
+        isInstanceStopped: timeframe === 'live' && liveMetrics.isInstanceStopped,
+        timeframe,
         setTimeframe: changeTimeframe, refresh, editableConfiguration, updateResource, hasChanges, isSaving,
         saveChanges, saveError, requiresReboot, appliedConfiguration,
         resetResources: () => { setResourceDraft({}); setSaveError(null); },
