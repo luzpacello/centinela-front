@@ -18,6 +18,7 @@ import InstanceDetailFeedback from './InstanceDetailFeedback';
 import InstanceIdentityCard from './InstanceIdentityCard';
 import InstanceInformationRow from './InstanceInformationRow';
 import InstanceResourcesPanel from './InstanceResourcesPanel';
+import InstanceResourceUsage from './InstanceResourceUsage';
 import EditInstanceConfigModal from '../EditInstanceConfigModal';
 import { SnapshotsTabContent } from './SnapshotsTabContent';
 
@@ -37,7 +38,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
     const [activeTab, setActiveTab] = useState<InstanceDetailTab>('resumen');
     const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
     const [snapshotOutcomeUncertain, setSnapshotOutcomeUncertain] = useState(false);
-    const data = useInstanceDetail(String(instance.id), instance.status, { onConfigurationSaved });
+    const data = useInstanceDetail(instance.id, instance.status, { onConfigurationSaved });
     const snapshotTasks = useSnapshotTasks(instance.id, instance.activeTask?.tareaId, eventsStatus);
     const canEdit = isAdmin() || (canOperateInstance(instance.id) && instance.nivelAcceso !== 'READ_ONLY');
     const snapshotTransition: InstanceTransition | undefined = snapshotTasks.pendingTask ? {
@@ -114,6 +115,7 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
             <div className={styles.tabsScroller}>
                 <TabsList variant="line" aria-label="Secciones del detalle" className={styles.tabsList}>
                     <TabsTrigger value="resumen" className={styles.tabTrigger}>Resumen</TabsTrigger>
+                    <TabsTrigger value="metrics" className={styles.tabTrigger}>Métricas</TabsTrigger>
                     <TabsTrigger value="recursos" className={styles.tabTrigger}>Recursos</TabsTrigger>
                     <TabsTrigger value="red" className={styles.tabTrigger}>Red</TabsTrigger>
                     <TabsTrigger value="snapshots" className={styles.tabTrigger}>Snapshots</TabsTrigger>
@@ -127,7 +129,13 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                     <GeneralDataOfInstance instance={displayedInstance} detail={data.detail} metrics={data.metrics}
                         timeframe={data.timeframe} onTimeframeChange={data.setTimeframe}
                         metricsLoading={data.metricsLoading} metricsError={data.metricsError} onRetry={data.refresh}
+                        metricsConnectionStatus={data.metricsConnectionStatus} isInstanceStopped={data.isInstanceStopped}
                         canEdit={canEdit && !isBusy && !isSavingResources} onEditResources={() => setActiveTab('recursos')} onViewNetwork={() => setActiveTab('red')} />
+                </TabsContent>
+                <TabsContent value="metrics">
+                    <InstanceResourceUsage detail={data.detail} metrics={data.metrics} timeframe={data.timeframe}
+                        onTimeframeChange={data.setTimeframe} isLoading={data.metricsLoading} error={data.metricsError}
+                        onRetry={data.refresh} connectionStatus={data.metricsConnectionStatus} isInstanceStopped={data.isInstanceStopped} />
                 </TabsContent>
                 <TabsContent value="recursos">
                     <InstanceResourcesPanel values={data.editableConfiguration} current={data.appliedConfiguration} editor={editor}
