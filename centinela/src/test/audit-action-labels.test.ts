@@ -9,6 +9,8 @@ describe('etiquetas de auditoría', () => {
         expect(auditActionLabel('START')).toBe('Instancia iniciada');
         expect(auditActionLabel('SNAPSHOT_CREATE')).toBe('Snapshot creado');
         expect(auditActionLabel('SNAPSHOT_DELETE')).toBe('Snapshot eliminado');
+        expect(auditActionLabel('ALERT_TRIGGERED')).toBe('Alerta disparada');
+        expect(auditActionLabel('SNAPSHOT_ROLLBACK')).toBe('Revertir snapshot');
         expect(auditActionLabel('CONFIG_UPDATED')).toBe('Configuración de instancia');
     });
 
@@ -30,6 +32,7 @@ describe('etiquetas de auditoría', () => {
         expect(values).toContain('SNAPSHOT_CREATE');
         expect(values).toContain('SNAPSHOT_ROLLBACK');
         expect(values).toContain('SNAPSHOT_DELETE');
+        expect(values).toContain('ALERT_TRIGGERED');
         expect(values).toContain('CONFIG_UPDATED');
         expect(values).not.toContain('CONFIG_INSTANCE');
         expect(values).not.toContain('CREAR_INSTANCIA');
