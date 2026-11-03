@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { format, startOfDay, subMonths } from 'date-fns';
 import { useLocation, useSearchParams } from 'react-router';
 import {
+    Filter,
     CheckCircle2,
     AlertTriangle,
     XCircle,
@@ -14,6 +15,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropDownMenu';
 import type { AuditDetalles } from '@/utils/auditDetalle';
 import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,7 +117,7 @@ export default function AuditoriaPage() {
     const hasta = searchParams.get('hasta') ?? defaultDates.hasta;
     const [items, setItems] = useState<AuditoriaItemDTO[]>([]);
     const [total, setTotal] = useState(0);
-    const [resultCounts, setResultCounts] = useState<{ successes: number | null; failures: number | null }>({ successes: null, failures: null });
+    const [resultCounts, setResultCounts] = useState<{ total: number | null; successes: number | null; failures: number | null }>({ total: null, successes: null, failures: null });
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<AuditoriaItemDTO | null>(null);
@@ -211,34 +223,34 @@ export default function AuditoriaPage() {
             excluirAccion: HIDDEN_AUDIT_ACTIONS.join(','),
         });
         if (accion) params.set('accion', accion);
-        if (resultado) params.set('resultado', resultado);
         if (usuarioId) params.set('usuarioId', usuarioId);
         if (recursoTipo) params.set('recursoTipo', recursoTipo);
         if (desde) params.set('desde', desde);
         if (hasta) params.set('hasta', hasta);
 
         async function loadResultCounts() {
-            setResultCounts({ successes: null, failures: null });
+            setResultCounts({ total: null, successes: null, failures: null });
             try {
                 const successParams = new URLSearchParams(params);
                 const failureParams = new URLSearchParams(params);
                 successParams.set('resultado', 'SUCCESS');
                 failureParams.set('resultado', 'FAILED');
-                const [successes, failures] = await Promise.all([
+                const [allEvents, successes, failures] = await Promise.all([
+                    apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${params.toString()}`, { signal: controller.signal }),
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${successParams.toString()}`, { signal: controller.signal }),
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${failureParams.toString()}`, { signal: controller.signal }),
                 ]);
                 if (!controller.signal.aborted) {
-                    setResultCounts({ successes: successes.total ?? 0, failures: failures.total ?? 0 });
+                    setResultCounts({ total: allEvents.total ?? 0, successes: successes.total ?? 0, failures: failures.total ?? 0 });
                 }
             } catch {
-                if (!controller.signal.aborted) setResultCounts({ successes: null, failures: null });
+                if (!controller.signal.aborted) setResultCounts({ total: null, successes: null, failures: null });
             }
         }
 
         void loadResultCounts();
         return () => controller.abort();
-    }, [estaAutorizado, pageSize, accion, resultado, usuarioId, recursoTipo, desde, hasta]);
+    }, [estaAutorizado, pageSize, accion, usuarioId, recursoTipo, desde, hasta]);
 
     if (!estaAutorizado) {
         return null;
@@ -316,7 +328,7 @@ export default function AuditoriaPage() {
                         <h1 className="mb-2 text-[30px] font-semibold tracking-tight text-slate-900">Auditoría</h1>
                         <p className="text-secundario">Registro completo de acciones realizadas en el sistema.</p>
                     </div>
-                    <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="relative w-64 max-w-full">
                             <Search className="pointer-events-none absolute top-3 left-3 z-10 size-4 text-slate-500" aria-hidden="true" />
                             <Input
@@ -332,6 +344,68 @@ export default function AuditoriaPage() {
                             />
                             <span id="audit-search-hint" className="sr-only">La búsqueda se aplica a los resultados de la página actual.</span>
                         </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger type="button"><Filter className="size-4!" aria-hidden="true" /> Filtros</DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[260px] max-w-[calc(100vw-2rem)]">
+                                <DropdownMenuGroup className="[&_[data-slot=field]]:mx-0 [&_[data-slot=field]]:w-full">
+                                    <DropdownMenuLabel>Rango de fecha</DropdownMenuLabel>
+                                    <DatePickerWithRange
+                                        value={{
+                                            from: desde ? new Date(`${desde}T00:00:00`) : undefined,
+                                            to: hasta ? new Date(`${hasta}T00:00:00`) : undefined,
+                                        }}
+                                        onValueChange={(range) => {
+                                            setSearchParams((current) => {
+                                                const next = new URLSearchParams(current);
+                                                next.set("desde", range?.from ? format(range.from, "yyyy-MM-dd") : "");
+                                                next.set("hasta", range?.to ? format(range.to, "yyyy-MM-dd") : "");
+                                                next.set("page", "1");
+                                                return next;
+                                            }, { replace: true });
+                                        }}
+                                        aria-label="Desde / Hasta"
+                                        maxDate={startOfDay(new Date())}
+                                        showLabel={false}
+                                    />
+                                </DropdownMenuGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup aria-label="Usuario" value={usuarioId || "all"} onValueChange={(value) => {
+                                    updateUrlFilter("usuario", value === "all" ? "" : value);
+                                    setSearchTerm("");
+                                }}>
+                                    <DropdownMenuLabel>Usuario</DropdownMenuLabel>
+                                    <DropdownMenuRadioItem value="all">Todos los usuarios</DropdownMenuRadioItem>
+                                    {usuarioId && !usuarioOptions.some(([id]) => id === usuarioId) && (
+                                        <DropdownMenuRadioItem value={usuarioId}>{initialAuditUserLabel || usuarioId}</DropdownMenuRadioItem>
+                                    )}
+                                    {usuarioOptions.map(([id, nombre]) => (
+                                        <DropdownMenuRadioItem key={id} value={id}>{nombre}</DropdownMenuRadioItem>
+                                    ))}
+                                </DropdownMenuRadioGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup aria-label="Acción" value={accion || "all"} onValueChange={(value) => updateUrlFilter("accion", value === "all" ? "" : value)}>
+                                    <DropdownMenuLabel>Acción</DropdownMenuLabel>
+                                    <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
+                                    {AUDIT_ACTION_OPTIONS.map((option) => (
+                                        <DropdownMenuRadioItem key={option.value} value={option.value}>{option.label}</DropdownMenuRadioItem>
+                                    ))}
+                                </DropdownMenuRadioGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup aria-label="Tipo de recurso" value={recursoTipo || "all"} onValueChange={(value) => updateUrlFilter("recursoTipo", value === "all" ? "" : value)}>
+                                    <DropdownMenuLabel>Tipo de recurso</DropdownMenuLabel>
+                                    <DropdownMenuRadioItem value="all">Todos los recursos</DropdownMenuRadioItem>
+                                    {AUDIT_RESOURCE_TYPES.map((type) => <DropdownMenuRadioItem key={type} value={type}>{type}</DropdownMenuRadioItem>)}
+                                </DropdownMenuRadioGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup aria-label="Resultado" value={resultado || "all"} onValueChange={(value) => updateUrlFilter("resultado", value === "all" ? "" : value)}>
+                                    <DropdownMenuLabel>Resultado</DropdownMenuLabel>
+                                    <DropdownMenuRadioItem value="all">Todos los resultados</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="PENDIENTE">En curso</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="SUCCESS">Éxito</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="FAILED">Falla</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <AuditExportButton
                             filters={{
                                 desde,
@@ -345,95 +419,11 @@ export default function AuditoriaPage() {
                         />
                     </div>
                 </div>
-
-                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Desde
-                            <Input
-                                type="date"
-                                aria-label="Desde"
-                                value={desde}
-                                max={hasta || undefined}
-                                onChange={(event) => updateUrlFilter('desde', event.target.value)}
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Hasta
-                            <Input
-                                type="date"
-                                aria-label="Hasta"
-                                value={hasta}
-                                min={desde || undefined}
-                                max={format(startOfDay(new Date()), 'yyyy-MM-dd')}
-                                onChange={(event) => updateUrlFilter('hasta', event.target.value)}
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Acción
-                            <select
-                                className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                                aria-label="Acción"
-                                value={accion}
-                                onChange={(event) => updateUrlFilter('accion', event.target.value)}
-                            >
-                                <option value="">Todas</option>
-                                {AUDIT_ACTION_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Usuario
-                            <select
-                                className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                                aria-label="Usuario"
-                                value={usuarioId}
-                                onChange={(event) => {
-                                    updateUrlFilter('usuario', event.target.value);
-                                    setSearchTerm('');
-                                }}
-                            >
-                                <option value="">Todos</option>
-                                {usuarioId && !usuarioOptions.some(([id]) => id === usuarioId) && (
-                                    <option value={usuarioId}>{initialAuditUserLabel || usuarioId}</option>
-                                )}
-                                {usuarioOptions.map(([id, nombre]) => (
-                                    <option key={id} value={id}>{nombre}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Tipo de recurso
-                            <select
-                                className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                                aria-label="Tipo de recurso"
-                                value={recursoTipo}
-                                onChange={(event) => updateUrlFilter('recursoTipo', event.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                {AUDIT_RESOURCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                            Resultado
-                            <select
-                                className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                                aria-label="Resultado"
-                                value={resultado}
-                                onChange={(event) => updateUrlFilter('resultado', event.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                <option value="PENDIENTE">En curso</option>
-                                <option value="SUCCESS">Éxito</option>
-                                <option value="FAILED">Falla</option>
-                            </select>
-                        </label>
-                </div>
             </div>
 
             <Tabs value={activeResultTab} onValueChange={(value) => updateUrlFilter('resultado', value === 'all' ? '' : value)} className="min-w-0 gap-4">
                 <TabsList variant="line" aria-label="Resultado" className="max-w-full">
-                    <TabsTrigger value="all" className="px-4"><FileText /> Eventos totales <Badge variant="secondary">{total}</Badge></TabsTrigger>
+                    <TabsTrigger value="all" className="px-4"><FileText /> Eventos totales <Badge variant="secondary">{resultCounts.total ?? EMPTY_TEXT}</Badge></TabsTrigger>
                     <TabsTrigger value="SUCCESS" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
                     <TabsTrigger value="FAILED" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
                 </TabsList>
@@ -558,7 +548,6 @@ export default function AuditoriaPage() {
                                         <PaginationItem>
                                             <PaginationPrevious
                                                 href="#"
-                                                text="Anterior"
                                                 aria-label="Anterior"
                                                 aria-disabled={pagina <= 1}
                                                 tabIndex={pagina <= 1 ? -1 : 0}
@@ -595,7 +584,6 @@ export default function AuditoriaPage() {
                                         <PaginationItem>
                                             <PaginationNext
                                                 href="#"
-                                                text="Siguiente"
                                                 aria-label="Siguiente"
                                                 aria-disabled={pagina >= totalPages}
                                                 tabIndex={pagina >= totalPages ? -1 : 0}
