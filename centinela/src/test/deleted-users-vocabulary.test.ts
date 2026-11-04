@@ -29,22 +29,23 @@ beforeEach(() => {
 });
 
 describe('Historial de usuarios eliminados', () => {
-  it('incluye las bajas nuevas y las históricas sin exigir el código viejo en la consulta', async () => {
+  it('consulta únicamente bajas exitosas con el código canónico EXITO', async () => {
     getMock.mockResolvedValue({
-      total: 2,
+      total: 3,
       pagina: 1,
       items: [
         { accion: 'ELIMINAR_USUARIO', resultado: 'SUCCESS', detalles: JSON.stringify({ usuarioEliminado: NUEVA }) },
         { accion: 'ELIMINAR_USUARIO', resultado: 'EXITO', detalles: JSON.stringify({ usuarioEliminado: HISTORICA }) },
-        { accion: 'ELIMINAR_USUARIO', resultado: 'FAILED', detalles: JSON.stringify({ usuarioEliminado: NUEVA }) },
+        { accion: 'ELIMINAR_USUARIO', resultado: 'FALLA', detalles: JSON.stringify({ usuarioEliminado: NUEVA }) },
       ],
     });
 
     const eliminados = await fetchDeletedUsers();
 
-    expect(eliminados.map((user) => user.id).sort()).toEqual([HISTORICA, NUEVA].sort());
+    expect(eliminados.map((user) => user.id).sort()).toEqual([HISTORICA]);
     const url = String(getMock.mock.calls[0][0]);
     expect(url).toContain('accion=ELIMINAR_USUARIO');
-    expect(url).not.toContain('resultado=EXITO');
+    expect(url).toContain('resultado=EXITO');
+    expect(getMock).toHaveBeenCalledTimes(1);
   });
 });
