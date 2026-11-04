@@ -53,6 +53,7 @@ export function AuditExportButton({ filters }: AuditExportButtonProps) {
         <DropdownMenu>
             <DropdownMenuTrigger
                 type="button"
+                variant="default"
                 aria-haspopup="menu"
                 aria-label="Exportar registros"
                 disabled={isExporting}

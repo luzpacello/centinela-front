@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, startOfDay, subMonths } from 'date-fns';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -167,8 +167,10 @@ describe('AuditoriaPage', () => {
         // La tabla muestra la etiqueta legible de la acción, no el código crudo.
         expect(screen.getByText(auditActionLabel('CREAR_ROL'))).toBeInTheDocument();
         expect(screen.getByText(/Roles/)).toBeInTheDocument();
-        expect(screen.getByLabelText('Desde')).toBeInTheDocument();
-        expect(screen.getByLabelText('Hasta')).toBeInTheDocument();
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        expect(await screen.findByRole('button', { name: 'Desde / Hasta' })).toBeInTheDocument();
+        await user.keyboard('{Escape}');
 
         await userEvent.setup().click(screen.getByRole('button', { name: /ver detalles/i }));
         const detailDialog = screen.getByRole('dialog', { name: 'Detalle de auditoría' });
@@ -185,7 +187,8 @@ describe('AuditoriaPage', () => {
         vi.mocked(apiClient.get).mockClear();
 
         // El texto de la acción se toma del catálogo compartido con la interfaz.
-        await user.selectOptions(screen.getByLabelText('Acción'), 'LOGIN');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: auditActionLabel('LOGIN') }));
         await user.click(screen.getByRole('tab', { name: /exitosos/i }));
 
         await waitFor(() => {
@@ -202,7 +205,8 @@ describe('AuditoriaPage', () => {
         await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
         vi.mocked(apiClient.get).mockClear();
 
-        await user.selectOptions(screen.getByLabelText('Tipo de recurso'), 'VM');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'VM' }));
         await user.selectOptions(screen.getByLabelText('Registros por página'), '25');
 
         await waitFor(() => {
@@ -304,6 +308,79 @@ describe('AuditoriaPage', () => {
             expect(apiClient.get).toHaveBeenCalledWith(
                 expect.stringContaining('usuarioId=u-7'),
                 expect.anything(),
+            );
+        });
+    });
+
+    it('mantiene los contadores globales al alternar resultados y paginar la tabla filtrada', async () => {
+        vi.mocked(apiClient.get).mockImplementation(async (path) => {
+            const params = new URLSearchParams(path.split('?')[1]);
+            const result = params.get('resultado');
+            return {
+                total: result === 'SUCCESS' ? 17 : result === 'FAILED' ? 4 : 23,
+                pagina: Number(params.get('pagina')),
+                items: [{
+                    id: result || 'all', nombreUsuario: result === 'FAILED' ? 'Usuario fallido' : 'Usuario exitoso',
+                    accion: 'LOGIN', resultado: result || 'SUCCESS',
+                }],
+            };
+        });
+        const user = userEvent.setup();
+        render(<AuditoriaPage />);
+        const allTab = screen.getByRole('tab', { name: /eventos totales/i });
+        const successTab = screen.getByRole('tab', { name: /exitosos/i });
+        const failureTab = screen.getByRole('tab', { name: /fallidos/i });
+        await waitFor(() => {
+            expect(allTab).toHaveTextContent('23');
+            expect(successTab).toHaveTextContent('17');
+            expect(failureTab).toHaveTextContent('4');
+        });
+        vi.mocked(apiClient.get).mockClear();
+
+        await user.click(successTab);
+        await screen.findByText('Página 1 de 2 (17 eventos en total)');
+        expect(allTab).toHaveTextContent('23');
+        expect(successTab).toHaveTextContent('17');
+        expect(failureTab).toHaveTextContent('4');
+        expect(apiClient.get).toHaveBeenCalledTimes(1);
+
+        const nextPage = screen.getByRole('button', { name: 'Siguiente' });
+        expect(nextPage.textContent).toBe('');
+        expect(screen.getByRole('button', { name: 'Anterior' }).textContent).toBe('');
+        await user.click(nextPage);
+        await screen.findByText('Página 2 de 2 (17 eventos en total)');
+        expect(allTab).toHaveTextContent('23');
+
+        await user.click(failureTab);
+        expect(await within(screen.getByRole('table')).findByText('Usuario fallido')).toBeInTheDocument();
+        expect(allTab).toHaveTextContent('23');
+        expect(successTab).toHaveTextContent('17');
+        expect(failureTab).toHaveTextContent('4');
+        expect(screen.getByText('Página 1 de 1 (4 eventos en total)')).toBeInTheDocument();
+    });
+
+    it('envía el rango consolidado desde el selector de fechas dentro de Filtros', async () => {
+        const user = userEvent.setup();
+        const today = startOfDay(new Date());
+        const firstDate = subMonths(today, 1);
+        firstDate.setDate(10);
+        const lastDate = new Date(firstDate);
+        lastDate.setDate(12);
+        render(<AuditoriaPage />);
+        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        expect(screen.queryByRole('button', { name: 'Desde / Hasta' })).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('button', { name: 'Desde / Hasta' }));
+        const startButton = screen.getAllByRole('button').find((button) => button.getAttribute('data-day') === firstDate.toLocaleDateString());
+        expect(startButton).toBeDefined();
+        await user.click(startButton!);
+        const endButton = screen.getAllByRole('button').find((button) => button.getAttribute('data-day') === lastDate.toLocaleDateString());
+        expect(endButton).toBeDefined();
+        await user.click(endButton!);
+        await waitFor(() => {
+            expect(apiClient.get).toHaveBeenCalledWith(
+                expect.stringContaining(`desde=${format(firstDate, 'yyyy-MM-dd')}&hasta=${format(lastDate, 'yyyy-MM-dd')}`),
+                expect.objectContaining({ signal: expect.any(AbortSignal) }),
             );
         });
     });
