@@ -1,4 +1,7 @@
+import type { AuditAction } from '@/utils/auditActionLabels';
 import type { AuditDetalles } from '@/utils/auditDetalle';
+
+export type AuditResult = 'EXITO' | 'FALLA' | 'PENDIENTE';
 
 export const AUDIT_HISTORY_START_DATE = '1970-01-01';
 
@@ -24,7 +27,6 @@ export interface AuditPage {
 }
 
 export interface AuditActionOption {
-    value: string;
+    value: AuditAction;
     label: string;
-    codes: string[];
 }
