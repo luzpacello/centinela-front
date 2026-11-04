@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { format, startOfDay, subMonths } from 'date-fns';
+import { startOfDay, subMonths } from 'date-fns';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiClient } from '@/services/apiClient';
 import AuditoriaPage from '@/pages/Auditoria';
@@ -68,8 +68,10 @@ function urlAuditoria({ accion = '', resultado = '' }: { accion?: string; result
     });
     if (accion) params.set('accion', accion);
     if (resultado) params.set('resultado', resultado);
-    params.set('desde', format(subMonths(hoy, 1), 'yyyy-MM-dd'));
-    params.set('hasta', format(hoy, 'yyyy-MM-dd'));
+    params.set('desde', subMonths(hoy, 1).toISOString());
+    const endOfToday = new Date(hoy);
+    endOfToday.setHours(23, 59, 59, 999);
+    params.set('hasta', endOfToday.toISOString());
     return `/admin/audit?${params.toString()}`;
 }
 
@@ -145,7 +147,7 @@ describe('AuditoriaPage', () => {
         };
 
         // Configuramos la respuesta de la API
-        vi.mocked(apiClient.get).mockResolvedValueOnce(mockAuditData);
+        vi.mocked(apiClient.get).mockResolvedValue(mockAuditData);
 
         // 2. Montamos el componente
         render(<AuditoriaPage />);
@@ -180,9 +182,10 @@ describe('AuditoriaPage', () => {
     });
 
     it('Reactividad de Filtros: rearma la consulta al elegir acción y resultado', async () => {
+        vi.mocked(apiClient.get).mockResolvedValue({ total: 1, pagina: 1, items: [{ id: 'login-event', accion: 'LOGIN' }] });
         const user = userEvent.setup();
         render(<AuditoriaPage />);
-        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        await screen.findByRole('button', { name: 'Ver detalles de Inicio de sesión' });
 
         vi.mocked(apiClient.get).mockClear();
 
@@ -200,9 +203,10 @@ describe('AuditoriaPage', () => {
     });
 
     it('mantiene los filtros al cambiar el tamaño de página y envía el tipo de recurso', async () => {
+        vi.mocked(apiClient.get).mockResolvedValue({ total: 1, pagina: 1, items: [{ id: 'vm-event', accion: 'LOGIN', recursoTipo: 'VM' }] });
         const user = userEvent.setup();
         render(<AuditoriaPage />);
-        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        await screen.findByRole('button', { name: 'Ver detalles de Inicio de sesión' });
         vi.mocked(apiClient.get).mockClear();
 
         await user.click(screen.getByRole('button', { name: 'Filtros' }));
@@ -296,13 +300,17 @@ describe('AuditoriaPage', () => {
             pathname: '/auditoria',
             search: '',
             hash: '',
-            state: { auditUser: { id: 'u-7', label: 'Carlos Admin' } },
+            state: { auditUser: { id: 'u-7', label: 'carlos.login' } },
             key: 'default',
         } as unknown as ReturnType<typeof useLocation>);
 
+        vi.mocked(apiClient.get).mockResolvedValue({ total: 1, pagina: 1, items: [{
+            id: 'old-user-event', usuarioId: 'u-7', nombreUsuario: 'Carlos Admin', accion: 'LOGIN', fechaHora: '2020-01-01T09:00:00Z',
+        }] });
         render(<AuditoriaPage />);
 
-        expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('Carlos Admin');
+        expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('carlos.login');
+        expect(await within(screen.getByRole('table')).findByText('Carlos Admin')).toBeInTheDocument();
 
         await waitFor(() => {
             expect(apiClient.get).toHaveBeenCalledWith(
@@ -310,6 +318,61 @@ describe('AuditoriaPage', () => {
                 expect.anything(),
             );
         });
+        expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining('desde=1970-01-01'), expect.anything());
+        vi.mocked(apiClient.get).mockClear();
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Todos los usuarios' }));
+        await waitFor(() => {
+            expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('');
+            expect(apiClient.get).toHaveBeenCalled();
+            expect(vi.mocked(apiClient.get).mock.calls.every(([path]) => !path.includes('usuarioId='))).toBe(true);
+        });
+    });
+
+    it('precarga opciones de páginas posteriores y busca registros fuera de la página visible', async () => {
+        const records = Array.from({ length: 101 }, (_, index) => ({
+            id: `event-${index}`, usuarioId: index === 100 ? 'old-user' : 'recent-user',
+            nombreUsuario: index === 100 ? 'Operador antiguo' : 'Operador reciente',
+            accion: index === 100 ? 'INICIAR_VM' : index === 0 ? 'START_VM' : 'LOGIN',
+            recursoTipo: 'VM', recursoId: `inst_${index}`, resultado: 'SUCCESS',
+            fechaHora: '2026-01-01T09:00:00Z',
+        }));
+        vi.mocked(apiClient.get).mockImplementation(async (path) => {
+            const params = new URLSearchParams(path.split('?')[1]);
+            const page = Number(params.get('pagina'));
+            const size = Number(params.get('tamano'));
+            const filtered = records.filter((event) => !params.get('usuarioId') || event.usuarioId === params.get('usuarioId'));
+            return { total: filtered.length, pagina: page, limit: size, items: filtered.slice((page - 1) * size, page * size) };
+        });
+        const user = userEvent.setup();
+        render(<AuditoriaPage />);
+        await within(screen.getByRole('table')).findAllByText('Operador reciente');
+        expect(within(screen.getByRole('table')).queryByText('Operador antiguo')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        expect(await screen.findByRole('menuitemradio', { name: 'Operador antiguo' })).toBeInTheDocument();
+        expect(screen.getAllByRole('menuitemradio', { name: 'Instancia iniciada' })).toHaveLength(1);
+        expect(screen.queryByRole('menuitemradio', { name: 'Snapshot creado' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('menuitemradio', { name: 'HOST' })).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
+        vi.mocked(apiClient.get).mockClear();
+        await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+        await screen.findByText('Página 2 de 11 (101 eventos en total)');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        expect(await screen.findByRole('menuitemradio', { name: 'Operador antiguo' })).toBeInTheDocument();
+        await user.keyboard('{Escape}');
+        expect(vi.mocked(apiClient.get).mock.calls.some(([path]) => path.includes('tamano=100'))).toBe(false);
+
+        await user.type(screen.getByLabelText('Buscar en auditoría'), 'Operador antiguo');
+        expect(await within(screen.getByRole('table')).findByText('Operador antiguo')).toBeInTheDocument();
+        expect(screen.getByText('Página 1 de 1 (1 eventos en total)')).toBeInTheDocument();
+        await user.clear(screen.getByLabelText('Buscar en auditoría'));
+        await within(screen.getByRole('table')).findAllByText('Operador reciente');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Instancia iniciada' }));
+        await waitFor(() => expect(screen.getByText('Página 1 de 1 (2 eventos en total)')).toBeInTheDocument());
+        expect(within(screen.getByRole('table')).getByText('Operador antiguo')).toBeInTheDocument();
+        expect(within(screen.getByRole('table')).getByText('Operador reciente')).toBeInTheDocument();
     });
 
     it('mantiene los contadores globales al alternar resultados y paginar la tabla filtrada', async () => {
@@ -378,10 +441,13 @@ describe('AuditoriaPage', () => {
         expect(endButton).toBeDefined();
         await user.click(endButton!);
         await waitFor(() => {
-            expect(apiClient.get).toHaveBeenCalledWith(
-                expect.stringContaining(`desde=${format(firstDate, 'yyyy-MM-dd')}&hasta=${format(lastDate, 'yyyy-MM-dd')}`),
-                expect.objectContaining({ signal: expect.any(AbortSignal) }),
-            );
+            const endOfRange = new Date(lastDate);
+            endOfRange.setHours(23, 59, 59, 999);
+            const matchedRequest = vi.mocked(apiClient.get).mock.calls.find(([path]) => {
+                const params = new URLSearchParams(path.split('?')[1]);
+                return params.get('desde') === firstDate.toISOString() && params.get('hasta') === endOfRange.toISOString();
+            });
+            expect(matchedRequest).toBeDefined();
         });
     });
 
