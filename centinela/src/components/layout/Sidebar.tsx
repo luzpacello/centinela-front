@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router';
+import { NavLink, useNavigate } from 'react-router';
 import {
-    Bell,
     ChevronDown,
-    Circle,
     FileText,
     House,
     LogOut,
@@ -22,6 +20,7 @@ import avatarAdmin from '@/assets/logo-pulpo-visor.png';
 import avatarOperador from '@/assets/logo-pulpo-auriculares.png';
 
 export default function Sidebar({ user }: { user?: UserSession }) {
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { isLoggingOut, logout } = useLogout();
@@ -135,27 +134,12 @@ export default function Sidebar({ user }: { user?: UserSession }) {
                             role="menuitem"
                             variant="ghost"
                             className="w-full justify-start gap-2 font-normal text-sm text-slate-700"
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => {
+                                setIsOpen(false);
+                                if (user?.id) navigate(`/users/${encodeURIComponent(user.id)}`, { state: { isCurrentUser: true } });
+                            }}
                         >
                             <UserRound className="size-4" aria-hidden="true" /> Cuenta
-                        </Button>
-                        <Button
-                            type="button"
-                            role="menuitem"
-                            variant="ghost"
-                            className="w-full justify-start gap-2 font-normal text-sm text-slate-700"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            <Bell className="size-4" aria-hidden="true" /> Notificaciones
-                        </Button>
-                        <Button
-                            type="button"
-                            role="menuitem"
-                            variant="ghost"
-                            className="w-full justify-start gap-2 font-normal text-sm text-slate-700"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            <Circle className="size-4" aria-hidden="true" /> Estado
                         </Button>
 
                         <div className={style.menuDivider} />
