@@ -8,6 +8,8 @@ import AuditoriaPage from '@/pages/Auditoria';
 import { useLocation, useNavigate } from 'react-router';
 import { HIDDEN_AUDIT_ACTIONS, auditActionLabel } from '@/utils/auditActionLabels';
 
+const initialRoute = vi.hoisted(() => ({ search: '' }));
+
 // 1. Mock de las dependencias de tu proyecto
 vi.mock('@/services/apiClient', () => {
     return {
@@ -38,7 +40,7 @@ vi.mock('react-router', async () => {
         // La página lee el estado de navegación para llegar con un usuario prefiltrado.
         useLocation: vi.fn(),
         useSearchParams: () => {
-            const [params, setParams] = React.useState(() => new URLSearchParams());
+            const [params, setParams] = React.useState(() => new URLSearchParams(initialRoute.search));
             const setSearchParams = React.useCallback((next: URLSearchParams | ((current: URLSearchParams) => URLSearchParams)) => {
                 setParams((current) => new URLSearchParams(
                     typeof next === 'function' ? next(new URLSearchParams(current)) : next,
@@ -81,6 +83,7 @@ describe('AuditoriaPage', () => {
     // 2. Reseteamos y configuramos el estado inicial antes de cada test
     beforeEach(() => {
         vi.clearAllMocks();
+        initialRoute.search = '';
         vi.mocked(useNavigate).mockReturnValue(mockNavigate);
         vi.mocked(useLocation).mockReturnValue({
             pathname: '/auditoria',
@@ -196,10 +199,45 @@ describe('AuditoriaPage', () => {
 
         await waitFor(() => {
             expect(apiClient.get).toHaveBeenCalledWith(
-                urlAuditoria({ accion: 'LOGIN', resultado: 'SUCCESS' }),
+                urlAuditoria({ accion: 'LOGIN', resultado: 'EXITO' }),
                 expect.objectContaining({ signal: expect.any(AbortSignal) }),
             );
         });
+    });
+
+    it.each([
+        ['Éxito', 'EXITO'], ['Falla', 'FALLA'], ['En curso', 'PENDIENTE'],
+    ])('el filtro %s envía el resultado canónico %s también al exportar', async (label, result) => {
+        vi.mocked(fetch).mockResolvedValueOnce({
+            ok: true, headers: new Headers(), blob: async () => new Blob(['{}']),
+        } as Response);
+        const user = userEvent.setup();
+        render(<AuditoriaPage />);
+        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        await user.click(screen.getByRole('button', { name: 'Filtros' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: label }));
+        await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith(
+            urlAuditoria({ resultado: result }), expect.any(Object),
+        ));
+        await user.click(screen.getByRole('button', { name: 'Exportar registros' }));
+        await user.click(await screen.findByRole('menuitem', { name: 'Exportar auditoría en formato JSON' }));
+        await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+            expect.stringContaining(`resultado=${result}`), expect.any(Object),
+        ));
+        const requestedResults = vi.mocked(apiClient.get).mock.calls
+            .map(([path]) => new URLSearchParams(path.split('?')[1]).get('resultado')).filter(Boolean);
+        expect(requestedResults.every((value) => ['EXITO', 'FALLA', 'PENDIENTE'].includes(value!))).toBe(true);
+    });
+
+    it('no reenvía filtros de enlaces antiguos o ajenos al enum del backend', async () => {
+        initialRoute.search = 'accion=START_VM&resultado=SUCCESS';
+        render(<AuditoriaPage />);
+        await screen.findByText('Todavía no hay registros de auditoría para mostrar.');
+        for (const [path] of vi.mocked(apiClient.get).mock.calls) {
+            const params = new URLSearchParams(path.split('?')[1]);
+            expect(params.has('accion')).toBe(false);
+            expect(params.get('resultado')).not.toBe('SUCCESS');
+        }
     });
 
     it('mantiene los filtros al cambiar el tamaño de página y envía el tipo de recurso', async () => {
@@ -331,15 +369,16 @@ describe('AuditoriaPage', () => {
         const records = Array.from({ length: 101 }, (_, index) => ({
             id: `event-${index}`, usuarioId: index === 100 ? 'old-user' : 'recent-user',
             nombreUsuario: index === 100 ? 'Operador antiguo' : 'Operador reciente',
-            accion: index === 100 ? 'INICIAR_VM' : index === 0 ? 'START_VM' : 'LOGIN',
-            recursoTipo: 'VM', recursoId: `inst_${index}`, resultado: 'SUCCESS',
+            accion: index === 100 || index === 0 ? 'INICIAR_VM' : 'LOGIN',
+            recursoTipo: 'VM', recursoId: `inst_${index}`, resultado: 'EXITO',
             fechaHora: '2026-01-01T09:00:00Z',
         }));
         vi.mocked(apiClient.get).mockImplementation(async (path) => {
             const params = new URLSearchParams(path.split('?')[1]);
             const page = Number(params.get('pagina'));
             const size = Number(params.get('tamano'));
-            const filtered = records.filter((event) => !params.get('usuarioId') || event.usuarioId === params.get('usuarioId'));
+            const filtered = records.filter((event) => (!params.get('usuarioId') || event.usuarioId === params.get('usuarioId'))
+                && (!params.get('accion') || event.accion === params.get('accion')));
             return { total: filtered.length, pagina: page, limit: size, items: filtered.slice((page - 1) * size, page * size) };
         });
         const user = userEvent.setup();
@@ -377,11 +416,11 @@ describe('AuditoriaPage', () => {
             const params = new URLSearchParams(path.split('?')[1]);
             const result = params.get('resultado');
             return {
-                total: result === 'SUCCESS' ? 17 : result === 'FAILED' ? 4 : 23,
+                total: result === 'EXITO' ? 17 : result === 'FALLA' ? 4 : 23,
                 pagina: Number(params.get('pagina')),
                 items: [{
-                    id: result || 'all', nombreUsuario: result === 'FAILED' ? 'Usuario fallido' : 'Usuario exitoso',
-                    accion: 'LOGIN', resultado: result || 'SUCCESS',
+                    id: result || 'all', nombreUsuario: result === 'FALLA' ? 'Usuario fallido' : 'Usuario exitoso',
+                    accion: 'LOGIN', resultado: result || 'EXITO',
                 }],
             };
         });
@@ -417,6 +456,36 @@ describe('AuditoriaPage', () => {
         expect(successTab).toHaveTextContent('17');
         expect(failureTab).toHaveTextContent('4');
         expect(screen.getByText('Página 1 de 1 (4 eventos en total)')).toBeInTheDocument();
+    });
+
+    it('conserva registros de distintas familias y cuenta resultados canónicos durante la búsqueda', async () => {
+        const actions = ['LOGIN', 'VERIFICAR_2FA', 'CREAR_USUARIO', 'INICIAR_VM', 'LOGIN_FALLA', 'CONFIG_UPDATED'];
+        const records = actions.map((accion, index) => ({
+            id: `canonical-${index}`, accion, nombreUsuario: `Operador ${index}`,
+            resultado: index < 4 ? 'EXITO' : index === 4 ? 'FALLA' : 'PENDIENTE',
+        }));
+        vi.mocked(apiClient.get).mockResolvedValue({ total: records.length, pagina: 1, items: records });
+        const user = userEvent.setup();
+        render(<AuditoriaPage />);
+        await user.type(screen.getByLabelText('Buscar en auditoría'), 'Operador');
+        const allTab = screen.getByRole('tab', { name: /eventos totales/i });
+        const successTab = screen.getByRole('tab', { name: /exitosos/i });
+        const failureTab = screen.getByRole('tab', { name: /fallidos/i });
+        await waitFor(() => {
+            expect(allTab).toHaveTextContent('6');
+            expect(successTab).toHaveTextContent('4');
+            expect(failureTab).toHaveTextContent('1');
+        });
+        await user.click(successTab);
+        for (let index = 0; index < 4; index++) {
+            expect(within(screen.getByRole('table')).getByText(`Operador ${index}`)).toBeInTheDocument();
+        }
+        expect(within(screen.getByRole('table')).queryByText('Operador 4')).not.toBeInTheDocument();
+        await user.click(failureTab);
+        expect(within(screen.getByRole('table')).getByText('Operador 4')).toBeInTheDocument();
+        expect(within(screen.getByRole('table')).queryByText('Operador 0')).not.toBeInTheDocument();
+        expect(allTab).toHaveTextContent('6');
+        expect(successTab).toHaveTextContent('4');
     });
 
     it('envía el rango consolidado desde el selector de fechas dentro de Filtros', async () => {

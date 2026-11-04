@@ -4,7 +4,6 @@ import { useLocation, useSearchParams } from 'react-router';
 import {
     Filter,
     CheckCircle2,
-    AlertTriangle,
     XCircle,
     Eye,
     Search,
@@ -27,11 +26,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropDownMenu';
-import { HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
+import { HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage, isAuditAction } from '@/utils/auditActionLabels';
 import { useAuditCatalog } from '@/components/features/audit/hooks/useAuditCatalog';
 import { fetchAuditPage } from '@/components/features/audit/services/auditLogService';
 import { AUDIT_HISTORY_START_DATE, type AuditEvent as AuditoriaItemDTO, type AuditPage as PaginaAuditoriaDTO } from '@/components/features/audit/types/audit';
-import { buildAuditFilterOptions, countAuditResults, filterAuditRecords, normalizeAuditResult } from '@/components/features/audit/utils/auditFilters';
+import { buildAuditFilterOptions, countAuditResults, filterAuditRecords, isAuditResult } from '@/components/features/audit/utils/auditFilters';
 import { auditDateBoundary } from '@/components/features/audit/utils/auditDateBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
@@ -91,8 +90,10 @@ export default function AuditoriaPage() {
     const pageSize = AUDIT_PAGE_SIZES.includes(requestedPageSize as (typeof AUDIT_PAGE_SIZES)[number])
         ? requestedPageSize
         : AUDIT_PAGE_SIZE;
-    const accion = searchParams.get('accion') ?? '';
-    const resultado = searchParams.get('resultado') ?? '';
+    const requestedAction = searchParams.get('accion') ?? '';
+    const accion = isAuditAction(requestedAction) && !HIDDEN_AUDIT_ACTIONS.includes(requestedAction) ? requestedAction : '';
+    const requestedResult = searchParams.get('resultado');
+    const resultado = isAuditResult(requestedResult) ? requestedResult : '';
     const usuarioId = searchParams.get('usuario') ?? '';
     const recursoTipo = searchParams.get('recursoTipo') ?? '';
     const desde = searchParams.get('desde') ?? defaultDates.desde;
@@ -106,14 +107,12 @@ export default function AuditoriaPage() {
     const catalog = useAuditCatalog(estaAutorizado, desde, hasta);
     const filterOptions = useMemo(() => buildAuditFilterOptions(catalog.records), [catalog.records]);
     const effectiveSearchTerm = debouncedSearchTerm;
-    const selectedAction = filterOptions.actions.find((option) => option.codes.includes(accion));
-    const actionCodes = useMemo(() => selectedAction?.codes ?? (accion ? [accion] : []), [selectedAction, accion]);
-    const requiresCatalogFiltering = Boolean(effectiveSearchTerm.trim()) || actionCodes.length > 1;
+    const requiresCatalogFiltering = Boolean(effectiveSearchTerm.trim());
     const matchingCatalogRecords = useMemo(() => filterAuditRecords(catalog.records, {
-        userId: usuarioId, actionCodes, resourceType: recursoTipo, search: effectiveSearchTerm,
-    }), [catalog.records, usuarioId, actionCodes, recursoTipo, effectiveSearchTerm]);
+        userId: usuarioId, action: accion, resourceType: recursoTipo, search: effectiveSearchTerm,
+    }), [catalog.records, usuarioId, accion, recursoTipo, effectiveSearchTerm]);
     const resultRecords = useMemo(() => matchingCatalogRecords.filter((event) => !resultado
-        || normalizeAuditResult(event.resultado) === normalizeAuditResult(resultado)), [matchingCatalogRecords, resultado]);
+        || event.resultado === resultado), [matchingCatalogRecords, resultado]);
     const items = requiresCatalogFiltering ? resultRecords.slice((pagina - 1) * pageSize, pagina * pageSize) : serverItems;
     const total = requiresCatalogFiltering ? resultRecords.length : serverTotal;
     const resultCounts = requiresCatalogFiltering ? countAuditResults(matchingCatalogRecords) : serverResultCounts;
@@ -226,8 +225,8 @@ export default function AuditoriaPage() {
             try {
                 const successParams = new URLSearchParams(params);
                 const failureParams = new URLSearchParams(params);
-                successParams.set('resultado', 'SUCCESS');
-                failureParams.set('resultado', 'FAILED');
+                successParams.set('resultado', 'EXITO');
+                failureParams.set('resultado', 'FALLA');
                 const [allEvents, successes, failures] = await Promise.all([
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${params.toString()}`, { signal: controller.signal }),
                     apiClient.get<PaginaAuditoriaDTO>(`/admin/audit?${successParams.toString()}`, { signal: controller.signal }),
@@ -257,36 +256,25 @@ export default function AuditoriaPage() {
     const lastVisible = Math.min(pagina * pageSize, total);
     const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
         .filter((page) => page === 1 || page === totalPages || Math.abs(page - pagina) <= 1);
-    const activeResultTab = resultado === 'SUCCESS' || resultado === 'EXITO'
-        ? 'SUCCESS'
-        : resultado === 'FAILED' || resultado === 'FALLA'
-            ? 'FAILED'
-            : 'all';
+    const activeResultTab = resultado === 'EXITO' || resultado === 'FALLA' ? resultado : 'all';
 
     const getResultBadge = (resultado?: string | null) => {
         const value = (resultado ?? '').toUpperCase();
-        if (value === 'PENDIENTE' || value === 'PENDING') {
+        if (value === 'PENDIENTE') {
             return (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
                     <Clock3 className="size-3.5" /> En curso
                 </span>
             );
         }
-        if (value === 'EXITO' || value === 'SUCCESS') {
+        if (value === 'EXITO') {
             return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <CheckCircle2 className="size-3.5" /> Éxito
                 </span>
             );
         }
-        if (value === 'ADVERTENCIA' || value === 'WARNING') {
-            return (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                    <AlertTriangle className="size-3.5" /> Advertencia
-                </span>
-            );
-        }
-        if (value === 'FALLA' || value === 'FALLO' || value === 'FALLIDO' || value === 'FAILED' || value === 'ERROR') {
+        if (value === 'FALLA') {
             return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
                     <XCircle className="size-3.5" /> Falla
@@ -362,7 +350,7 @@ export default function AuditoriaPage() {
                                     ))}
                                 </DropdownMenuRadioGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuRadioGroup aria-label="Acción" value={selectedAction?.value || accion || "all"} onValueChange={(value) => updateUrlFilter("accion", value === "all" ? "" : value)}>
+                                <DropdownMenuRadioGroup aria-label="Acción" value={accion || "all"} onValueChange={(value) => updateUrlFilter("accion", value === "all" ? "" : value)}>
                                     <DropdownMenuLabel>Acción</DropdownMenuLabel>
                                     <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
                                     {filterOptions.actions.map((option) => (
@@ -380,8 +368,8 @@ export default function AuditoriaPage() {
                                     <DropdownMenuLabel>Resultado</DropdownMenuLabel>
                                     <DropdownMenuRadioItem value="all">Todos los resultados</DropdownMenuRadioItem>
                                     <DropdownMenuRadioItem value="PENDIENTE">En curso</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value="SUCCESS">Éxito</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem value="FAILED">Falla</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="EXITO">Éxito</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="FALLA">Falla</DropdownMenuRadioItem>
                                 </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -403,8 +391,8 @@ export default function AuditoriaPage() {
             <Tabs value={activeResultTab} onValueChange={(value) => updateUrlFilter('resultado', value === 'all' ? '' : value)} className="min-w-0 gap-4">
                 <TabsList variant="line" aria-label="Resultado" className="max-w-full">
                     <TabsTrigger value="all" className="px-4"><FileText /> Eventos totales <Badge variant="secondary">{resultCounts.total ?? EMPTY_TEXT}</Badge></TabsTrigger>
-                    <TabsTrigger value="SUCCESS" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
-                    <TabsTrigger value="FAILED" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
+                    <TabsTrigger value="EXITO" className="px-4"><CheckCircle2 /> Exitosos <Badge variant="secondary">{resultCounts.successes ?? EMPTY_TEXT}</Badge></TabsTrigger>
+                    <TabsTrigger value="FALLA" className="px-4"><XCircle /> Fallidos <Badge variant="secondary">{resultCounts.failures ?? EMPTY_TEXT}</Badge></TabsTrigger>
                 </TabsList>
                 <TabsContent value={activeResultTab} className="min-w-0">
                     {/* Tabla de Registros */}

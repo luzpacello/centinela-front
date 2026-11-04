@@ -1,3 +1,5 @@
+import type { AuditAction } from '@/utils/auditActionLabels';
+import type { AuditResult } from '../types/audit';
 import { getAccessToken } from '@/storage/tokenStorage';
 import { ApiRequestError } from '@/services/apiClient';
 
@@ -7,9 +9,9 @@ export interface AuditFilterParams {
     desde?: string;
     hasta?: string;
     usuarioId?: string;
-    accion?: string;
+    accion?: AuditAction | '';
     recursoTipo?: string;
-    resultado?: string;
+    resultado?: AuditResult | '';
     excluirAccion?: string[];
 }
 

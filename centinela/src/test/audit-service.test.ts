@@ -26,7 +26,7 @@ describe('exportAuditLogs', () => {
             usuarioId: 'user-12',
             accion: 'LOGIN',
             recursoTipo: 'VM',
-            resultado: 'FAILED',
+            resultado: 'FALLA',
             excluirAccion: ['INTERNAL_A', 'INTERNAL_B'],
         }, 'csv');
 
@@ -39,7 +39,7 @@ describe('exportAuditLogs', () => {
         expect(url.searchParams.get('usuarioId')).toBe('user-12');
         expect(url.searchParams.get('accion')).toBe('LOGIN');
         expect(url.searchParams.get('recursoTipo')).toBe('VM');
-        expect(url.searchParams.get('resultado')).toBe('FAILED');
+        expect(url.searchParams.get('resultado')).toBe('FALLA');
         expect(url.searchParams.getAll('excluirAccion')).toEqual(['INTERNAL_A', 'INTERNAL_B']);
         expect(requestOptions).toEqual({
             headers: { Authorization: 'Bearer audit-test-token' },
