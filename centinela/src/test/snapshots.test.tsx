@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock, beforeAll }
 import { SnapshotsTabContent } from '@/components/features/instances/components/detail/SnapshotsTabContent';
 
 const eventsMock = vi.hoisted(() => ({
-  state: { ultimoMensaje: null },
+  state: { estado: 'idle', ultimoMensaje: null, error: null, motivoCierre: null },
 }));
 
 const authMock = vi.hoisted(() => ({
@@ -14,6 +14,8 @@ const authMock = vi.hoisted(() => ({
 
 vi.mock('@/context/EventsContext', () => ({
   useEventsContext: () => eventsMock.state,
+  useOptionalEventsContext: () => eventsMock.state,
+  useEventSubscription: () => {},
 }));
 
 vi.mock('@/context/AuthContext', () => ({
