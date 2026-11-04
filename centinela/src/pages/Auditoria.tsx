@@ -494,7 +494,7 @@ export default function AuditoriaPage() {
                                             </TableCell>
                                             <TableCell className="p-4 whitespace-normal break-words text-secundario">
                                                 {displayText(
-                                                    [event.recursoTipo, event.recursoId ?? event.instanciaId, event.instanciaNombre]
+                                                    [event.recursoTipo, event.instanciaNombre]
                                                         .filter((part) => part !== null && part !== undefined && String(part).trim())
                                                         .join(' · ') || event.instanciaNombre,
                                                 )}
