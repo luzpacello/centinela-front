@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ChevronRight, Info, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, Loader2, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,9 +31,10 @@ interface InstanceDetailContentProps {
     onConfigurationSaved: (configuration: Partial<InstanceResourceConfiguration>) => void;
     onSnapshotAccepted?: () => void;
     eventsStatus?: string;
+    onBack?: () => void;
 }
 
-export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted, onConfigurationSaved, onSnapshotAccepted, eventsStatus }: InstanceDetailContentProps) {
+export default function InstanceDetailContent({ instance, transition, isPowerActionPending, onActionAccepted, onDeleteAccepted, onConfigurationSaved, onSnapshotAccepted, eventsStatus, onBack }: InstanceDetailContentProps) {
     const { canOperateInstance, isAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<InstanceDetailTab>('resumen');
     const [editModalMode, setEditModalMode] = useState<'edit' | 'confirm' | null>(null);
@@ -82,6 +83,10 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                 </div>
             </div>
             <div className={styles.headerActions}>
+                {onBack && <Button type="button" variant="outline" onClick={onBack}>
+                    <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
+                    Volver
+                </Button>}
                 <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={effectiveTransition ?? null}
                     isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
                 <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
