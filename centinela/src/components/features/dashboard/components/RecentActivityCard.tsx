@@ -85,9 +85,6 @@ export default function RecentActivityCard() {
         <Card className={style.card}>
             <div className={style.header}>
                 <h4 className={style.title}>Actividad reciente</h4>
-                <Button type="button" variant="ghost" className={style.headerAction} onClick={goToAudit}>
-                    Ver todo
-                </Button>
             </div>
 
             {isLoading ? (
@@ -144,7 +141,6 @@ const style = {
     card: 'flex min-h-[340px] flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm ring-0',
     header: 'flex items-center justify-between gap-2',
     title: 'text-sm font-semibold text-slate-900',
-    headerAction: 'h-8 px-2 text-xs text-slate-500',
     list: 'flex flex-1 flex-col divide-y divide-slate-100',
     row: 'flex items-center gap-3 py-3',
     rowIcon: 'flex size-9 shrink-0 items-center justify-center rounded-full',
@@ -156,6 +152,6 @@ const style = {
     rowSkeleton: 'h-12 animate-pulse rounded-lg border border-slate-100 bg-slate-100',
     stateBox: 'flex min-h-28 flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-slate-500',
     stateAction: 'h-8 text-xs',
-    footerAction: 'mt-auto w-full justify-between text-xs text-blue-600',
+    footerAction: 'mt-auto w-full justify-between text-xs',
     footerIcon: 'size-4!',
 };
