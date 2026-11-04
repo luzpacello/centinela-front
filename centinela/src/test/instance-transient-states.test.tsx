@@ -9,11 +9,9 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }));
 
-// La pestaña de Snapshots lee el canal de eventos para refrescar su estado; en
-// esta prueba solo se verifica el render del estado vacío, así que se reemplaza
-// el canal compartido por un contexto sin mensajes ni conexión abierta.
 vi.mock('@/context/EventsContext', () => ({
   useEventsContext: () => ({ ultimoMensaje: null }),
+  useOptionalEventsContext: () => ({ estado: 'idle', ultimoMensaje: null, error: null, motivoCierre: null }),
   useEventSubscription: () => {},
 }));
 
@@ -58,7 +56,7 @@ describe('Estados transitorios de instancia', () => {
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeDisabled();
   });
 
-  it('renderiza el estado vacío de la pestaña Snapshots', async () => {
+  it('renderiza el estado vacío de la pestaña Snapshots sin EventsProvider', async () => {
     vi.spyOn(snapshotService, 'getSnapshots').mockResolvedValue([]);
     render(<SnapshotsTabContent vmid={instance.id} />);
     expect(await screen.findByText('No hay puntos de restauración registrados para esta instancia')).toBeInTheDocument();
