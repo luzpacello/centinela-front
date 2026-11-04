@@ -43,7 +43,7 @@ function formatFetchedAt(value?: string): string {
 export default function Dashboard() {
     const { estado, motivoCierre } = useEventsContext();
     const eventsStatus = EVENTS_STATUS_PRESENTATION[estado];
-    const { isAdmin } = useAuth();
+    const { isAdmin, user } = useAuth();
     const admin = isAdmin();
     const templates = useTemplates(admin);
     const instancesData = useInstances();
@@ -73,7 +73,7 @@ export default function Dashboard() {
         <section className={style.page}>
             <header className={style.header}>
                 <div>
-                    <h1> ¡Hola, Admin! </h1>
+                    <h1> ¡Hola, {user?.nombreCompleto ?? 'Usuario'}! </h1>
                     <p className="text-secundario"> Resumen general de tus instancias y recursos.</p>
                 </div>
                 <div className={style.headerActions}>
