@@ -511,7 +511,7 @@ function RecentActivityCard({ user }: { user: UserDetails }) {
                     </div>
                 ))}
             </div>
-            <Button type="button" variant="secondary" onClick={() => navigate(`/auditoria?${new URLSearchParams({ usuario: user.id, desde: user.fechaCreacion.slice(0, 10) })}`, { state: { auditUser: { id: user.id, label: user.nombreUsuario } } })}>
+            <Button type="button" variant="secondary" onClick={() => navigate('/auditoria', { state: { auditUser: { id: user.id, label: user.nombreCompleto } } })}>
                 Ver toda la actividad
             </Button>
         </Card>

@@ -79,8 +79,7 @@ export default function AuditoriaPage() {
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const navigationState = location.state as { auditUser?: { id?: unknown; label?: unknown } } | null;
-    const initialAuditUserId = typeof navigationState?.auditUser?.id === 'string' ? navigationState.auditUser.id : '';
-    const initialAuditUserLabel = typeof navigationState?.auditUser?.label === 'string' ? navigationState.auditUser.label : initialAuditUserId;
+    const initialAuditUserLabel = typeof navigationState?.auditUser?.label === 'string' ? navigationState.auditUser.label : '';
     const [defaultDates] = useState(() => {
         const today = startOfDay(new Date());
         return { desde: format(subMonths(today, 1), 'yyyy-MM-dd'), hasta: format(today, 'yyyy-MM-dd') };
@@ -94,9 +93,9 @@ export default function AuditoriaPage() {
         : AUDIT_PAGE_SIZE;
     const accion = searchParams.get('accion') ?? '';
     const resultado = searchParams.get('resultado') ?? '';
-    const usuarioId = searchParams.get('usuario') ?? initialAuditUserId;
+    const usuarioId = searchParams.get('usuario') ?? '';
     const recursoTipo = searchParams.get('recursoTipo') ?? '';
-    const desde = searchParams.get('desde') ?? (initialAuditUserId ? AUDIT_HISTORY_START_DATE : defaultDates.desde);
+    const desde = searchParams.get('desde') ?? defaultDates.desde;
     const hasta = searchParams.get('hasta') ?? defaultDates.hasta;
     const [serverItems, setItems] = useState<AuditoriaItemDTO[]>([]);
     const [serverTotal, setTotal] = useState(0);
@@ -106,8 +105,7 @@ export default function AuditoriaPage() {
     const [selectedEvent, setSelectedEvent] = useState<AuditoriaItemDTO | null>(null);
     const catalog = useAuditCatalog(estaAutorizado, desde, hasta);
     const filterOptions = useMemo(() => buildAuditFilterOptions(catalog.records), [catalog.records]);
-    const effectiveSearchTerm = initialAuditUserId && usuarioId === initialAuditUserId && debouncedSearchTerm === initialAuditUserLabel
-        ? '' : debouncedSearchTerm;
+    const effectiveSearchTerm = debouncedSearchTerm;
     const selectedAction = filterOptions.actions.find((option) => option.codes.includes(accion));
     const actionCodes = useMemo(() => selectedAction?.codes ?? (accion ? [accion] : []), [selectedAction, accion]);
     const requiresCatalogFiltering = Boolean(effectiveSearchTerm.trim()) || actionCodes.length > 1;
@@ -127,20 +125,18 @@ export default function AuditoriaPage() {
             !searchParams.has('page') ||
             !searchParams.has('limit') ||
             !searchParams.has('desde') ||
-            !searchParams.has('hasta') ||
-            (!searchParams.has('usuario') && Boolean(initialAuditUserId));
+            !searchParams.has('hasta');
         if (!hasMissingDefaults) return;
 
         setSearchParams((current) => {
             const next = new URLSearchParams(current);
             if (!next.has('page')) next.set('page', '1');
             if (!next.has('limit')) next.set('limit', String(AUDIT_PAGE_SIZE));
-            if (!next.has('desde')) next.set('desde', initialAuditUserId ? AUDIT_HISTORY_START_DATE : defaultDates.desde);
+            if (!next.has('desde')) next.set('desde', defaultDates.desde);
             if (!next.has('hasta')) next.set('hasta', defaultDates.hasta);
-            if (initialAuditUserId && !next.has('usuario')) next.set('usuario', initialAuditUserId);
             return next;
         }, { replace: true });
-    }, [defaultDates.desde, defaultDates.hasta, initialAuditUserId, searchParams, setSearchParams]);
+    }, [defaultDates.desde, defaultDates.hasta, searchParams, setSearchParams]);
 
     useEffect(() => {
         const timeout = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
