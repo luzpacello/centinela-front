@@ -2,7 +2,6 @@ import React from 'react';
 import { Activity, Monitor, ShieldCheck } from 'lucide-react';
 import logoCentinela from '@/assets/logo-pulpo.png';
 import AuthIllustration from './AuthIllustration';
-import DotsHover from './DotsHover';
 import IntroVideo from './IntroVideo';
 import { TypewriterText } from './TypewriterText';
 
@@ -28,28 +27,18 @@ const features = [
     },
 ];
 
-// Fondo general: una única capa de puntos grises que cubre todo el login.
-const rootDotsStyle: React.CSSProperties = {
-    backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.55) 1px, transparent 1px)',
-    backgroundSize: '18px 18px',
-};
-
-// Resplandor azul del panel lateral, por encima de los puntos del fondo.
-const asideGlowStyle: React.CSSProperties = {
-    backgroundImage: 'radial-gradient(circle at 0% 100%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 55%)',
+const asideBackgroundStyle: React.CSSProperties = {
+    backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #eff6ff 42%, #dbeafe 100%)',
 };
 
 export default function MainLayoutAuth({ children }: { children?: React.ReactNode }) {
     return (
-        <div className={`relative flex h-screen bg-[#f5f6f9] ${INTER}`} style={rootDotsStyle}>
-            {/* Puntos azules que siguen al mouse, sobre el fondo y debajo del contenido. */}
-            <DotsHover />
-
+        <div className={`relative flex h-screen bg-[#f5f6f9] ${INTER}`}>
             {/* La columna lateral solo se muestra en escritorio para no restar
                 espacio al formulario en móvil. */}
             <aside
-                className="relative z-10 hidden w-full shrink-0 flex-col justify-between overflow-hidden lg:flex lg:w-[37%] lg:min-w-[440px] lg:max-w-[565px]"
-                style={asideGlowStyle}
+                className="relative z-10 hidden w-full shrink-0 flex-col justify-between overflow-hidden bg-[#eff6ff] lg:flex lg:w-[37%] lg:min-w-[440px] lg:max-w-[565px]"
+                style={asideBackgroundStyle}
             >
                 <div className="flex flex-1 flex-col px-10 pt-9 xl:px-14 xl:pt-10">
                     {/* Marca */}
@@ -73,7 +62,7 @@ export default function MainLayoutAuth({ children }: { children?: React.ReactNod
                     <div className="mt-6 flex flex-col gap-5">
                         {features.map(({ icon: Icon, title, description }) => (
                             <div key={title} className="flex items-start gap-4">
-                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-[#eff6ff] text-[#2563eb] shadow-sm">
+                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-[#bfdbfe] bg-[#dbeafe] text-[#2563eb] shadow-sm">
                                     <Icon className="size-6" aria-hidden="true" strokeWidth={1.9} />
                                 </div>
                                 <div className="min-w-0 flex-1">
