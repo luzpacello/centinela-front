@@ -91,7 +91,7 @@ export default function CrearUsuarios() {
             </header>
 
             <div className={style.mainGrid}>
-                <Card>
+                <Card className="self-start">
                     <div className={style.formHeader}>
                         <h4>Información del usuario</h4>
                     </div>
