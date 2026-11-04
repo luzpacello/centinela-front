@@ -338,12 +338,12 @@ function UserInformationTabs({
                     </PermissionGate>}
                 </Tabs>
             </Card>
-            {activeTab === 'general' && !readOnly && <AssignedInstancesCard instanceAccess={instanceAccess} />}
+            {activeTab === 'general' && !readOnly && <AssignedInstancesCard instanceAccess={instanceAccess} onManageAccess={() => onTabChange('roles')} />}
         </>
     );
 }
 
-function AssignedInstancesCard({ instanceAccess }: { instanceAccess: ReturnType<typeof useUserInstanceAccess> }) {
+function AssignedInstancesCard({ instanceAccess, onManageAccess }: { instanceAccess: ReturnType<typeof useUserInstanceAccess>; onManageAccess: () => void }) {
     const inventoryById = new Map(instanceAccess.instances.map((instance) => [instance.id, instance]));
 
     return (
@@ -354,7 +354,7 @@ function AssignedInstancesCard({ instanceAccess }: { instanceAccess: ReturnType<
                     <p className="text-secundario">Definí a qué instancias puede acceder este usuario.</p>
                 </div>
                 <PermissionGate requiredRole="ADMIN">
-                    <Button type="button" variant="outline">
+                    <Button type="button" variant="outline" disabled={instanceAccess.assignedIds.length === 0} onClick={onManageAccess}>
                         <KeyRound className={styles.actionIcon} aria-hidden="true" />
                         Gestionar acceso
                     </Button>
