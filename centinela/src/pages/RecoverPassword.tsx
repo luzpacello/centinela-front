@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, MoveLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Stepper } from '@/components/ui/stepper';
 import { ContainerCard, InfoCard } from '@/components/ui/card';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { toast } from '@/components/ui/toast';
 import { apiClient, ApiRequestError } from '@/services/apiClient';
 import { validatePasswordComplexity } from '@/components/features/auth/utils/validateAuthenticationFields';
@@ -533,8 +533,10 @@ export const RecoverPassword: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex w-full justify-center gap-4 mt-4">
-                    <MoveLeft className="size-5 text-[#2563eb]" />
-                    <Link to="/login" replace className="text-info"> Volver al login</Link>
+                    <Button type="button" variant="secondary" className="w-full" onClick={() => navigate('/login', { replace: true })}>
+                        <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
+                        Volver al inicio de sesión
+                    </Button>
                 </div>
             </ContainerCard>
         </>
@@ -547,4 +549,5 @@ export default RecoverPassword;
 const styles = {
     formulario: 'flex max-w-full min-w-0 flex-col justify-center text-center gap-2',
     campo: 'flex w-full flex-col text-left py-3 gap-3',
+    smallIcon: 'size-4! shrink-0',
 };
