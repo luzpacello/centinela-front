@@ -1,23 +1,25 @@
 import { useEffect, useRef, useState, type Ref } from 'react';
-import { ArrowLeft, Check, CheckCircle2, ChevronRight, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Info, Shield, UserPlus, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox';
 import { ConfirmUserAction } from '@/components/common/ConfirmUserAction';
+import { RoleOptionCard } from '@/components/features/createuser/components/RoleOptionCard';
 import { useCreateUser } from '@/components/features/createuser/hooks/useCreateUser';
 import { useSafeNavigate } from '@/hooks/useSafeNavigate';
 
 interface RoleOption {
+    value: 'OPERATOR' | 'ADMIN';
     name: string;
     description: string;
     icon: React.ComponentType<{ className?: string }>;
 }
 
 const roles: RoleOption[] = [
-    { name: 'Usuario', description: 'Acceso básico para gestionar y visualizar recursos asignados.', icon: UserRound },
-    { name: 'Administrador', description: 'Acceso completo para gestionar recursos y usuarios.', icon: Shield },
+    { value: 'OPERATOR', name: 'Operador', description: 'Acceso básico para gestionar y visualizar recursos asignados.', icon: UserRound },
+    { value: 'ADMIN', name: 'Administrador', description: 'Acceso completo para gestionar recursos y usuarios.', icon: Shield },
 ];
 
 const EMPTY_FORM = { nombreCompleto: '', nombreUsuario: '', emailUsuario: '', rol: 'OPERATOR' };
@@ -91,7 +93,7 @@ export default function CrearUsuarios() {
             </header>
 
             <div className={style.mainGrid}>
-                <Card>
+                <Card className="self-start">
                     <div className={style.formHeader}>
                         <h4>Información del usuario</h4>
                     </div>
@@ -104,21 +106,28 @@ export default function CrearUsuarios() {
 
                         </div>
 
-                        <Field className="max-w-md">
-                            <FieldLabel htmlFor="rol">
-                                Rol del usuario <span className="text-red-500">*</span>
-                            </FieldLabel>
-                            <Combobox value={form.rol} onValueChange={(value) => value && updateField('rol', value)}>
-                                <ComboboxInput id="rol" />
-                                <ComboboxContent>
-                                    <ComboboxList>
-                                        <ComboboxItem value="ADMIN">Administrador</ComboboxItem>
-                                        <ComboboxItem value="OPERATOR">Operador</ComboboxItem>
-                                    </ComboboxList>
-                                </ComboboxContent>
-                            </Combobox>
-                            <FieldDescription className="text-caption">Definí el rol que tendrá el usuario dentro de la organización.</FieldDescription>
-                        </Field>
+                        <div className={style.formFieldsGrid}>
+                            <Field>
+                                <FieldLabel htmlFor="rol">
+                                    Rol del usuario <span className="text-red-500">*</span>
+                                </FieldLabel>
+                                <Combobox value={form.rol} onValueChange={(value) => value && updateField('rol', value)}>
+                                    <ComboboxInput id="rol" />
+                                    <ComboboxContent>
+                                        <ComboboxList>
+                                            <ComboboxItem value="ADMIN">Administrador</ComboboxItem>
+                                            <ComboboxItem value="OPERATOR">Operador</ComboboxItem>
+                                        </ComboboxList>
+                                    </ComboboxContent>
+                                </Combobox>
+                                <FieldDescription className="text-caption">Definí el rol que tendrá el usuario dentro de la organización.</FieldDescription>
+                            </Field>
+
+                            <Field>
+                                <FieldLabel>Contraseña</FieldLabel>
+                                <p className="text-secundario">Se le generará una contraseña temporal automáticamente.</p>
+                            </Field>
+                        </div>
 
                         {errorMessage && (
                             <FieldError className="text-xs">{errorMessage}</FieldError>
@@ -136,21 +145,9 @@ export default function CrearUsuarios() {
                 <aside className={style.asideContainer}>
                     <Card className={style.roleCard}>
                         <h3 className="m-0 text-sm font-semibold">Roles disponibles</h3>
-                        {roles.map(({ name, description, icon: Icon }, index) => {
-                            const isSelected = index === 0;
-                            return (
-                                <div key={name} className={`${style.roleItem} ${isSelected ? 'border-blue-200 bg-blue-50/60' : 'border-transparent'}`}>
-                                    <span className={`${style.roleIconBox} ${isSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
-                                        <Icon className="size-4" />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-semibold">{name}</p>
-                                        <p className="mt-1 text-caption">{description}</p>
-                                    </div>
-                                    {isSelected && <CheckCircle2 className="ml-auto size-4 shrink-0 text-blue-600" />}
-                                </div>
-                            );
-                        })}
+                        {roles.map(({ value, ...role }) => (
+                            <RoleOptionCard key={value} {...role} isSelected={form.rol === value} />
+                        ))}
                     </Card>
 
                     <Card className={style.roleCard}>
@@ -236,8 +233,6 @@ const style = {
     formActions: 'flex flex-wrap justify-end gap-3 pt-5',
     asideContainer: 'flex flex-col gap-4',
     roleCard: 'gap-3 rounded-xl border-slate-100 p-4 shadow-sm ring-0',
-    roleItem: 'flex gap-3 rounded-lg border p-3',
-    roleIconBox: 'flex size-8 shrink-0 items-center justify-center rounded-full',
     selectedRoleBadge: 'flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm font-medium',
     infoBox: 'flex gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-900',
     smallIcon: 'size-4!',

@@ -430,15 +430,15 @@ export default function AuditoriaPage() {
                 <TabsContent value={activeResultTab} className="min-w-0">
                     {/* Tabla de Registros */}
                     <Card className="min-w-0 overflow-hidden rounded-xl border-slate-100 py-0 shadow-sm ring-0">
-                        <Table className="min-w-[52rem] text-xs text-slate-700" aria-busy={isLoading}>
+                        <Table className="min-w-[52rem] table-fixed text-xs text-slate-700" aria-busy={isLoading}>
                             <TableHeader>
                                 <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                                    <TableHead className="header-of-table px-4">Fecha y hora</TableHead>
-                                    <TableHead className="header-of-table px-4">Usuario</TableHead>
-                                    <TableHead className="header-of-table px-4">Acción</TableHead>
-                                    <TableHead className="header-of-table px-4">Recurso/instancia</TableHead>
-                                    <TableHead className="header-of-table px-4">Resultado</TableHead>
-                                    <TableHead className="header-of-table px-4 text-right">Detalles</TableHead>
+                                    <TableHead className="header-of-table w-[18%] px-4">Fecha y hora</TableHead>
+                                    <TableHead className="header-of-table w-[16%] px-4">Usuario</TableHead>
+                                    <TableHead className="header-of-table w-[20%] px-4">Acción</TableHead>
+                                    <TableHead className="header-of-table w-[22%] px-4">Recurso/instancia</TableHead>
+                                    <TableHead className="header-of-table w-[13%] px-4">Resultado</TableHead>
+                                    <TableHead className="header-of-table w-[11%] px-4 text-right">Detalles</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -476,8 +476,8 @@ export default function AuditoriaPage() {
                                     return (
                                         <TableRow key={event.id} className="hover:bg-slate-50/70">
                                             <TableCell className="p-4 text-secundario">{formatFechaHora(event.fechaHora)}</TableCell>
-                                            <TableCell className="p-4 font-medium text-slate-900">{displayText(event.nombreUsuario)}</TableCell>
-                                            <TableCell className="p-4">
+                                            <TableCell className="p-4 whitespace-normal break-words"><span className="text-destacado">{displayText(event.nombreUsuario)}</span></TableCell>
+                                            <TableCell className="p-4 whitespace-normal break-words">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     {stage && (
                                                         <Badge
@@ -492,7 +492,7 @@ export default function AuditoriaPage() {
                                                     <span>{actionLabel}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="p-4 text-secundario">
+                                            <TableCell className="p-4 whitespace-normal break-words text-secundario">
                                                 {displayText(
                                                     [event.recursoTipo, event.recursoId ?? event.instanciaId, event.instanciaNombre]
                                                         .filter((part) => part !== null && part !== undefined && String(part).trim())
@@ -500,7 +500,7 @@ export default function AuditoriaPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="p-4">{getResultBadge(event.resultado)}</TableCell>
-                                            <TableCell className="p-4 text-right">
+                                            <TableCell className="relative p-4 text-right">
                                                 <button
                                                     type="button"
                                                     aria-label={`Ver detalles de ${actionLabel}`}

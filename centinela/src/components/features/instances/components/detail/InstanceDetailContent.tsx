@@ -87,13 +87,15 @@ export default function InstanceDetailContent({ instance, transition, isPowerAct
                     <ArrowLeft className={styles.smallIcon} aria-hidden="true" />
                     Volver
                 </Button>}
-                <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={effectiveTransition ?? null}
-                    isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
-                <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
-                    onClick={() => setEditModalMode('confirm')}>
-                    {isSavingResources ? <Loader2 className={styles.loadingIcon} aria-hidden="true" /> : <Save className={styles.smallIcon} aria-hidden="true" />}
-                    {isSavingResources ? 'Guardando…' : 'Guardar cambios'}
-                </Button>
+                <div className={styles.instanceActions}>
+                    <InstanceAction variant="header" disabled={isSavingResources || isBusy} instance={displayedInstance} transition={effectiveTransition ?? null}
+                        isPowerActionPending={isPowerActionPending} onActionAccepted={onActionAccepted} onDeleteAccepted={onDeleteAccepted} />
+                    <Button type="button" disabled={!canEdit || isBusy || !data.hasChanges || isSavingResources || !data.detail || !editor.assessment.canSave}
+                        onClick={() => setEditModalMode('confirm')}>
+                        {isSavingResources ? <Loader2 className={styles.loadingIcon} aria-hidden="true" /> : <Save className={styles.smallIcon} aria-hidden="true" />}
+                        {isSavingResources ? 'Guardando…' : 'Guardar cambios'}
+                    </Button>
+                </div>
             </div>
         </header>
 
@@ -172,7 +174,8 @@ const styles = {
     breadcrumbIcon: 'size-3.5 shrink-0',
     currentPage: 'truncate font-semibold text-slate-900',
     titleRow: 'flex flex-wrap items-center gap-3',
-    headerActions: 'flex flex-wrap items-center gap-3',
+    headerActions: 'flex flex-col items-start gap-3 xl:items-end',
+    instanceActions: 'flex flex-wrap items-center gap-3',
     smallIcon: 'size-4! shrink-0',
     loadingIcon: 'size-4! animate-spin',
     tabs: 'gap-5',
