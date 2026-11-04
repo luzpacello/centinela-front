@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { format, startOfDay, subMonths } from 'date-fns';
 import { useLocation, useSearchParams } from 'react-router';
 import {
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import {
     DropdownMenu,
@@ -26,8 +27,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropDownMenu';
-import type { AuditDetalles } from '@/utils/auditDetalle';
-import { AUDIT_ACTION_OPTIONS, HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
+import { HIDDEN_AUDIT_ACTIONS, auditActionLabel, auditStage } from '@/utils/auditActionLabels';
+import { useAuditCatalog } from '@/components/features/audit/hooks/useAuditCatalog';
+import { fetchAuditPage } from '@/components/features/audit/services/auditLogService';
+import { AUDIT_HISTORY_START_DATE, type AuditEvent as AuditoriaItemDTO, type AuditPage as PaginaAuditoriaDTO } from '@/components/features/audit/types/audit';
+import { buildAuditFilterOptions, countAuditResults, filterAuditRecords, normalizeAuditResult } from '@/components/features/audit/utils/auditFilters';
+import { auditDateBoundary } from '@/components/features/audit/utils/auditDateBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiRequestError, apiClient } from '@/services/apiClient';
 import { useGuardiaRol } from '@/hooks/useGuardiaRol';
@@ -47,29 +52,7 @@ import {
 
 const AUDIT_PAGE_SIZE = 10;
 const AUDIT_PAGE_SIZES = [10, 25, 50, 100] as const;
-const AUDIT_RESOURCE_TYPES = ['VM', 'LXC', 'HOST', 'USER'] as const;
 const EMPTY_TEXT = '—';
-
-// Contrato real de GET /api/admin/audit (PaginaAuditoria + AuditoriaDTO).
-interface AuditoriaItemDTO {
-    id: string;
-    usuarioId?: string | null;
-    nombreUsuario?: string | null;
-    fechaHora?: string | null;
-    accion?: string | null;
-    recursoTipo?: string | null;
-    recursoId?: string | number | null;
-    instanciaId?: string | null;
-    instanciaNombre?: string | null;
-    resultado?: string | null;
-    detalles?: AuditDetalles;
-}
-
-interface PaginaAuditoriaDTO {
-    total?: number;
-    pagina?: number;
-    items?: AuditoriaItemDTO[];
-}
 
 function displayText(value?: string | null): string {
     const text = typeof value === 'string' ? value.trim() : '';
@@ -113,21 +96,38 @@ export default function AuditoriaPage() {
     const resultado = searchParams.get('resultado') ?? '';
     const usuarioId = searchParams.get('usuario') ?? initialAuditUserId;
     const recursoTipo = searchParams.get('recursoTipo') ?? '';
-    const desde = searchParams.get('desde') ?? defaultDates.desde;
+    const desde = searchParams.get('desde') ?? (initialAuditUserId ? AUDIT_HISTORY_START_DATE : defaultDates.desde);
     const hasta = searchParams.get('hasta') ?? defaultDates.hasta;
-    const [items, setItems] = useState<AuditoriaItemDTO[]>([]);
-    const [total, setTotal] = useState(0);
-    const [resultCounts, setResultCounts] = useState<{ total: number | null; successes: number | null; failures: number | null }>({ total: null, successes: null, failures: null });
-    const [isLoading, setIsLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [serverItems, setItems] = useState<AuditoriaItemDTO[]>([]);
+    const [serverTotal, setTotal] = useState(0);
+    const [serverResultCounts, setResultCounts] = useState<{ total: number | null; successes: number | null; failures: number | null }>({ total: null, successes: null, failures: null });
+    const [serverIsLoading, setIsLoading] = useState(true);
+    const [serverErrorMessage, setErrorMessage] = useState<string | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<AuditoriaItemDTO | null>(null);
+    const catalog = useAuditCatalog(estaAutorizado, desde, hasta);
+    const filterOptions = useMemo(() => buildAuditFilterOptions(catalog.records), [catalog.records]);
+    const effectiveSearchTerm = initialAuditUserId && usuarioId === initialAuditUserId && debouncedSearchTerm === initialAuditUserLabel
+        ? '' : debouncedSearchTerm;
+    const selectedAction = filterOptions.actions.find((option) => option.codes.includes(accion));
+    const actionCodes = useMemo(() => selectedAction?.codes ?? (accion ? [accion] : []), [selectedAction, accion]);
+    const requiresCatalogFiltering = Boolean(effectiveSearchTerm.trim()) || actionCodes.length > 1;
+    const matchingCatalogRecords = useMemo(() => filterAuditRecords(catalog.records, {
+        userId: usuarioId, actionCodes, resourceType: recursoTipo, search: effectiveSearchTerm,
+    }), [catalog.records, usuarioId, actionCodes, recursoTipo, effectiveSearchTerm]);
+    const resultRecords = useMemo(() => matchingCatalogRecords.filter((event) => !resultado
+        || normalizeAuditResult(event.resultado) === normalizeAuditResult(resultado)), [matchingCatalogRecords, resultado]);
+    const items = requiresCatalogFiltering ? resultRecords.slice((pagina - 1) * pageSize, pagina * pageSize) : serverItems;
+    const total = requiresCatalogFiltering ? resultRecords.length : serverTotal;
+    const resultCounts = requiresCatalogFiltering ? countAuditResults(matchingCatalogRecords) : serverResultCounts;
+    const isLoading = requiresCatalogFiltering ? catalog.isLoading : serverIsLoading;
+    const errorMessage = requiresCatalogFiltering ? catalog.errorMessage : serverErrorMessage;
 
     useEffect(() => {
         const hasMissingDefaults =
             !searchParams.has('page') ||
             !searchParams.has('limit') ||
-            (!searchParams.has('desde') && !initialAuditUserId) ||
-            (!searchParams.has('hasta') && !initialAuditUserId) ||
+            !searchParams.has('desde') ||
+            !searchParams.has('hasta') ||
             (!searchParams.has('usuario') && Boolean(initialAuditUserId));
         if (!hasMissingDefaults) return;
 
@@ -135,8 +135,8 @@ export default function AuditoriaPage() {
             const next = new URLSearchParams(current);
             if (!next.has('page')) next.set('page', '1');
             if (!next.has('limit')) next.set('limit', String(AUDIT_PAGE_SIZE));
-            if (!initialAuditUserId && !next.has('desde')) next.set('desde', defaultDates.desde);
-            if (!initialAuditUserId && !next.has('hasta')) next.set('hasta', defaultDates.hasta);
+            if (!next.has('desde')) next.set('desde', initialAuditUserId ? AUDIT_HISTORY_START_DATE : defaultDates.desde);
+            if (!next.has('hasta')) next.set('hasta', defaultDates.hasta);
             if (initialAuditUserId && !next.has('usuario')) next.set('usuario', initialAuditUserId);
             return next;
         }, { replace: true });
@@ -150,7 +150,7 @@ export default function AuditoriaPage() {
     function updateUrlFilter(name: string, value: string) {
         setSearchParams((current) => {
             const next = new URLSearchParams(current);
-            if (value) next.set(name, value);
+            if (value || name === 'usuario') next.set(name, value);
             else next.delete(name);
             next.set('page', '1');
             return next;
@@ -166,7 +166,7 @@ export default function AuditoriaPage() {
     }
 
     useEffect(() => {
-        if (!estaAutorizado) {
+        if (!estaAutorizado || requiresCatalogFiltering) {
             return;
         }
 
@@ -185,13 +185,10 @@ export default function AuditoriaPage() {
                 if (resultado) params.set('resultado', resultado);
                 if (usuarioId) params.set('usuarioId', usuarioId);
                 if (recursoTipo) params.set('recursoTipo', recursoTipo);
-                if (desde) params.set('desde', desde);
-                if (hasta) params.set('hasta', hasta);
+                params.set('desde', auditDateBoundary(desde || AUDIT_HISTORY_START_DATE));
+                if (hasta) params.set('hasta', auditDateBoundary(hasta, true));
 
-                const data = await apiClient.get<PaginaAuditoriaDTO>(
-                    `/admin/audit?${params.toString()}`,
-                    { signal: controller.signal },
-                );
+                const data = await fetchAuditPage(params, controller.signal);
                 if (controller.signal.aborted) return;
                 setItems(data.items ?? []);
                 setTotal(data.total ?? 0);
@@ -211,10 +208,10 @@ export default function AuditoriaPage() {
 
         loadAudit();
         return () => controller.abort();
-    }, [estaAutorizado, pagina, pageSize, accion, resultado, usuarioId, recursoTipo, desde, hasta]);
+    }, [estaAutorizado, requiresCatalogFiltering, pagina, pageSize, accion, resultado, usuarioId, recursoTipo, desde, hasta]);
 
     useEffect(() => {
-        if (!estaAutorizado) return;
+        if (!estaAutorizado || requiresCatalogFiltering) return;
 
         const controller = new AbortController();
         const params = new URLSearchParams({
@@ -225,8 +222,8 @@ export default function AuditoriaPage() {
         if (accion) params.set('accion', accion);
         if (usuarioId) params.set('usuarioId', usuarioId);
         if (recursoTipo) params.set('recursoTipo', recursoTipo);
-        if (desde) params.set('desde', desde);
-        if (hasta) params.set('hasta', hasta);
+        params.set('desde', auditDateBoundary(desde || AUDIT_HISTORY_START_DATE));
+        if (hasta) params.set('hasta', auditDateBoundary(hasta, true));
 
         async function loadResultCounts() {
             setResultCounts({ total: null, successes: null, failures: null });
@@ -250,30 +247,14 @@ export default function AuditoriaPage() {
 
         void loadResultCounts();
         return () => controller.abort();
-    }, [estaAutorizado, pageSize, accion, usuarioId, recursoTipo, desde, hasta]);
+    }, [estaAutorizado, requiresCatalogFiltering, pageSize, accion, usuarioId, recursoTipo, desde, hasta]);
 
     if (!estaAutorizado) {
         return null;
     }
 
-    // El backend no expone búsqueda libre; el buscador filtra la página visible.
-    const effectiveSearchTerm = initialAuditUserId && usuarioId === initialAuditUserId && debouncedSearchTerm === initialAuditUserLabel
-        ? ''
-        : debouncedSearchTerm;
-    const filteredAuditEvents = items.filter((event) =>
-        Object.values(event).some((value) =>
-            String(value ?? '').toLowerCase().includes(effectiveSearchTerm.toLowerCase())
-        )
-    );
-
-    // Opciones del filtro de usuario: se derivan de los registros visibles.
-    const usuarioOptions = Array.from(
-        new Map(
-            items
-                .filter((item) => item.usuarioId)
-                .map((item) => [item.usuarioId as string, displayText(item.nombreUsuario)]),
-        ),
-    );
+    const filteredAuditEvents = items;
+    const usuarioOptions = filterOptions.users;
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const firstVisible = total === 0 ? 0 : (pagina - 1) * pageSize + 1;
@@ -342,11 +323,15 @@ export default function AuditoriaPage() {
                                     updatePage(1);
                                 }}
                             />
-                            <span id="audit-search-hint" className="sr-only">La búsqueda se aplica a los resultados de la página actual.</span>
+                            <span id="audit-search-hint" className="sr-only">La búsqueda incluye todas las páginas del rango de fechas seleccionado.</span>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger type="button"><Filter className="size-4!" aria-hidden="true" /> Filtros</DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-[260px] max-w-[calc(100vw-2rem)]">
+                                {catalog.isLoading && <p role="status" className="px-1.5 py-2 text-xs text-slate-500">Cargando opciones de filtros…</p>}
+                                {catalog.errorMessage && <div role="alert" className="px-1.5 py-2 text-xs text-red-600">
+                                    <p>{catalog.errorMessage}</p><Button type="button" variant="secondary" onClick={catalog.retry}>Reintentar</Button>
+                                </div>}
                                 <DropdownMenuGroup className="[&_[data-slot=field]]:mx-0 [&_[data-slot=field]]:w-full">
                                     <DropdownMenuLabel>Rango de fecha</DropdownMenuLabel>
                                     <DatePickerWithRange
@@ -372,21 +357,19 @@ export default function AuditoriaPage() {
                                 <DropdownMenuRadioGroup aria-label="Usuario" value={usuarioId || "all"} onValueChange={(value) => {
                                     updateUrlFilter("usuario", value === "all" ? "" : value);
                                     setSearchTerm("");
+                                    setDebouncedSearchTerm("");
                                 }}>
                                     <DropdownMenuLabel>Usuario</DropdownMenuLabel>
                                     <DropdownMenuRadioItem value="all">Todos los usuarios</DropdownMenuRadioItem>
-                                    {usuarioId && !usuarioOptions.some(([id]) => id === usuarioId) && (
-                                        <DropdownMenuRadioItem value={usuarioId}>{initialAuditUserLabel || usuarioId}</DropdownMenuRadioItem>
-                                    )}
                                     {usuarioOptions.map(([id, nombre]) => (
                                         <DropdownMenuRadioItem key={id} value={id}>{nombre}</DropdownMenuRadioItem>
                                     ))}
                                 </DropdownMenuRadioGroup>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuRadioGroup aria-label="Acción" value={accion || "all"} onValueChange={(value) => updateUrlFilter("accion", value === "all" ? "" : value)}>
+                                <DropdownMenuRadioGroup aria-label="Acción" value={selectedAction?.value || accion || "all"} onValueChange={(value) => updateUrlFilter("accion", value === "all" ? "" : value)}>
                                     <DropdownMenuLabel>Acción</DropdownMenuLabel>
                                     <DropdownMenuRadioItem value="all">Todas las acciones</DropdownMenuRadioItem>
-                                    {AUDIT_ACTION_OPTIONS.map((option) => (
+                                    {filterOptions.actions.map((option) => (
                                         <DropdownMenuRadioItem key={option.value} value={option.value}>{option.label}</DropdownMenuRadioItem>
                                     ))}
                                 </DropdownMenuRadioGroup>
@@ -394,7 +377,7 @@ export default function AuditoriaPage() {
                                 <DropdownMenuRadioGroup aria-label="Tipo de recurso" value={recursoTipo || "all"} onValueChange={(value) => updateUrlFilter("recursoTipo", value === "all" ? "" : value)}>
                                     <DropdownMenuLabel>Tipo de recurso</DropdownMenuLabel>
                                     <DropdownMenuRadioItem value="all">Todos los recursos</DropdownMenuRadioItem>
-                                    {AUDIT_RESOURCE_TYPES.map((type) => <DropdownMenuRadioItem key={type} value={type}>{type}</DropdownMenuRadioItem>)}
+                                    {filterOptions.resourceTypes.map((type) => <DropdownMenuRadioItem key={type} value={type}>{type}</DropdownMenuRadioItem>)}
                                 </DropdownMenuRadioGroup>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuRadioGroup aria-label="Resultado" value={resultado || "all"} onValueChange={(value) => updateUrlFilter("resultado", value === "all" ? "" : value)}>
@@ -408,8 +391,8 @@ export default function AuditoriaPage() {
                         </DropdownMenu>
                         <AuditExportButton
                             filters={{
-                                desde,
-                                hasta,
+                                desde: auditDateBoundary(desde || AUDIT_HISTORY_START_DATE),
+                                hasta: auditDateBoundary(hasta, true),
                                 usuarioId,
                                 accion,
                                 recursoTipo,
@@ -462,7 +445,7 @@ export default function AuditoriaPage() {
                                 {!isLoading && !errorMessage && filteredAuditEvents.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
-                                            {items.length === 0
+                                            {items.length === 0 && !effectiveSearchTerm.trim()
                                                 ? 'Todavía no hay registros de auditoría para mostrar.'
                                                 : 'No se encontraron registros que coincidan con la búsqueda.'}
                                         </TableCell>
