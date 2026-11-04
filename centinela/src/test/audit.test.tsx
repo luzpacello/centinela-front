@@ -294,40 +294,37 @@ describe('AuditoriaPage', () => {
         });
     });
 
-    it('prefiltra el usuario que llega desde el listado de usuarios', async () => {
+    it('busca por el nombre recibido al navegar sin seleccionar al usuario en Filtros', async () => {
         // Llegar con estado de navegación es lo que motivó useLocation en la página.
         vi.mocked(useLocation).mockReturnValue({
             pathname: '/auditoria',
             search: '',
             hash: '',
-            state: { auditUser: { id: 'u-7', label: 'carlos.login' } },
+            state: { auditUser: { id: 'u-7', label: 'Carlos Admin' } },
             key: 'default',
         } as unknown as ReturnType<typeof useLocation>);
 
-        vi.mocked(apiClient.get).mockResolvedValue({ total: 1, pagina: 1, items: [{
-            id: 'old-user-event', usuarioId: 'u-7', nombreUsuario: 'Carlos Admin', accion: 'LOGIN', fechaHora: '2020-01-01T09:00:00Z',
-        }] });
+        vi.mocked(apiClient.get).mockResolvedValue({ total: 2, pagina: 1, items: [
+            { id: 'user-event', usuarioId: 'u-7', nombreUsuario: 'Carlos Admin', accion: 'LOGIN' },
+            { id: 'another-user-event', usuarioId: 'u-8', nombreUsuario: 'Susana Operadora', accion: 'LOGIN' },
+        ] });
         render(<AuditoriaPage />);
 
-        expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('carlos.login');
+        expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('Carlos Admin');
         expect(await within(screen.getByRole('table')).findByText('Carlos Admin')).toBeInTheDocument();
-
-        await waitFor(() => {
-            expect(apiClient.get).toHaveBeenCalledWith(
-                expect.stringContaining('usuarioId=u-7'),
-                expect.anything(),
-            );
-        });
-        expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining('desde=1970-01-01'), expect.anything());
-        vi.mocked(apiClient.get).mockClear();
+        expect(within(screen.getByRole('table')).queryByText('Susana Operadora')).not.toBeInTheDocument();
+        expect(vi.mocked(apiClient.get).mock.calls.every(([path]) => !path.includes('usuarioId='))).toBe(true);
         const user = userEvent.setup();
         await user.click(screen.getByRole('button', { name: 'Filtros' }));
-        await user.click(await screen.findByRole('menuitemradio', { name: 'Todos los usuarios' }));
+        expect(await screen.findByRole('menuitemradio', { name: 'Todos los usuarios' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('menuitemradio', { name: 'Carlos Admin' })).toHaveAttribute('aria-checked', 'false');
+        await user.keyboard('{Escape}');
+        await user.clear(screen.getByLabelText('Buscar en auditoría'));
         await waitFor(() => {
             expect(screen.getByLabelText('Buscar en auditoría')).toHaveValue('');
-            expect(apiClient.get).toHaveBeenCalled();
             expect(vi.mocked(apiClient.get).mock.calls.every(([path]) => !path.includes('usuarioId='))).toBe(true);
         });
+        expect(await within(screen.getByRole('table')).findByText('Susana Operadora')).toBeInTheDocument();
     });
 
     it('precarga opciones de páginas posteriores y busca registros fuera de la página visible', async () => {
