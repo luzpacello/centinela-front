@@ -49,7 +49,7 @@ export default function InstanceDetailPage() {
         return <InstanceDetailFeedback title="Instancia no encontrada" description="No encontramos esa instancia en el inventario actual." />;
     }
 
-    return <InstanceDetailContent key={String(validRef)} instance={instance}
+    return <InstanceDetailContent key={String(validRef)} instance={instance} onBack={() => navigate(-1)}
         onConfigurationSaved={(configuration) => updateInstanceResources(instance.id, configuration)}
         onSnapshotAccepted={revalidateInventory}
         eventsStatus={eventsStatus}
