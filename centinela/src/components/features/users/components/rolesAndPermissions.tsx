@@ -161,9 +161,11 @@ function InstanceAccessRow({ instance, disabled, onAccessChange }: {
                     aria-label={`Seleccionar ${instance.name}`}
                 />
             </TableCell>
-            <TableCell className={styles.instanceCell}>
-                <InstanceIcon className={styles.instanceIcon} aria-hidden="true" />
-                <p className="text-of-table">{instance.name}</p>
+            <TableCell>
+                <div className={styles.instanceCell}>
+                    <InstanceIcon className={styles.instanceIcon} aria-hidden="true" />
+                    <p className="text-of-table">{instance.name}</p>
+                </div>
             </TableCell>
             <TableCell>
                 <Badge className={instance.type === 'VM' ? styles.virtualMachineBadge : styles.containerBadge}>
