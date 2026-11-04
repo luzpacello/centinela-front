@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { Container, Monitor, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { useInstances } from '@/components/features/instances/hooks/useInstances';
@@ -116,8 +115,6 @@ export default function Instances() {
                 <Table className={style.table} aria-label="Inventario de instancias" aria-busy={isLoading}>
                     <TableHeader>
                         <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                            <TableHead></TableHead>
-                            <TableHead className={style.tableHeading}>ID</TableHead>
                             <TableHead className={style.tableHeading}>Nombre</TableHead>
                             <TableHead className={style.tableHeading}>Tipo</TableHead>
                             <TableHead className={style.tableHeading}>Estado</TableHead>
@@ -130,14 +127,14 @@ export default function Instances() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={10} className={style.emptyState} role="status">Cargando instancias…</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={8} className={style.emptyState} role="status">Cargando instancias…</TableCell></TableRow>
                         ) : errorMessage ? (
-                            <TableRow><TableCell colSpan={10} className={style.emptyState}>
+                            <TableRow><TableCell colSpan={8} className={style.emptyState}>
                                 <p role="alert">{errorMessage}</p>
                                 <Button type="button" variant="outline" onClick={reloadInventory}>Reintentar</Button>
                             </TableCell></TableRow>
                         ) : filteredInstances.length === 0 ? (
-                            <TableRow><TableCell colSpan={10} className={style.emptyState}>
+                            <TableRow><TableCell colSpan={8} className={style.emptyState}>
                                 {visibleInstances.length === 0 ? 'Sin instancias' : (
                                     <div className="flex flex-col items-center gap-3">
                                         <p>No se encontraron instancias que coincidan con los filtros aplicados</p>
@@ -154,13 +151,15 @@ export default function Instances() {
                             const isPending = Boolean(pendingPowerActions[instance.id]);
                             return (
                                 <TableRow key={instance.id} className="hover:bg-slate-50/70">
-                                    <TableCell className={style.checkboxCell}><Checkbox aria-label={`Seleccionar ${instance.name}`} checked={(user?.instanciasPermitidas ?? []).some((permitida) => String(permitida) === instanceRef)} disabled /></TableCell>
-                                    <TableCell className="p-4 table-text-secondary">{instance.id}</TableCell>
                                     <TableCell className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className={`size-9 rounded-full flex items-center justify-center ${instance.type === 'VM' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                            <Link
+                                                to={`/instances/${instance.id}`}
+                                                aria-label={`Ver detalle de instancia ${instance.name}`}
+                                                className={`size-9 rounded-full flex items-center justify-center ${instance.type === 'VM' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}
+                                            >
                                                 {instance.type === 'VM' ? <Monitor className="size-4" /> : <Container className="size-4" />}
-                                            </div>
+                                            </Link>
                                             <div className="flex flex-col">
                                                 <Link
                                                     to={`/instances/${instance.id}`}
