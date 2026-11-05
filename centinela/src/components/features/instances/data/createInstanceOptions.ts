@@ -49,7 +49,10 @@ export const INSTANCE_TYPE_OPTIONS: InstanceTypeOption[] = [
 ];
 
 export const DEFAULT_NETWORK_CONFIGURATION = {
-    modo: 'dhcp' as const,
+    // La red de Centinela no tiene servidor DHCP: un contenedor creado en modo
+    // DHCP queda sin dirección IP. El wizard pide la IP estática de entrada y
+    // DHCP queda como elección explícita del usuario.
+    modo: 'static' as const,
 };
 
 export const DEFAULT_RESOURCE_CONFIGURATION = {

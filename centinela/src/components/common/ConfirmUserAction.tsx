@@ -17,7 +17,7 @@ interface ConfirmUserActionProps {
   mapErrorMessage?: (error: unknown) => string;
 }
 
-const INSTANCE_ERROR_CODES = new Set(['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED']);
+const INSTANCE_ERROR_CODES = new Set(['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED', 'INSTANCE_NOT_OWNED']);
 
 export function ConfirmUserAction({
   title,

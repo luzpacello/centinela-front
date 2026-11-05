@@ -42,6 +42,11 @@ function WizardProbe() {
                 wizard.updateField('discoGb', 32);
                 wizard.updateField('storageId', 'local');
                 wizard.updateField('templateOso', 'ubuntu');
+                // El wizard pide red estática por defecto: sin estos datos el
+                // envío queda bloqueado y el test nunca llegaría al 409.
+                wizard.updateNetworkField('ip', '10.10.10.50');
+                wizard.updateNetworkField('mascara', '24');
+                wizard.updateNetworkField('gateway', '10.10.10.1');
                 wizard.setHasConfirmedConfiguration(true);
             }}>
                 Preparar formulario

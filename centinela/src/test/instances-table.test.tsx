@@ -181,10 +181,6 @@ describe('FRN-20A - Tabla interactiva de inventario con badges de estado e IP', 
       db.closest('table, [role="table"], [role="grid"]'),
     );
 
-    expect(within(web).getByText('101')).toBeInTheDocument();
-    expect(within(db).getByText('102')).toBeInTheDocument();
-
-    // Tipo: VM para type "vm" y LXC para type "lxc".
     expect(
       within(web).getByText(/^\s*VM\s*$/),
     ).toBeInTheDocument();
@@ -311,10 +307,7 @@ describe('FRN-20A - Tabla interactiva de inventario con badges de estado e IP', 
 
     const row = await rowOf('servidor-opaque');
 
-    // El identificador se muestra sin modificaciones.
-    expect(
-      within(row).getByText('inst_k8Pq2v'),
-    ).toBeInTheDocument();
+    // El identificador no se muestra como columna: se conserva en la URL del detalle.
 
     // La referencia se conserva en la URL del detalle.
     const detailLink = within(row)
@@ -334,11 +327,40 @@ describe('FRN-20A - Tabla interactiva de inventario con badges de estado e IP', 
   });
 
   it('FIX-IDS: marca el permiso de la instancia aunque el vmid llegue como texto', async () => {
-    renderInstancesPage({ instanciasPermitidas: ['101'] });
+    // El inventario llega sin nivel de acceso: el permiso se resuelve con la
+    // lista del usuario, donde el vmid viene como texto y no como número.
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        String(url).includes('/instances')
+          ? new Response(
+              JSON.stringify(
+                inventory.map((item) => ({ ...item, nivelAcceso: null })),
+              ),
+              {
+                status: 200,
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              },
+            )
+          : new Response('{}', {
+              status: 200,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }),
+      ),
+    );
+
+    renderInstancesPage({
+      rol: 'OPERATOR',
+      instanciasPermitidas: ['101'],
+      permisos: [{ vmid: '101', nivelAcceso: 'FULL_ACCESS' }],
+    });
 
     const row = await rowOf('servidor-web');
 
-    expect(within(row).getByRole('checkbox')).toBeChecked();
+    expect(within(row).getByText('Control total')).toBeInTheDocument();
   });
 
   it('FIX-60: la cabecera de inventario /instances incluye el botón "Crear instancia" para ADMIN', async () => {

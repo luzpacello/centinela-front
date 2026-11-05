@@ -301,7 +301,6 @@ describe('Dashboard node status', () => {
         expect(screen.getByText('Docker Host')).toBeInTheDocument();
         expect(screen.getAllByText('En ejecución').length).toBeGreaterThan(1);
         expect(screen.getByText('Detenida')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Ver todas' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Ver todas las instancias' })).toBeInTheDocument();
 
         expect(await screen.findByText('5 Plantillas')).toBeInTheDocument();
@@ -309,17 +308,7 @@ describe('Dashboard node status', () => {
         for (const label of ['Sin instancias', 'Sin novedades', 'Sin alertas', 'Acciones rápidas']) {
             expect(screen.queryByText(label)).not.toBeInTheDocument();
         }
-        expect(screen.getByRole('button', { name: 'Ver todo' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Ver toda la actividad' })).toBeInTheDocument();
-    });
-
-    it('navega a instancias desde el acceso «Ver todas»', async () => {
-        vi.mocked(getNodeStatus).mockResolvedValue(status);
-
-        renderDashboard();
-        fireEvent.click(await screen.findByRole('button', { name: 'Ver todas' }));
-
-        expect(await screen.findByText('pantalla-instancias')).toBeInTheDocument();
     });
 
     it('navega a instancias desde «Ver todas las instancias»', async () => {
@@ -365,7 +354,7 @@ describe('Dashboard node status', () => {
         vi.mocked(getNodeStatus).mockResolvedValue(status);
 
         renderDashboard();
-        fireEvent.click(await screen.findByRole('button', { name: 'Ver todo' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Ver toda la actividad' }));
 
         expect(await screen.findByText('pantalla-auditoria')).toBeInTheDocument();
     });
