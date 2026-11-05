@@ -48,5 +48,5 @@ describe('modal accessibility', () => {
 it('keeps a visible focus indicator on the login submit button', () => {
   const router = createMemoryRouter([{ path: '/', element: <LoginForm /> }]);
   render(<RouterProvider router={router} />);
-  expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toHaveClass('focus-visible:ring-4');
+  expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toHaveClass('focus-visible:bg-[#93c5fdbd]');
 });
