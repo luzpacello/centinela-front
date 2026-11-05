@@ -176,7 +176,7 @@ export default function InstanceAction({ instance, transition: transitionProp, i
         error instanceof ApiRequestError &&
         error.status === 403 &&
         error.errorCode &&
-        ['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED'].includes(error.errorCode);
+        ['INSTANCE_PROTECTED', 'INSTANCE_ACCESS_DENIED', 'INSTANCE_NOT_OWNED'].includes(error.errorCode);
 
       if (isInstanceForbidden) {
         setDeleteError(getErrorMessage(error));

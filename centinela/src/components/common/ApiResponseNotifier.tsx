@@ -27,6 +27,7 @@ const forbiddenTitles: Record<string, string> = {
   PASSWORD_CHANGE_REQUIRED: 'Cambio de contraseña requerido',
   INSTANCE_PROTECTED: 'Instancia protegida',
   INSTANCE_ACCESS_DENIED: 'Acceso denegado',
+  INSTANCE_NOT_OWNED: 'Instancia no creada por El Centinela',
 };
 
 export function ApiResponseNotifier() {
