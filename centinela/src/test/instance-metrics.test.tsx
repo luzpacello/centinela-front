@@ -464,4 +464,48 @@ describe('FRN-22 - useInstanceMetrics', () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
     expect(mockedPost).toHaveBeenCalledTimes(2);
   });
+
+  it('acepta las tasas directas de entrada y salida de red', async () => {
+    const { result } = renderHook(() => useInstanceMetrics(INSTANCE_REF));
+    const socket = await connectSocket();
+
+    act(() => {
+      socket.message({
+        ...metricMessage(25, 2048, 1700000000),
+        netInBps: 1024,
+        netOutBps: 2048,
+      });
+    });
+
+    expect(result.current.metrics[0]).toMatchObject({
+      netInBps: 1024,
+      netOutBps: 2048,
+    });
+  });
+
+  it('prioriza las tasas directas sobre los contadores acumulativos', async () => {
+    const { result } = renderHook(() => useInstanceMetrics(INSTANCE_REF));
+    const socket = await connectSocket();
+
+    act(() => {
+      socket.message({
+        ...metricMessage(25, 2048, 1700000000),
+        netin: 1000,
+        netout: 2000,
+      });
+
+      socket.message({
+        ...metricMessage(30, 3072, 1700000002),
+        netin: 3000,
+        netout: 4000,
+        netInBps: 1500,
+        netOutBps: 2500,
+      });
+    });
+
+    expect(result.current.metrics[1]).toMatchObject({
+      netInBps: 1500,
+      netOutBps: 2500,
+    });
+  });
 });
