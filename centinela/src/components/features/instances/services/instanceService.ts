@@ -4,7 +4,7 @@ import type { CreateInstanceDraft, CreateInstancePayload, CreateInstanceResponse
 import { DEFAULT_NETWORK_CONFIGURATION, DEFAULT_RESOURCE_CONFIGURATION } from '../data/createInstanceOptions';
 import { isValidStaticNetwork } from '../validation/createInstanceValidation';
 import { mockInstances } from '@/mocks/instances';
-
+import { parseTemplateOption } from '../data/createInstanceOptions';
 export type { InventoryInstance, InstancePowerAction } from '../types/instance';
 
 // mockInstances es en caso de que se necesite instancias de prueba espara alguna tarea
@@ -77,14 +77,15 @@ export async function fetchCreationTemplates(signal?: AbortSignal): Promise<Oper
       || typeof template.sizeBytes !== 'number' || !Number.isFinite(template.sizeBytes) || template.sizeBytes < 0) {
       throw new ApiRequestError('No se pudo interpretar la lista de imágenes.');
     }
+    const parsed = parseTemplateOption(template.id);
     return {
       value: template.id,
       label: template.name,
       type: template.type,
       templateName: template.name,
       distribution: template.type === 'ISO' ? 'ISO' : 'LXC',
-      operatingSystem: '—',
-      version: '—',
+      operatingSystem: parsed.displayName,
+      version: parsed.version || '—',
       size: formatCatalogBytes(template.sizeBytes, true),
       date: '—',
     };

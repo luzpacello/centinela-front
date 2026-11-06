@@ -9,22 +9,26 @@ export interface ParsedTemplate {
     family: 'debian' | 'ubuntu' | 'alpine' | 'other';
     displayName: string;
     version: string;
+    architecture: string;
+    variant: string;
 }
 
 export function parseTemplateOption(volid: string): ParsedTemplate {
-    const filename = volid.slice(volid.lastIndexOf('/') + 1);
-    const match = /(?:^|[^a-z0-9])(debian|ubuntu|alpine)(?=$|[^a-z])/i.exec(filename);
-    if (!match) return { id: volid, family: 'other', displayName: 'Otro', version: '' };
+    const filename = volid.split('/').pop() ?? volid;
+
+    const match = /(debian|ubuntu|alpine)[-_](\d+(?:\.\d+)?)/i.exec(filename);
+
+    if (!match) return { id: volid, family: 'other', displayName: 'Otro', version: '' , architecture: '', variant: ''};
 
     const family = match[1].toLowerCase() as Exclude<ParsedTemplate['family'], 'other'>;
     const familyName = { debian: 'Debian', ubuntu: 'Ubuntu', alpine: 'Alpine' }[family];
-    const suffix = filename.slice(match.index + match[0].length);
-    const versionMatch = /^[-_.\s]+(?:server[-_.\s]+)?(\d+)(?:\.(\d+))?/i.exec(suffix);
-    const version = versionMatch
-        ? family !== 'debian' && versionMatch[2] ? `${versionMatch[1]}.${versionMatch[2]}` : versionMatch[1]
-        : '';
+    const version = family === 'debian' ? match[2].split('.')[0] : match[2];
+    const architectureMatch = filename.match(/_(amd64|arm64|aarch64|i386|i686|x86_64)\b/i);
+    const architecture = architectureMatch?.[1].toLocaleLowerCase() ?? '';
+    const variantMatch = filename.match(/(?:^|[-_])(standard|default|minimal|server|netinst)(?=[-_.]|$)/i);
+    const variant = variantMatch?.[1] ?? '';
 
-    return { id: volid, family, displayName: version ? `${familyName} ${version}` : familyName, version };
+    return { id: volid, family, displayName: `${familyName} ${version}`, version, architecture, variant: variant ? variant.charAt(0).toUpperCase() + variant.slice(1).toLocaleLowerCase() : '' };
 }
 
 export const INSTANCE_CREATION_STEPS: InstanceCreationStep[] = [
