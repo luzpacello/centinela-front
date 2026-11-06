@@ -9,17 +9,39 @@ import {
 import { Card } from '@/components/ui/card';
 import { INSTANCE_TYPE_OPTIONS } from '@/components/features/instances/data/createInstanceOptions';
 import type { CreateInstanceDraft, OperatingSystemTemplateOption } from '@/components/features/instances/types/createInstance';
-
+import { parseTemplateOption } from '@/components/features/instances/data/createInstanceOptions';
 interface InstanceCreationSummaryProps {
     draft: CreateInstanceDraft;
     templates: OperatingSystemTemplateOption[];
 }
 
+export function formatTemplateDisplay(volid: string): string {
+    if (!volid) return '—';
+
+    const parsed = parseTemplateOption(volid);
+
+    if (parsed.family === 'other') {
+        return volid.split('/').pop() || '—';
+    }
+
+    return parsed.variant
+        ? `${parsed.displayName} (${parsed.variant})`
+        : parsed.displayName;
+}
+
 export default function InstanceCreationSummary({ draft, templates }: InstanceCreationSummaryProps) {
     const typeLabel = INSTANCE_TYPE_OPTIONS.find((option) => option.type === draft.tipo)?.title;
-    const templateLabel = draft.tipo
-        ? templates.find((template) => template.value === draft.templateOso)?.label
+    const selectedTemplate = templates.find(
+        (template) => template.value === draft.templateOso
+    );
+
+    const templateLabel = selectedTemplate
+        ? formatTemplateDisplay(selectedTemplate.value)
         : undefined;
+
+    const architecture = selectedTemplate
+        ? parseTemplateOption(selectedTemplate.value).architecture
+        : '';
 
     return (
         <Card className={styles.summaryCard}>
@@ -44,7 +66,8 @@ export default function InstanceCreationSummary({ draft, templates }: InstanceCr
             </SummarySection>
 
             <SummarySection title="Sistema operativo">
-                <SummaryRow icon={HardDrive} label="Template" value={templateLabel} />
+                <SummaryRow icon={HardDrive} label="Distribución" value={templateLabel} />
+                <SummaryRow label="Arquitectura" value={architecture || undefined} badge />
             </SummarySection>
 
             <div className={styles.informationNotice}>
@@ -73,10 +96,12 @@ function SummaryRow({
     icon: Icon,
     label,
     value,
+    badge = false,
 }: {
     icon?: React.ComponentType<{ className?: string }>;
     label: string;
     value?: string;
+    badge?: boolean;
 }) {
     return (
         <div className={styles.summaryRow}>
@@ -84,7 +109,7 @@ function SummaryRow({
                 {Icon && <Icon className={styles.summaryRowIcon} aria-hidden="true" />}
                 {label}
             </span>
-            <strong className={styles.summaryValue}>{value?.trim() || '—'}</strong>
+            <strong className={badge ? styles.summaryBadge : styles.summaryValue}>{value?.trim() || '—'}</strong>
         </div>
     );
 }
@@ -98,6 +123,7 @@ const styles = {
     summaryLabel: 'flex min-w-0 items-center gap-2 text-slate-500',
     summaryRowIcon: 'size-4 shrink-0 text-slate-500',
     summaryValue: 'max-w-[55%] text-right font-medium text-slate-900',
+    summaryBadge: 'rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700',
     informationNotice: 'mt-1 flex gap-3 rounded-lg bg-blue-50 p-4 text-xs leading-5 text-blue-900',
     informationIcon: 'mt-0.5 size-4 shrink-0 text-blue-600',
 };

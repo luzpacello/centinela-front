@@ -27,8 +27,16 @@ const timeframeOptions: { value: InstanceMetricsTimeframe; label: string }[] = [
 
 export default function InstanceResourceUsage({ detail, metrics, timeframe, onTimeframeChange, isLoading, error, onRetry, connectionStatus, isInstanceStopped = false }: InstanceResourceUsageProps) {
     const selectedTimeframe = timeframeOptions.find((option) => option.value === timeframe)!;
-    const stopped = isInstanceStopped || detail.status.toLowerCase() === 'stopped'
-        || (metrics.length > 0 && metrics.every((point) => point.cpuPercent == null && point.ramUsedBytes == null));
+    const stopped = isInstanceStopped
+        || detail.status.toLowerCase() === 'stopped'
+        || (metrics.length > 0 && metrics.every((point) =>
+            point.cpuPercent == null
+            && point.ramUsedBytes == null
+            && point.diskReadBps == null
+            && point.diskWriteBps == null
+            && point.netInBps == null
+            && point.netOutBps == null
+    ));
     const latestPoint = metrics.at(-1);
     const currentCpu = timeframe === 'live' && latestPoint ? latestPoint.cpuPercent : detail.cpuPercent;
     const currentMemory = timeframe === 'live' && latestPoint ? latestPoint.ramUsedBytes : detail.memoryUsedBytes;
