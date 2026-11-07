@@ -22,6 +22,9 @@ const VALID_MESSAGE: CentinelaEventsMessage = {
   severidad: 'CRITICAL',
   recursoId: 'node-1',
   detalles: { porcentaje: 95 },
+  recursoTipo: null,
+  mensaje: null,
+  fechaHora: null,
 };
 
 // Doble de EventSource: expone los listeners registrados para poder simular
@@ -121,6 +124,54 @@ describe('parseCentinelaEventsMessage', () => {
     expect(parseCentinelaEventsMessage(JSON.stringify(VALID_MESSAGE))).toEqual(VALID_MESSAGE);
   });
 
+  it('conserva una alerta de HOST aunque el recurso no tenga id', () => {
+    const parsed = parseCentinelaEventsMessage(JSON.stringify({
+      id: 'evt-host',
+      tipo: 'ALERT_TRIGGERED',
+      severidad: 'CRITICAL',
+      recursoTipo: 'HOST',
+      recursoId: null,
+      mensaje: 'CPU al 98%',
+      fechaHora: '2026-11-07T10:00:00Z',
+      detalles: { alertId: 'alert-cpu', metrica: 'CPU' },
+    }));
+
+    expect(parsed).toMatchObject({
+      tipo: 'ALERT_TRIGGERED',
+      recursoTipo: 'HOST',
+      recursoId: null,
+      mensaje: 'CPU al 98%',
+      fechaHora: '2026-11-07T10:00:00Z',
+    });
+  });
+
+  it('conserva las alertas de VM y permite ids vacíos', () => {
+    const parsed = parseCentinelaEventsMessage(JSON.stringify({
+      id: 'evt-vm',
+      tipo: 'ALERT_TRIGGERED',
+      severidad: 'WARNING',
+      recursoTipo: 'VM',
+      recursoId: '110',
+      mensaje: 'RAM elevada',
+      fechaHora: '2026-11-07T10:01:00Z',
+      detalles: { alertId: 'alert-ram', metrica: 'RAM' },
+    }));
+
+    expect(parsed).toMatchObject({
+      tipo: 'ALERT_TRIGGERED',
+      recursoTipo: 'VM',
+      recursoId: '110',
+      detalles: { alertId: 'alert-ram', metrica: 'RAM' },
+    });
+    expect(parseCentinelaEventsMessage(JSON.stringify({
+      id: 'evt-host-empty',
+      tipo: 'ALERT_TRIGGERED',
+      severidad: 'CRITICAL',
+      recursoTipo: 'HOST',
+      recursoId: '',
+    }))).not.toBeNull();
+  });
+
   it('normaliza detalles ausentes a null', () => {
     const parsed = parseCentinelaEventsMessage(JSON.stringify({
       id: 'evt-0002', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '110',
@@ -136,7 +187,7 @@ describe('parseCentinelaEventsMessage', () => {
     expect(parseCentinelaEventsMessage(JSON.stringify({ id: 42, tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
     expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'LOUD', recursoId: 'x' }))).toBeNull();
     expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TIPO_QUE_NO_EXISTE', severidad: 'INFO', recursoId: 'x' }))).toBeNull();
-    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: '' }))).toBeNull();
+    expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: undefined }))).toBeNull();
     expect(parseCentinelaEventsMessage(JSON.stringify({ id: 'evt-x', tipo: 'TASK_FINISHED', severidad: 'INFO', recursoId: 'x', detalles: [] }))).toBeNull();
   });
 });

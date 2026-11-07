@@ -3,7 +3,9 @@ import { AUTH_SESSION_CHANGED_EVENT } from '@/services/api';
 import {
   REALTIME_EVENT_TYPES,
   REALTIME_SEVERITIES,
+  RECURSO_TIPOS,
   type RealtimeEventType,
+  type RecursoTipo,
   type RealtimeSeverity,
 } from '@/types/notifications';
 
@@ -31,8 +33,11 @@ export interface CentinelaEventsMessage {
   id: string;
   tipo: CentinelaEventsMessageType;
   severidad: RealtimeSeverity;
-  recursoId: string;
+  recursoId: string | null;
   detalles: Record<string, unknown> | null;
+  recursoTipo?: RecursoTipo | null;
+  mensaje?: string | null;
+  fechaHora?: string | null;
 }
 
 export type EventsClientStatus =
@@ -134,13 +139,17 @@ export function parseCentinelaEventsMessage(raw: unknown): CentinelaEventsMessag
   if (typeof parsed !== 'object' || parsed === null) return null;
 
   const record = parsed as Record<string, unknown>;
-  const { id, tipo, severidad, recursoId, detalles } = record;
+  const { id, tipo, severidad, recursoId, detalles, recursoTipo, mensaje, fechaHora } = record;
 
   if (typeof id !== 'string' || !id.trim()) return null;
   if (typeof tipo !== 'string' || !tipo.trim()) return null;
   if (tipo !== 'cierre' && !REALTIME_EVENT_TYPES.includes(tipo as RealtimeEventType)) return null;
   if (typeof severidad !== 'string' || !REALTIME_SEVERITIES.includes(severidad as RealtimeSeverity)) return null;
-  if (typeof recursoId !== 'string' || !recursoId.trim()) return null;
+  if (recursoId !== null && typeof recursoId !== 'string') return null;
+  if (recursoTipo !== undefined && recursoTipo !== null
+    && (typeof recursoTipo !== 'string' || !RECURSO_TIPOS.includes(recursoTipo as RecursoTipo))) return null;
+  if (mensaje !== undefined && mensaje !== null && typeof mensaje !== 'string') return null;
+  if (fechaHora !== undefined && fechaHora !== null && typeof fechaHora !== 'string') return null;
   if (detalles !== undefined && detalles !== null && (typeof detalles !== 'object' || Array.isArray(detalles))) {
     return null;
   }
@@ -149,8 +158,11 @@ export function parseCentinelaEventsMessage(raw: unknown): CentinelaEventsMessag
     id,
     tipo: tipo as CentinelaEventsMessageType,
     severidad: severidad as RealtimeSeverity,
-    recursoId,
+    recursoId: recursoId as string | null,
     detalles: (detalles as Record<string, unknown> | null | undefined) ?? null,
+    recursoTipo: (recursoTipo as RecursoTipo | null | undefined) ?? null,
+    mensaje: (mensaje as string | null | undefined) ?? null,
+    fechaHora: (fechaHora as string | null | undefined) ?? null,
   };
 }
 
