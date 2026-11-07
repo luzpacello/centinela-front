@@ -173,7 +173,8 @@ describe('Dashboard node status', () => {
         expect(screen.getAllByText('12').length).toBeGreaterThan(0);
         expect(screen.getAllByText('6').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Advertencia').length).toBeGreaterThan(0);
-        expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
+        // El centro de notificaciones vive en el layout protegido, no dentro de Dashboard.
+        expect(screen.queryByRole('button', { name: 'Notificaciones' })).not.toBeInTheDocument();
         expect(screen.getByTestId('cpu-meter-sparkline')).toBeInTheDocument();
         expect(await screen.findByRole('heading', { name: 'Actividad reciente' })).toBeInTheDocument();
         expect(await screen.findByText('Instancia iniciada')).toBeInTheDocument();

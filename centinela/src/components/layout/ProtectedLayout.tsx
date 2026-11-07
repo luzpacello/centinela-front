@@ -1,6 +1,8 @@
 import { Outlet, useLoaderData } from 'react-router';
 import MainLayout from './MainLayout';
 import { EventsProvider } from '@/context/EventsContext';
+import { AlertsProvider } from '@/context/AlertsContext';
+import NotificationBell from '@/components/features/notifications/NotificationBell';
 import { PendingInstanceCreationsProvider } from '@/components/features/instances/context/PendingInstanceCreationsContext';
 import type { UserSession } from '@/components/features/auth/types/authentication';
 
@@ -13,9 +15,12 @@ export default function ProtectedLayout() {
   return (
     <MainLayout user={user}>
       <EventsProvider>
-        <PendingInstanceCreationsProvider>
-          <Outlet />
-        </PendingInstanceCreationsProvider>
+        <AlertsProvider>
+          <NotificationBell />
+          <PendingInstanceCreationsProvider>
+            <Outlet />
+          </PendingInstanceCreationsProvider>
+        </AlertsProvider>
       </EventsProvider>
     </MainLayout>
   );

@@ -99,3 +99,24 @@ export function useEventSubscription(filter: SubscriptionFilter, callback: Event
     return unsubscribe;
   }, [client, tipo, recursoId]);
 }
+
+// Para suscriptores globales que también pueden renderizarse en vistas aisladas
+// (por ejemplo, dentro de tests o previews sin un EventsProvider).
+// eslint-disable-next-line react-refresh/only-export-components
+export function useOptionalEventSubscription(filter: SubscriptionFilter, callback: EventCallback): void {
+  const client = useContext(EventsContext);
+
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  const { tipo, recursoId } = filter;
+  useEffect(() => {
+    if (!client) return;
+    return client.subscribe(
+      { tipo, recursoId },
+      (event) => callbackRef.current(event),
+    );
+  }, [client, tipo, recursoId]);
+}

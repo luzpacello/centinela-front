@@ -378,7 +378,7 @@ export function useInstances(suppressSnapshotNotifications = false) {
     const isCompletedDeletion = ultimoMensaje.tipo === 'TASK_FINISHED'
       && action?.toLowerCase() === 'delete'
       && readDetalleString(ultimoMensaje.detalles, 'estado') === 'COMPLETED';
-    const deletedRef = ultimoMensaje.recursoId.trim();
+    const deletedRef = ultimoMensaje.recursoId?.trim() ?? '';
     if (isCompletedDeletion && deletedRef) {
       deletedInstanceIds.current.add(deletedRef);
       queueMicrotask(() => {

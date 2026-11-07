@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Container, Monitor, Plus } from 'lucide-react';
+import { AlertTriangle, Container, Monitor, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,10 +27,12 @@ import {
 } from '@/components/ui/pagination';
 const INSTANCES_PER_PAGE = 10;
 import { Link } from 'react-router';
+import { useAlerts } from '@/context/AlertsContext';
 
 export default function Instances() {
     const navigate = useNavigate();
     const { user, isAdmin } = useAuth();
+    const { activeAlerts } = useAlerts();
     const { instances, isLoading, errorMessage, reloadInventory, revalidateInventory, pendingPowerActions, settlingPowerActions, markPowerActionAccepted, transitioningTasks } = useInstances();
     const visibleInstances = instances;
     const vmInstanceCount = visibleInstances.filter((instance) => instance.type === 'VM').length;
@@ -144,6 +146,10 @@ export default function Instances() {
                             </TableCell></TableRow>
                         ) : paginatedInstances.map((instance) => {
                             const instanceRef = String(instance.id);
+                            const instanceAlerts = activeAlerts.filter((alert) =>
+                                (alert.recursoTipo === 'VM' || alert.recursoTipo === 'LXC')
+                                && alert.recursoId !== null
+                                && String(alert.recursoId) === instanceRef);
                             const permissionLevel = instance.nivelAcceso ?? user?.permisos?.find((permission) => String(permission.vmid) === instanceRef)?.nivelAcceso;
                             const cpuUsage = formatCpuUsage(instance.cpuUsage);
                             const ramUsage = formatRamUsage(instance.ramUsage, instance.maxRam);
@@ -168,6 +174,17 @@ export default function Instances() {
                                                 >
                                                     {instance.name}
                                                 </Link>
+                                                {instanceAlerts.length > 0 && (
+                                                    <Badge
+                                                        variant="warning"
+                                                        title={`Instancia con ${instanceAlerts.map((alert) => alert.metrica).join(', ')} activa`}
+                                                        aria-label={`Instancia con alerta activa de ${instanceAlerts.map((alert) => alert.metrica).join(', ')}`}
+                                                        className="w-fit gap-1"
+                                                    >
+                                                        <AlertTriangle className="size-3" aria-hidden="true" />
+                                                        Saturación
+                                                    </Badge>
+                                                )}
                                                 {!isAdmin() && <Badge variant="outline" data-access-level={permissionLevel}>
                                                     {permissionLevel === 'READ_ONLY' ? 'Solo lectura' : permissionLevel === 'FULL_ACCESS' ? 'Control total' : 'Nivel de acceso no disponible'}
                                                 </Badge>}

@@ -1,4 +1,4 @@
-import { Bell, Box, CirclePlay, Clock3, Layers3, PauseCircle, RefreshCw, Server, ShieldCheck } from 'lucide-react';
+import { Box, CirclePlay, Clock3, Layers3, PauseCircle, RefreshCw, Server, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import RecentActivityCard from '@/components/features/dashboard/components/Recen
 import AlertsStatusCard from '@/components/features/dashboard/components/AlertsStatusCard';
 import { useAuth } from '@/context/AuthContext';
 import { useInstances } from '@/components/features/instances/hooks/useInstances';
+import DashboardAlertBanner from '@/components/features/notifications/DashboardAlertBanner';
 
 // Traducción del estado del canal de eventos a lo que ve el operador.
 const EVENTS_STATUS_PRESENTATION: Record<EventsClientStatus, { label: string; dot: string }> = {
@@ -88,12 +89,11 @@ export default function Dashboard() {
                             {eventsStatus.label}
                         </Badge>
 
-                        <Button type="button" variant="ghost" size="icon" aria-label="Notificaciones">
-                            <Bell className={style.smallIcon} />
-                        </Button>
                     </div>
                 </div>
             </header>
+
+            <DashboardAlertBanner />
 
             <div className={style.overview} data-testid="dashboard-overview">
                 <Card className={style.summaryCard} data-testid="instances-overview">

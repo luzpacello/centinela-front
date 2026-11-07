@@ -9,13 +9,15 @@ export type RealtimeEventType =
   | 'INSTANCE_STATE_CHANGED'
   | 'INSTANCE_CREATED'
   | 'RESOURCE_SATURATION'
-  | 'TASK_FINISHED';
+  | 'TASK_FINISHED'
+  | 'ALERT_TRIGGERED'
+  | 'ALERT_RESOLVED';
 
 // Niveles de severidad de un evento.
 export type RealtimeSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
 
 // Tipos de recurso que puede referenciar un evento.
-export type RecursoTipo = 'VM' | 'LXC' | 'NODE';
+export type RecursoTipo = 'VM' | 'LXC' | 'HOST';
 
 // Estados posibles de una tarea asincrónica reportados por el canal.
 export type EstadoTarea = 'RUNNING' | 'COMPLETED' | 'FAILED';
@@ -27,7 +29,7 @@ export interface RealtimeEvent {
   tipo: RealtimeEventType;
   severidad: RealtimeSeverity;
   recursoTipo: RecursoTipo;
-  recursoId: string;
+  recursoId: string | null;
   mensaje: string;
   fechaHora: string;
   detalles?: Record<string, unknown> | null;
@@ -39,6 +41,8 @@ export const REALTIME_EVENT_TYPES: RealtimeEventType[] = [
   'INSTANCE_CREATED',
   'RESOURCE_SATURATION',
   'TASK_FINISHED',
+  'ALERT_TRIGGERED',
+  'ALERT_RESOLVED',
 ];
 
 export const REALTIME_SEVERITIES: RealtimeSeverity[] = [
@@ -47,7 +51,7 @@ export const REALTIME_SEVERITIES: RealtimeSeverity[] = [
   'CRITICAL',
 ];
 
-export const RECURSO_TIPOS: RecursoTipo[] = ['VM', 'LXC', 'NODE'];
+export const RECURSO_TIPOS: RecursoTipo[] = ['VM', 'LXC', 'HOST'];
 
 export const ESTADOS_TAREA: EstadoTarea[] = [
   'RUNNING',
