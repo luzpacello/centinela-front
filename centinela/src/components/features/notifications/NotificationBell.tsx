@@ -40,13 +40,13 @@ export default function NotificationBell() {
   const resolvedCount = alerts.filter((alert) => alert.estado === 'RESUELTA').length;
 
   return (
-    <div className="fixed right-4 top-4 z-40 sm:right-6 sm:top-5">
+    <div className="fixed right-4 top-4 z-40 sm:right-6 sm:top-19">
       <Popover>
         <PopoverTrigger
           type="button"
           aria-label="Centro de notificaciones"
           aria-haspopup="dialog"
-          className="relative flex size-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="relative flex size-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
         >
           <Bell className={`size-5 ${activeUnreadCount > 0 ? 'animate-pulse text-red-600' : ''}`} aria-hidden="true" />
           {activeUnreadCount > 0 && (
